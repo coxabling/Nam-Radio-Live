@@ -39,6 +39,7 @@ const FAVORITE_DJS_KEY = 'nam-radio-live-favorite-djs';
 const REQUESTS_KEY = 'nam-radio-live-song-requests';
 const VIBE_KEY = 'nam-radio-live-user-vibe';
 const LISTENING_STATS_KEY = 'nam-radio-live-listening-stats';
+const DAILY_REWIND_DATA_KEY = 'nam-radio-daily-rewind-data';
 
 const initialVibes: Vibe[] = [
     { type: 'hype', emoji: '🔥', label: 'Hype', count: 25 },
@@ -78,6 +79,7 @@ const App: React.FC = () => {
 
   // Stats State
   const [listeningStats, setListeningStats] = useState<ListeningStats>(initialListeningStats);
+  const [dailyShowsListened, setDailyShowsListened] = useState<string[]>([]);
 
 
   // Live broadcast state
@@ -141,6 +143,22 @@ const App: React.FC = () => {
             setListeningStats(loadedStats);
         }
     } catch (e) { console.error("Failed to parse listening stats from localStorage", e); }
+
+    try {
+      const storedRewindData = localStorage.getItem(DAILY_REWIND_DATA_KEY);
+      const todayStr = new Date().toISOString().split('T')[0];
+      if (storedRewindData) {
+          const data = JSON.parse(storedRewindData);
+          if (data.date === todayStr) {
+              setDailyShowsListened(data.shows);
+          } else {
+              // New day, reset
+              localStorage.setItem(DAILY_REWIND_DATA_KEY, JSON.stringify({ date: todayStr, shows: [] }));
+          }
+      } else {
+          localStorage.setItem(DAILY_REWIND_DATA_KEY, JSON.stringify({ date: todayStr, shows: [] }));
+      }
+    } catch (e) { console.error("Failed to parse daily rewind data", e); }
 
   }, []);
   
@@ -274,6 +292,13 @@ const App: React.FC = () => {
           if (liveNowPlaying.show?.name) {
             const showName = liveNowPlaying.show.name;
             newStats.showListeningTime[showName] = (newStats.showListeningTime[showName] || 0) + (trackingInterval / 1000);
+
+            setDailyShowsListened(prevShows => {
+                if (!prevShows.includes(showName)) {
+                    return [...prevShows, showName];
+                }
+                return prevShows;
+            });
           }
 
           // Night Owl badge check
@@ -299,6 +324,18 @@ const App: React.FC = () => {
     
     return () => clearTimeout(saveTimer);
   }, [listeningStats, currentUser]);
+
+  // Save daily rewind data to localStorage periodically
+  useEffect(() => {
+    if (!currentUser) return;
+    
+    const saveTimer = setTimeout(() => {
+        const todayStr = new Date().toISOString().split('T')[0];
+        localStorage.setItem(DAILY_REWIND_DATA_KEY, JSON.stringify({ date: todayStr, shows: dailyShowsListened }));
+    }, 15000);
+    
+    return () => clearTimeout(saveTimer);
+  }, [dailyShowsListened, currentUser]);
   
   // Auth handlers
   const handleSignUp = async (username: string, password_plain: string): Promise<boolean> => {
@@ -442,6 +479,7 @@ const App: React.FC = () => {
             onUpdateUserProfile={handleUpdateUserProfile}
             songRequests={songRequests}
             listeningStats={listeningStats}
+            dailyShowsListened={dailyShowsListened}
           />
         ) : null;
       default:

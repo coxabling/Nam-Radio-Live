@@ -3,8 +3,9 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { Dj, ApiScheduleItem, SongRequestRecord, ListeningStats, Badge } from '../types';
-import { getShowRecommendations } from '../services/geminiService';
+import { getShowRecommendations, generateDailyRewind } from '../services/geminiService';
 import { DJS } from '../constants';
+import DailyRewindModal from './DailyRewindModal';
 
 
 interface User {
@@ -64,9 +65,10 @@ interface MyStationProps {
   onUpdateUserProfile: (updatedProfile: { username: string; avatarUrl: string; bio: string; }) => void;
   songRequests: SongRequestRecord[];
   listeningStats: ListeningStats;
+  dailyShowsListened: string[];
 }
 
-const MyStation: React.FC<MyStationProps> = ({ favoriteShows, favoriteDjs, allShows, onToggleFavorite, onToggleFavoriteDj, currentShowName, currentUser, onUpdateUserProfile, songRequests, listeningStats }) => {
+const MyStation: React.FC<MyStationProps> = ({ favoriteShows, favoriteDjs, allShows, onToggleFavorite, onToggleFavoriteDj, currentShowName, currentUser, onUpdateUserProfile, songRequests, listeningStats, dailyShowsListened }) => {
   const [recommendations, setRecommendations] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -79,6 +81,11 @@ const MyStation: React.FC<MyStationProps> = ({ favoriteShows, favoriteDjs, allSh
     bio: currentUser.bio || ''
   });
   const [avatarError, setAvatarError] = useState(false);
+
+  const [isRewindModalOpen, setIsRewindModalOpen] = useState(false);
+  const [rewindContent, setRewindContent] = useState<string | null>(null);
+  const [isRewindLoading, setIsRewindLoading] = useState(false);
+  const [rewindError, setRewindError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isEditing) {
@@ -103,6 +110,24 @@ const MyStation: React.FC<MyStationProps> = ({ favoriteShows, favoriteDjs, allSh
       setError('Failed to get recommendations. Please try again.');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleGetRewind = async () => {
+    setIsRewindModalOpen(true);
+    setIsRewindLoading(true);
+    setRewindError(null);
+    setRewindContent(null);
+    try {
+      const todayStr = new Date().toISOString().split('T')[0];
+      const todaysRequests = songRequests.filter(req => req.requestedAt.startsWith(todayStr));
+      
+      const result = await generateDailyRewind(currentUser.username, dailyShowsListened, todaysRequests);
+      setRewindContent(result);
+    } catch (err: any) {
+      setRewindError(err.message || 'An unexpected error occurred.');
+    } finally {
+      setIsRewindLoading(false);
     }
   };
 
@@ -284,6 +309,14 @@ const MyStation: React.FC<MyStationProps> = ({ favoriteShows, favoriteDjs, allSh
                     </div>
                     )}
                 </section>
+
+                <section className="bg-slate-900/50 backdrop-blur-xl rounded-2xl p-6 md:p-8 shadow-lg border border-slate-700/50">
+                    <h2 className="text-2xl font-bold mb-4 tracking-wide text-white">AI-Generated Daily Rewind</h2>
+                    <p className="text-slate-400 mb-6">Get a personalized shoutout from DJ Alex recapping your listening day!</p>
+                    <div className="text-center">
+                        <button onClick={handleGetRewind} disabled={isRewindLoading} className="px-6 py-3 bg-indigo-500 text-white font-semibold rounded-lg shadow-md hover:bg-indigo-600 transition-all duration-200 disabled:bg-slate-600 disabled:cursor-not-allowed">{isRewindLoading ? 'Generating...' : 'Get My Daily Rewind'}</button>
+                    </div>
+                </section>
             </div>
 
             {/* Sidebar Column */}
@@ -393,6 +426,14 @@ const MyStation: React.FC<MyStationProps> = ({ favoriteShows, favoriteDjs, allSh
             </div>
         </div>
       </div>
+      {isRewindModalOpen && (
+        <DailyRewindModal 
+          isLoading={isRewindLoading}
+          rewindContent={rewindContent}
+          error={rewindError}
+          onClose={() => setIsRewindModalOpen(false)}
+        />
+      )}
     </div>
   );
 };

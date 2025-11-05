@@ -162,3 +162,34 @@ export const generateVibeCommentary = async (dominantVibeLabel: string): Promise
         return `Looks like the vibe is definitely ${dominantVibeLabel.toLowerCase()} right now! I'm feeling it.`;
     }
 };
+
+// For "Daily Rewind" in MyStation
+export const generateDailyRewind = async (
+    username: string,
+    shows: string[],
+    songRequests: SongRequestRecord[]
+): Promise<string> => {
+    if (shows.length === 0 && songRequests.length === 0) {
+        return "It looks like you haven't tuned in long enough today to generate a rewind. Listen to a show or request a song and check back later!";
+    }
+    try {
+        const ai = new GoogleGenAI({ apiKey: getGeminiApiKey() });
+        let prompt = `You are DJ Alex, the AI host of Nam Radio Live. A listener named '${username}' tuned in today. `;
+        
+        if (shows.length > 0) {
+            prompt += `They enjoyed shows like '${shows.join(', ')}'. `;
+        }
+        if (songRequests.length > 0) {
+            const requestedSongs = songRequests.map(r => `"${r.title}"`).join(', ');
+            prompt += `They also requested some great tunes like ${requestedSongs}. `;
+        }
+
+        prompt += "Create a short, energetic, 2-paragraph summary of their listening day. Address them directly and make it feel like a personal shoutout. Mention a highlight, maybe a cool song or a fun moment from the chat.";
+        
+        const response = await ai.models.generateContent({ model: 'gemini-2.5-flash', contents: prompt });
+        return response.text;
+    } catch (error) {
+        console.error("Error generating daily rewind:", error);
+        return "Looks like my circuits are a bit scrambled trying to remember the day! Please try again in a moment.";
+    }
+};
