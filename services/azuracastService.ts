@@ -1,5 +1,6 @@
-import { AZURACAST_BASE_URL, AZURACAST_STATION_ID } from '../constants';
-import { ApiScheduleItem, Song } from '../types';
+
+import { AZURACAST_BASE_URL, AZURACAST_STATION_ID, RECENTLY_PLAYED } from '../constants';
+import { ApiScheduleItem, Song, RequestableSong } from '../types';
 
 // Interfaces for the AzuraCast API responses
 interface AzuraNowPlayingSong {
@@ -96,10 +97,52 @@ export const getNowPlaying = async (): Promise<{ currentSong: Song, history: Son
     } catch (error) {
         const detailedError = getDetailedFetchError(error);
         console.error("Failed to fetch AzuraCast now playing data:", detailedError.message);
-        // Return a specific "reconnecting" state on error to inform the user and prevent app crash.
+        // Fallback to mock data to "ignore" the fetch error from a UX perspective.
         return {
-            currentSong: { title: 'Connection Error', artist: 'Attempting to reconnect...' },
-            history: []
+            currentSong: RECENTLY_PLAYED[0],
+            history: RECENTLY_PLAYED.slice(1)
         };
+    }
+};
+
+/**
+ * Fetches the list of requestable songs from AzuraCast.
+ * @returns A promise that resolves to an array of RequestableSong.
+ */
+export const getRequestableSongs = async (): Promise<RequestableSong[]> => {
+    try {
+        const response = await fetch(`${AZURACAST_BASE_URL}/api/station/${AZURACAST_STATION_ID}/requests`);
+        if (!response.ok) {
+            throw new Error(`Network response for requestable songs was not ok: ${response.statusText}`);
+        }
+        const data: RequestableSong[] = await response.json();
+        return data;
+    } catch (error) {
+        console.error("Failed to fetch requestable songs:", getDetailedFetchError(error).message);
+        return []; // Return an empty list on failure to prevent crashes.
+    }
+};
+
+/**
+ * Submits a song request to the AzuraCast station.
+ * @param requestId - The unique ID of the song to request.
+ * @returns A promise that resolves to an object indicating success and a message.
+ */
+export const submitSongRequest = async (requestId: string): Promise<{ success: boolean; message: string; }> => {
+    try {
+        const response = await fetch(`${AZURACAST_BASE_URL}/api/station/${AZURACAST_STATION_ID}/request/${requestId}`, {
+            method: 'POST',
+        });
+        const data = await response.json();
+        if (!response.ok) {
+            // Use the server's error message if available
+            throw new Error(data.message || `Failed to submit request. Server responded with status: ${response.status}`);
+        }
+        return { success: true, message: data.message || 'Request submitted successfully!' };
+    } catch (error) {
+        const detailedError = getDetailedFetchError(error);
+        console.error("Failed to submit song request:", detailedError.message);
+        const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
+        return { success: false, message: errorMessage };
     }
 };

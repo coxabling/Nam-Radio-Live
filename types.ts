@@ -89,3 +89,14 @@ export interface SongRequestRecord {
   artist: string;
   requestedAt: string; // ISO String
 }
+
+export interface RequestableSong {
+  request_id: string;
+  song: {
+    id: string;
+    text: string;
+    artist: string;
+    title: string;
+    art: string;
+  };
+}
