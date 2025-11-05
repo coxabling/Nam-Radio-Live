@@ -1,5 +1,3 @@
-
-
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import Header from './components/Header';
 import NowPlaying from './components/NowPlaying';
@@ -7,7 +5,7 @@ import SongRequest from './components/SongRequest';
 import Schedule from './components/Schedule';
 import Djs from './components/Djs';
 import Footer from './components/Footer';
-import { DJS, RECENTLY_PLAYED } from './constants';
+import { DJS } from './constants';
 import { getSchedule, getNowPlaying } from './services/azuracastService';
 import UpcomingShows from './components/UpcomingShows';
 import ScrollToTopButton from './components/ScrollToTopButton';
@@ -57,7 +55,7 @@ const App: React.FC = () => {
   const [favoriteShows, setFavoriteShows] = useState<number[]>([]);
   const [favoriteDjs, setFavoriteDjs] = useState<number[]>([]);
   const [songRequests, setSongRequests] = useState<SongRequestRecord[]>([]);
-  const [recentlyPlayed, setRecentlyPlayed] = useState<Song[]>(RECENTLY_PLAYED);
+  const [recentlyPlayed, setRecentlyPlayed] = useState<Song[]>([]);
   
   // Auth state
   const [users, setUsers] = useState<User[]>([]);
@@ -71,9 +69,10 @@ const App: React.FC = () => {
 
   // Live broadcast state
   const [liveNowPlaying, setLiveNowPlaying] = useState<LiveNowPlaying>({
-    song: RECENTLY_PLAYED[0],
+    song: { title: 'Loading...', artist: 'Connecting to server...' },
     show: null
   });
+  const [nowPlayingError, setNowPlayingError] = useState<string | null>(null);
 
   // Check for stored data on initial load
   useEffect(() => {
@@ -147,7 +146,7 @@ const App: React.FC = () => {
     return () => window.removeEventListener('hashchange', handleHashChange);
   }, [currentUser, openLoginModal]);
 
-  // Fetch schedule from API (with mock fallback)
+  // Fetch schedule from API
   useEffect(() => {
     const fetchSchedule = async () => {
       setScheduleLoading(true);
@@ -167,23 +166,29 @@ const App: React.FC = () => {
   // Poll for live broadcast data
   useEffect(() => {
     const pollNowPlaying = async () => {
-      const { currentSong, history, showName } = await getNowPlaying();
+      try {
+        const { currentSong, history, showName } = await getNowPlaying();
 
-      setLiveNowPlaying(prev => ({ ...prev, song: currentSong }));
-      setRecentlyPlayed(history);
+        setLiveNowPlaying(prev => ({ ...prev, song: currentSong }));
+        setRecentlyPlayed(history);
 
-      setSchedule(currentSchedule => {
-        if (currentSchedule.length === 0) return [];
+        setSchedule(currentSchedule => {
+          if (currentSchedule.length === 0) return [];
 
-        const currentShow = currentSchedule.find(s => s.name === showName) || null;
-        setLiveNowPlaying(prev => ({ ...prev, show: currentShow }));
+          const currentShow = currentSchedule.find(s => s.name === showName) || null;
+          setLiveNowPlaying(prev => ({ ...prev, show: currentShow }));
 
-        const needsUpdate = currentSchedule.some(s => s.is_now !== (s.name === showName));
-        if (needsUpdate) {
-          return currentSchedule.map(s => ({ ...s, is_now: s.name === showName }));
-        }
-        return currentSchedule;
-      });
+          const needsUpdate = currentSchedule.some(s => s.is_now !== (s.name === showName));
+          if (needsUpdate) {
+            return currentSchedule.map(s => ({ ...s, is_now: s.name === showName }));
+          }
+          return currentSchedule;
+        });
+        setNowPlayingError(null); // Clear error on success
+      } catch (error) {
+        console.error("Error polling now playing data:", error);
+        setNowPlayingError("Connection to the server was lost. Reconnecting...");
+      }
     };
 
     pollNowPlaying(); // Initial fetch
@@ -371,7 +376,7 @@ const App: React.FC = () => {
         return (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 md:gap-12">
             <div className="lg:col-span-2 space-y-12">
-              <NowPlaying liveNowPlaying={liveNowPlaying} recentlyPlayed={recentlyPlayed} vibes={vibes} userVibe={userVibe} onVibeVote={handleVibeVote} />
+              <NowPlaying liveNowPlaying={liveNowPlaying} recentlyPlayed={recentlyPlayed} vibes={vibes} userVibe={userVibe} onVibeVote={handleVibeVote} nowPlayingError={nowPlayingError} />
               <UpcomingShows shows={upcomingShowsToday} loading={scheduleLoading} error={scheduleError} favoriteShows={favoriteShows} onToggleFavorite={toggleFavoriteShow} />
               <About />
               <Schedule schedule={schedule} loading={scheduleLoading} error={scheduleError} favoriteShows={favoriteShows} onToggleFavorite={toggleFavoriteShow} />

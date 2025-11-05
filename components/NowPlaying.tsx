@@ -14,6 +14,7 @@ interface NowPlayingProps {
     vibes: Vibe[];
     userVibe: VibeType | null;
     onVibeVote: (vibe: VibeType) => void;
+    nowPlayingError: string | null;
 }
 
 // SVG icons
@@ -24,7 +25,7 @@ const YouTubeIcon = () => (<svg className="w-7 h-7" fill="currentColor" viewBox=
 const SpotifyIcon = () => (<svg className="w-7 h-7" fill="currentColor" viewBox="0 0 24 24"><path d="M12,2C6.477,2,2,6.477,2,12s4.477,10,10,10s10-4.477,10-10S17.523,2,12,2z M16.7,16.4c-0.2-0.3-0.6-0.4-0.9-0.2 c-2.3,1.4-5.2,1.7-8.6,0.9c-0.4,0-0.7,0.3-0.7,0.6c0,0.3,0.3,0.7,0.6,0.7c3.7,0.8,7.1,0.5,9.7-1.1C17,16.9,17.1,16.6,16.7,16.4z M17.9,13.4c-0.2-0.4-0.8-0.5-1.1-0.2c-2.6,1.6-6.5,2.1-9.5,1.1c-0.4-0.1-0.9,0.1-1,0.5c-0.1,0.4,0.1,0.9,0.5,1 c3.4,1,7.8,0.5,10.7-1.3C18.1,14.1,18.2,13.7,17.9,13.4z M18,10.1c-3.1,1.9-8.3,2.2-11,1.2C6.5,11.1,6,11.3,5.8,11.8 c-0.2,0.5,0.1,1,0.6,1.2c3.1,1.1,8.9,0.8,12.4-1.4c0.5-0.3,0.6-0.9,0.4-1.3C18.9,9.8,18.4,9.8,18,10.1z" /></svg>);
 const AppleMusicIcon = () => (<svg className="w-7 h-7" fill="currentColor" viewBox="0 0 24 24"><path d="M12.15,6.32c-0.1-1.3-0.93-2.58-2.05-3.18c-0.85-0.45-1.93-0.46-2.73,0.2c-1.38,1.13-2.3,3.13-2.12,5.2 c0.02,0.28,0.05,0.55,0.08,0.84c1.23,0.09,2.44,0.01,3.65-0.18c0.9-0.14,1.98-0.4,2.65-1.18C12.35,7.29,12.24,6.77,12.15,6.32z M11.83,7.99c-0.48,0.62-1.35,0.88-2.12,1.01c-1,0.16-2,0.25-3,0.25c-0.12,0-0.24,0-0.36-0.01c0.01-0.12,0.02-0.24,0.03-0.36 c0.31-2.92,2.2-5.49,4.8-6.57c0.88-0.37,1.93-0.26,2.7,0.36C14.7,3.2,15.5,4.3,15.5,6c0,0.04,0,0.09,0,0.13 c-0.83-0.11-1.66-0.09-2.48,0.06C12.34,6.3,12.01,7.2,11.83,7.99z M19,8.54c-1.4-0.11-2.78,0.12-4.14,0.61 c-0.91,0.33-1.68,0.92-2.32,1.64c-1.3,1.48-2,3.39-1.92,5.33c0.05,1.21,0.46,2.37,1.18,3.33c0.88,1.16,2.23,1.86,3.66,1.75 c0.54-0.04,1.08-0.18,1.6-0.4c1.37-0.57,2.44-1.73,3.01-3.13C21.16,15.2,20.8,11.39,19,8.54z" /></svg>);
 
-const NowPlaying: React.FC<NowPlayingProps> = ({ liveNowPlaying, recentlyPlayed, vibes, userVibe, onVibeVote }) => {
+const NowPlaying: React.FC<NowPlayingProps> = ({ liveNowPlaying, recentlyPlayed, vibes, userVibe, onVibeVote, nowPlayingError }) => {
   const shareUrl = window.location.href;
   const shareText = `I'm listening to ${liveNowPlaying.song.title} on Nam Radio Live! Tune in! 🎶`;
   
@@ -65,6 +66,12 @@ const NowPlaying: React.FC<NowPlayingProps> = ({ liveNowPlaying, recentlyPlayed,
     <section className="bg-slate-900/50 backdrop-blur-xl rounded-2xl p-6 md:p-8 shadow-lg border border-slate-700/50 space-y-8">
       <div>
         <h2 className="text-2xl font-bold mb-4 tracking-wide text-amber-300">Live Player</h2>
+        {nowPlayingError && (
+            <div className="mb-4 p-3 bg-red-500/10 text-red-400 text-sm rounded-lg border border-red-500/20 flex items-center gap-3">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 3.001-1.742 3.001H4.42c-1.53 0-2.493-1.667-1.743-3.001l5.58-9.92zM10 13a1 1 0 110-2 1 1 0 010 2zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" /></svg>
+                <span>{nowPlayingError}</span>
+            </div>
+        )}
         <iframe
           title="Live Radio Player"
           src="https://music-station.live/public/namradio/embed"

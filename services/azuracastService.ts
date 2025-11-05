@@ -1,5 +1,4 @@
-
-import { AZURACAST_BASE_URL, AZURACAST_STATION_ID, WEEKLY_SCHEDULE, RECENTLY_PLAYED } from '../constants';
+import { AZURACAST_BASE_URL, AZURACAST_STATION_ID, WEEKLY_SCHEDULE } from '../constants';
 import { ApiScheduleItem, Song, RequestableSong } from '../types';
 
 // AzuraCast raw API types (for internal mapping)
@@ -43,7 +42,7 @@ const mapAzuraSchedule = (azuraSchedule: AzuraScheduleItem[]): ApiScheduleItem[]
 };
 
 /**
- * Fetches the live schedule from AzuraCast, falling back to mock data on failure.
+ * Fetches the live schedule from AzuraCast.
  */
 export const getSchedule = async (): Promise<ApiScheduleItem[]> => {
     try {
@@ -54,16 +53,16 @@ export const getSchedule = async (): Promise<ApiScheduleItem[]> => {
         const data: AzuraScheduleItem[] = await response.json();
         return mapAzuraSchedule(data);
     } catch (error) {
-        console.error("Failed to fetch live schedule, using fallback mock data.", error);
+        console.error("Failed to fetch live schedule.", error);
         if (error instanceof TypeError && error.message.includes('fetch')) {
-            console.warn("This might be a CORS issue. Please ensure your AzuraCast instance allows requests from this domain.");
+            throw new Error("Could not connect to the radio server to get the schedule. This might be a CORS issue on the AzuraCast server. Please check the browser console for more details.");
         }
-        return WEEKLY_SCHEDULE;
+        throw error;
     }
 };
 
 /**
- * Fetches live "now playing" data from AzuraCast, falling back to mock data on failure.
+ * Fetches live "now playing" data from AzuraCast.
  */
 export const getNowPlaying = async (): Promise<{ currentSong: Song, history: Song[], showName: string | null }> => {
     try {
@@ -85,19 +84,8 @@ export const getNowPlaying = async (): Promise<{ currentSong: Song, history: Son
         return { currentSong, history, showName: data.now_playing.playlist || null };
 
     } catch (error) {
-        console.error("Failed to fetch live now-playing data, using fallback mock data.", error);
-        const now = new Date();
-        const currentMockShow = WEEKLY_SCHEDULE.find(show => {
-            const start = new Date(show.start);
-            const end = new Date(show.end);
-            return start <= now && end > now;
-        }) || null;
-
-        return {
-            currentSong: RECENTLY_PLAYED[0],
-            history: RECENTLY_PLAYED.slice(1),
-            showName: currentMockShow?.name || "Nam Radio Live"
-        };
+        console.error("Failed to fetch live now-playing data.", error);
+        throw error;
     }
 };
 
