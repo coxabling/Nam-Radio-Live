@@ -200,7 +200,7 @@ export const generateDedicationShoutout = async (dedication: DedicationRecord): 
 export const getLocalMusicEvents = async (): Promise<MusicEvent[]> => {
   try {
     const ai = new GoogleGenAI({ apiKey: getGeminiApiKey() });
-    const prompt = "You are a local music and events curator for Nam Radio Live. Using Google Search, find upcoming live music events, concerts, or festivals happening in Namibia (focus on Windhoek) in the next month. For each event, provide the name, date, venue, and a brief description.";
+    const prompt = "You are a local music and events curator for Nam Radio Live. Your task is to conduct a comprehensive search across multiple online sources (like event listings sites, social media, and local news) to find upcoming live music events, concerts, or festivals happening in Namibia (focus on Windhoek) in the next month. For each event, provide the name, date, venue, a brief description, and the source URL where you found the information.";
 
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash',
@@ -217,8 +217,9 @@ export const getLocalMusicEvents = async (): Promise<MusicEvent[]> => {
               date: { type: Type.STRING, description: "The date of the event." },
               venue: { type: Type.STRING, description: "The venue where the event takes place." },
               description: { type: Type.STRING, description: "A brief description of the event." },
+              sourceUrl: { type: Type.STRING, description: "The direct URL to the source of the event information." }
             },
-            required: ["eventName", "date", "venue", "description"],
+            required: ["eventName", "date", "venue", "description", "sourceUrl"],
           },
         },
       },

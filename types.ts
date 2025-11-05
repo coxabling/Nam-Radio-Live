@@ -142,4 +142,5 @@ export interface MusicEvent {
   date: string;
   venue: string;
   description: string;
+  sourceUrl?: string;
 }

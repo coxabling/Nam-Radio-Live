@@ -163,6 +163,13 @@ const ContentHub: React.FC = () => {
               <p><span className="font-semibold text-amber-400">Date:</span> {event.date}</p>
               <p><span className="font-semibold text-amber-400">Venue:</span> {event.venue}</p>
               <p className="pt-2 border-t border-slate-700 mt-2">{event.description}</p>
+              {event.sourceUrl && (
+                <div className="pt-2 border-t border-slate-700 mt-2">
+                  <a href={event.sourceUrl} target="_blank" rel="noopener noreferrer" className="text-amber-400 hover:text-amber-300 font-semibold text-xs transition-colors">
+                    View Source &rarr;
+                  </a>
+                </div>
+              )}
             </div>
           </div>
         ))}
