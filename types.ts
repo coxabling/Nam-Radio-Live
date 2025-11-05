@@ -1,6 +1,3 @@
-
-
-
 import { ReactElement } from 'react';
 
 export interface Dj {
@@ -92,6 +89,14 @@ export interface SongRequestRecord {
   title: string;
   artist: string;
   requestedAt: string; // ISO String
+}
+
+// FIX: Add DedicationRecord type for the new feature.
+export interface DedicationRecord {
+  song: Song;
+  to: string;
+  from: string;
+  message: string;
 }
 
 export interface RequestableSong {

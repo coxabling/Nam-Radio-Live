@@ -10,7 +10,8 @@ import { getSchedule, getNowPlaying } from './services/azuracastService';
 import UpcomingShows from './components/UpcomingShows';
 import ScrollToTopButton from './components/ScrollToTopButton';
 import About from './components/About';
-import { ApiScheduleItem, Song, SongRequestRecord, Vibe, VibeType, ListeningStats, Badge } from './types';
+// FIX: Import DedicationRecord to support the new feature.
+import { ApiScheduleItem, Song, SongRequestRecord, Vibe, VibeType, ListeningStats, Badge, DedicationRecord } from './types';
 import LiveChat from './components/LiveChat';
 import ContactPage from './components/ContactPage';
 import MyStation, { BADGES } from './components/MyStation';
@@ -69,6 +70,8 @@ const App: React.FC = () => {
   const [favoriteDjs, setFavoriteDjs] = useState<number[]>([]);
   const [songRequests, setSongRequests] = useState<SongRequestRecord[]>([]);
   const [recentlyPlayed, setRecentlyPlayed] = useState<Song[]>([]);
+  // FIX: Add state to manage the latest song dedication for live announcements.
+  const [latestDedication, setLatestDedication] = useState<DedicationRecord | null>(null);
   
   // Auth state
   const [users, setUsers] = useState<User[]>([]);
@@ -472,6 +475,13 @@ const App: React.FC = () => {
     localStorage.setItem(REQUESTS_KEY, JSON.stringify(updatedRequests));
   }, [songRequests]);
 
+  // FIX: Add a handler to receive dedication data from the SongRequest component.
+  const handleAddDedication = useCallback((dedication: DedicationRecord) => {
+    setLatestDedication(dedication);
+    // Clear the dedication after some time so it's not repeatedly announced on re-renders.
+    setTimeout(() => setLatestDedication(null), 60000); // 1 minute
+  }, []);
+
   const handleVibeVote = useCallback((vibeType: VibeType) => {
     if (userVibe) return; // a user can only vote once per session
     
@@ -549,8 +559,10 @@ const App: React.FC = () => {
               <Schedule schedule={schedule} loading={scheduleLoading} error={scheduleError} favoriteShows={favoriteShows} onToggleFavorite={toggleFavoriteShow} />
             </div>
             <div className="space-y-12">
-              <SongRequest currentUser={currentUser} onAddSongRequest={handleAddSongRequest} />
-              <LiveChat liveNowPlaying={liveNowPlaying} recentlyPlayed={recentlyPlayed} currentUser={currentUser} dominantVibe={dominantVibe} onChatMessageSent={handleChatMessageSent} onVoteCast={handleVoteCast} />
+              {/* FIX: Pass the new onAddDedication handler to the SongRequest component. */}
+              <SongRequest currentUser={currentUser} onAddSongRequest={handleAddSongRequest} onAddDedication={handleAddDedication} />
+              {/* FIX: Pass the latestDedication state to the LiveChat component. */}
+              <LiveChat liveNowPlaying={liveNowPlaying} recentlyPlayed={recentlyPlayed} currentUser={currentUser} dominantVibe={dominantVibe} onChatMessageSent={handleChatMessageSent} onVoteCast={handleVoteCast} latestDedication={latestDedication} />
               <ContentHub />
               <Djs 
                 djs={DJS} 

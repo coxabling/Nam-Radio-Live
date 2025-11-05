@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { Message, PollMessage, Song, TakeoverMessage, GameMessage, Vibe } from '../types';
-import { getAiChatResponse, generateTakeoverAnnouncement, generateTakeoverWinnerShoutout, generateSongClue, generateDjChitchat, generateVibeCommentary } from '../services/geminiService';
+// FIX: Import DedicationRecord and generateDedicationShoutout for the new feature.
+import { Message, PollMessage, Song, TakeoverMessage, GameMessage, Vibe, DedicationRecord } from '../types';
+import { getAiChatResponse, generateTakeoverAnnouncement, generateTakeoverWinnerShoutout, generateSongClue, generateDjChitchat, generateVibeCommentary, generateDedicationShoutout } from '../services/geminiService';
 import { TAKEOVER_SONGS } from '../constants';
 
 const djPolls: Omit<PollMessage, 'id' | 'author' | 'isDj' | 'type'>[] = [
@@ -23,6 +24,8 @@ interface LiveChatProps {
   dominantVibe: Vibe | null;
   onChatMessageSent: () => void;
   onVoteCast: () => void;
+  // FIX: Add a prop to receive the latest dedication.
+  latestDedication: DedicationRecord | null;
 }
 
 type FilterType = 'dj' | 'polls' | 'games' | 'takeovers';
@@ -30,7 +33,7 @@ type FilterType = 'dj' | 'polls' | 'games' | 'takeovers';
 const GEMINI_CALL_LIMIT = 50;
 const GEMINI_LIMIT_KEY = 'nam-radio-gemini-limit';
 
-const LiveChat: React.FC<LiveChatProps> = ({ recentlyPlayed, currentUser, dominantVibe, onChatMessageSent, onVoteCast }) => {
+const LiveChat: React.FC<LiveChatProps> = ({ recentlyPlayed, currentUser, dominantVibe, onChatMessageSent, onVoteCast, latestDedication }) => {
   const [messages, setMessages] = useState<Message[]>([{ id: 1, type: 'text', author: 'DJ Alex', text: 'Welcome to the live chat! Drop a message and say hi!', isDj: true }]);
   const [newMessage, setNewMessage] = useState('');
   const [votedIds, setVotedIds] = useState<number[]>([]);
@@ -43,6 +46,26 @@ const LiveChat: React.FC<LiveChatProps> = ({ recentlyPlayed, currentUser, domina
     games: true,
     takeovers: true,
   });
+  const dedicationAnnouncedRef = useRef(false);
+
+  // Announce dedications
+  useEffect(() => {
+    const announceDedication = async () => {
+      if (latestDedication && !dedicationAnnouncedRef.current) {
+        dedicationAnnouncedRef.current = true;
+        setIsDjTyping(true);
+        const shoutout = await generateDedicationShoutout(latestDedication);
+        setIsDjTyping(false);
+        const dedicationMessage: Message = { id: Date.now(), type: 'text', author: 'DJ Alex', text: shoutout, isDj: true };
+        setMessages(prev => [...prev, dedicationMessage]);
+
+        // Reset after a delay to allow for re-announcements if the prop changes again
+        setTimeout(() => { dedicationAnnouncedRef.current = false; }, 10000);
+      }
+    };
+    announceDedication();
+  }, [latestDedication]);
+
 
   const getGeminiCallCount = () => {
       const stored = localStorage.getItem(GEMINI_LIMIT_KEY);
@@ -69,19 +92,14 @@ const LiveChat: React.FC<LiveChatProps> = ({ recentlyPlayed, currentUser, domina
   };
 
   const filteredMessages = useMemo(() => {
-    // If all filters are on, no need to filter
     if (Object.values(filters).every(v => v)) return messages;
     
     return messages.filter(msg => {
-      // Always show the user's own messages
       if (msg.author === userHandle) return true;
-      
       if (msg.type === 'poll') return filters.polls;
       if (msg.type === 'game') return filters.games;
       if (msg.type === 'takeover') return filters.takeovers;
       if (msg.isDj) return filters.dj;
-      
-      // Show non-dj text messages by default if no specific filter applies
       return true; 
     });
   }, [messages, filters, userHandle]);

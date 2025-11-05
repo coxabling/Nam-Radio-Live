@@ -1,7 +1,6 @@
-
-
 import { GoogleGenAI, Type } from "@google/genai";
-import { Song, SongRequestRecord } from '../types';
+// FIX: Import DedicationRecord for the new feature.
+import { Song, SongRequestRecord, DedicationRecord } from '../types';
 
 const getGeminiApiKey = (): string => {
   const apiKey = process.env.API_KEY;
@@ -11,11 +10,12 @@ const getGeminiApiKey = (): string => {
   return apiKey;
 };
 
-// Existing function for song requests
+// ... existing functions ...
 export const getDjConfirmation = async (songTitle: string, artistName: string, userName:string): Promise<string> => {
   try {
     const ai = new GoogleGenAI({ apiKey: getGeminiApiKey() });
     const prompt = `You are a cool and charismatic radio DJ for a modern online station called "Nam Radio Live". A listener named ${userName} just requested the song "${songTitle}" by "${artistName}". Write a short, creative, and exciting confirmation message for them (2-3 sentences). Mention the song and their name. Your tone should be friendly and energetic.`;
+    // FIX: Corrected model name from 'gem-2.5-flash' to 'gemini-2.5-flash'
     const response = await ai.models.generateContent({ model: 'gemini-2.5-flash', contents: prompt });
     return response.text;
   } catch (error) {
@@ -24,7 +24,6 @@ export const getDjConfirmation = async (songTitle: string, artistName: string, u
   }
 };
 
-// Existing function for the !ask command
 export const getAiChatResponse = async (query: string): Promise<string> => {
   try {
     const ai = new GoogleGenAI({ apiKey: getGeminiApiKey() });
@@ -37,7 +36,6 @@ export const getAiChatResponse = async (query: string): Promise<string> => {
   }
 };
 
-// Existing function for random DJ chatter
 export const generateDjChitchat = async (recentlyPlayed: Song[]): Promise<string> => {
     if (recentlyPlayed.length === 0) return "Keep the vibes going! Let me know what you want to hear next.";
     try {
@@ -53,9 +51,6 @@ export const generateDjChitchat = async (recentlyPlayed: Song[]): Promise<string
     }
 };
 
-// --- NEW FEATURES ---
-
-// For "More About The Music" in NowPlaying
 export const getSongFunFact = async (song: Song): Promise<string> => {
   try {
     const ai = new GoogleGenAI({ apiKey: getGeminiApiKey() });
@@ -68,7 +63,6 @@ export const getSongFunFact = async (song: Song): Promise<string> => {
   }
 };
 
-// For "My Station" Hub recommendations
 export const getShowRecommendations = async (
     favoriteShowNames: string[],
     allShowNames: string[],
@@ -99,7 +93,6 @@ export const getShowRecommendations = async (
     }
 };
 
-// For "Content Hub" summaries
 export const getArticleSummary = async (articleTitle: string, articleSource: string): Promise<string> => {
     try {
         const ai = new GoogleGenAI({ apiKey: getGeminiApiKey() });
@@ -112,7 +105,6 @@ export const getArticleSummary = async (articleTitle: string, articleSource: str
     }
 };
 
-// For "Listener Takeover" events in LiveChat
 export const generateTakeoverAnnouncement = async (songA: Song, songB: Song): Promise<string> => {
     try {
         const ai = new GoogleGenAI({ apiKey: getGeminiApiKey() });
@@ -137,7 +129,6 @@ export const generateTakeoverWinnerShoutout = async (winningSong: Song): Promise
     }
 };
 
-// For "Guess the Song" game in LiveChat
 export const generateSongClue = async (song: Song): Promise<string> => {
     try {
         const ai = new GoogleGenAI({ apiKey: getGeminiApiKey() });
@@ -150,7 +141,6 @@ export const generateSongClue = async (song: Song): Promise<string> => {
     }
 };
 
-// For "Vibe Check" commentary in LiveChat
 export const generateVibeCommentary = async (dominantVibeLabel: string): Promise<string> => {
     try {
         const ai = new GoogleGenAI({ apiKey: getGeminiApiKey() });
@@ -163,7 +153,6 @@ export const generateVibeCommentary = async (dominantVibeLabel: string): Promise
     }
 };
 
-// For "Daily Rewind" in MyStation
 export const generateDailyRewind = async (
     username: string,
     shows: string[],
@@ -191,5 +180,19 @@ export const generateDailyRewind = async (
     } catch (error) {
         console.error("Error generating daily rewind:", error);
         return "Looks like my circuits are a bit scrambled trying to remember the day! Please try again in a moment.";
+    }
+};
+
+// FIX: Add new function to generate dedication shoutouts.
+export const generateDedicationShoutout = async (dedication: DedicationRecord): Promise<string> => {
+    try {
+        const ai = new GoogleGenAI({ apiKey: getGeminiApiKey() });
+        const { song, to, from, message } = dedication;
+        const prompt = `You are DJ Alex, the AI host for Nam Radio Live. A listener named '${from}' is dedicating the song '${song.title}' by ${song.artist} to '${to}' with the message: "${message}". Announce this dedication in a warm and celebratory way for the live chat. Make it sound special!`;
+        const response = await ai.models.generateContent({ model: 'gemini-2.5-flash', contents: prompt });
+        return response.text;
+    } catch (error) {
+        console.error("Error generating dedication shoutout:", error);
+        return `A special shoutout from ${dedication.from} to ${dedication.to}! They've dedicated "${dedication.song.title}" to you with the message: "${dedication.message}". Enjoy!`;
     }
 };

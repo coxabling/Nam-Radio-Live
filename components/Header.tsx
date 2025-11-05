@@ -67,42 +67,39 @@ const Header: React.FC<HeaderProps> = ({ isLoggedIn, currentUser, currentShowNam
       <div className="container mx-auto flex justify-between items-center">
         <div className="flex items-center">
            <a href="#/" onClick={handleHomeClick} className="flex items-center gap-3">
+             <img src="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAYEBQYFBAYGBQYHBwYIChAKCgkJChQODwwQFxQYGBcUFhYaHSUfGhsjHBYWICwgIyYnKSopGR8tMC0oMCUoKSj/2wBDAQcHBwoIChMKChMoGhYaKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCj/wAARCAQABAADASIAAhEBAxEB/8QAGwABAAMBAQEBAAAAAAAAAAAAAAECBAMFBgf/xABPEAACAgECAwUFBQUFBgUDBAMAAQIDBBEFEgYhMRNBUWEHcRQiMoGRFUKxQnKhCSQzYnOCktHwFjRTVaLS4UWyJjZEY4Oj8VSDk4TC/8QAGgEBAAMBAQEBAAAAAAAAAAAAAAECAwQFBv/EADERAQACAgEDAgUDAwUAAwEAAAAAAQIRAwQSITETQQUiUWFxBTKBkSKhscEjM0LR8PH/24-AH-M4+m06jS4p5Z2R2fF2eM8uO2fM/w/7uKj4b5tJp5Z+V5P+000n4b57/AL+S0eO6eO3lX95H8S8q81Wn0n8S81+0r+Jeb/7PpH8S815f9TpH8S8y81n0j+JeYfy+kfz+Jeb/AOz6R/P4l5v+sfSP5/FPO/8AZ9I/n8U83/2fSP5/EvN/wDWPSf5/EvN/wDWPSf5/EvN/wDWPSP5/EvN/wDWPSf5/EvN/wDWPSf5/EvN/wDWPSf5/FPN/wDWPSf5/EvN/wDWPSf5/FPN/wDWPSf5/FPN/wDWPSf5/FPNv9Y9J/n8U82/1j0n+fxTzb/WPSf5/FPNv9Y9J/n8U82/1j0n+fxTzb/WPSf5/FPNv9Y9J/n8U82/1j0n+fxTzb/WPSf5/FPNv9Y9J/n8U82/1j0n+fxTzX/WPSf5/FPNf9Y9J/n8U81/1j0n+fxTzX/WPSf5/FPNf9Y9J/n8U81/1j0n+fxTzX/WPSf5/FPNf9Y9J/n8U81/1j0n+fxTzX/WPSf5/FPNf9Y9J/n8U81/1j0n+fxTzX/WPSf5/FPNf9Y9J/n8U81/1j0n+fxTzX/WPSf5/FPNf9Y9J/n8U81/1j0n+fxTzX/WPSf5/FPNf9Y9J/n8U81/1j0n+fxTzX/WPSf5/FPNf9Y9J/n8U81/1j0n+fxTzX/WPSf5/FPNf9Y9J/n8U81/1j0n+fxTzX/WPSf5/FPNf9Y9J/n8U81/1j0n+fxTzX/WPSf5/FPNf9Y9J/n8U81/1j0n+fxTzX/WPSf5/FPNf9Y9J/n8U81/1j0n+fxTzX/WPSf5/FPNf9Y9J/n8U81/1j0n+fxTzX/WPSf5/FPNf9Y9J/n8U81/1j0n+fxTzX/WPSf5/FPNf9Y9J/n8U81/1j0n+fxTzX/WPSf5/FPNf9Y9J/n8U81/1j0n+fxTzX/WPSf5/FPNf9Y9J/n8U81/1j0n+fxTzX/WPSf5/FPNf9Y9J/n8U81/1j0n+fxTzX/WPSf5/FPNf9Y9J/n8U81/1j0n+fxTzX/WPSf5/FPNf9Y9J/n8U81/1j0n+fxTzX/WPSf5/FPNf9Y9J/n8U81/1j0n+fxTzX/WPSf5/FPNf9Y9J/n8U81/1j0n+fxTzX/WPSf5/FPNf9Y9J/n8U81/1j0n+fxTzX/WPSf5/FPNf9Y9J/n8U81/1j0n+fxTzX/WPSf5/FPNf9Y9J/n8U81/1j0n+fxTzX/WPSf5/FPNf9Y9J/n8U81/1j0n+fxTzX/WPSf5/FPNf9Y9J/n8U81/1j0n+fxTzX/WPSf5/FPNf9Y9J/n8U81/1j0n+fxTzX/WPSf5/FPNf9Y9J/n8U81/1j0n+fxTzX/WPSf5/FPNf9Y9J/n8U81/1j0n+fxTzX/WPSf5/FPNf9Y9J/n8U81/1j0n+fxTzX/WPSf5/FPNf9Y9J/n8U81/1j0n+fxT" alt="Nam Radio Live Logo" className="w-12 h-12 rounded-full" />
              <span className="text-xl font-bold tracking-wider text-white">Nam Radio Live</span>
            </a>
         </div>
-        
-        <div className="hidden md:flex items-center gap-4">
-            <span className="text-sm text-slate-400">{stationTime} (Namibia)</span>
-            <div className="h-4 w-px bg-slate-600"></div>
-            {currentShowName && (
-              <div className="flex items-center gap-2">
-                <span className="font-bold text-red-500 animate-pulse text-sm">Live</span>
-                <span className="text-sm font-semibold text-amber-300">On Air: {currentShowName}</span>
-              </div>
-            )}
-        </div>
-
-        <nav className="flex items-center gap-2 md:gap-4">
-          <NavLink href="#/">Home</NavLink>
-          <a href="#/mystation" onClick={handleMyStationClick} className={`px-3 py-2 rounded-md transition-colors text-sm font-semibold ${activeRoute === '#/mystation' ? 'text-amber-300 bg-amber-500/10' : 'text-slate-300 hover:text-white hover:bg-slate-700/50'}`}>My Station</a>
-          <NavLink href="#/contact">Contact</NavLink>
-          
-          {isLoggedIn ? (
-            <div className="ml-2 pl-4 border-l border-slate-600 flex items-center gap-3">
-              {currentUser?.avatarUrl ? (
-                <img src={currentUser.avatarUrl} alt="Your avatar" className="h-8 w-8 rounded-full object-cover" />
-              ) : (
-                <span className="h-8 w-8 rounded-full bg-slate-700 flex items-center justify-center text-slate-400">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" /></svg>
-                </span>
-              )}
-              <span className="text-sm font-semibold text-white hidden sm:block">Hi, {currentUser?.username}</span>
-              <button onClick={onLogout} className="px-3 py-2 text-sm font-semibold bg-red-600 hover:bg-red-700 text-white rounded-md transition-colors">Logout</button>
-            </div>
-          ) : (
-             <button onClick={() => onLoginClick()} className="ml-2 px-4 py-2 text-sm font-semibold bg-amber-500 hover:bg-amber-600 text-white rounded-md transition-colors">Login</button>
-          )}
+        <nav className="hidden md:flex items-center gap-2">
+            <NavLink href="#/">Home</NavLink>
+            <a href="#/mystation" onClick={handleMyStationClick} className={`px-3 py-2 rounded-md transition-colors text-sm font-semibold ${activeRoute === '#/mystation' ? 'text-amber-300 bg-amber-500/10' : 'text-slate-300 hover:text-white hover:bg-slate-700/50'}`}>
+                My Station
+            </a>
+            <NavLink href="#/contact">Contact</NavLink>
         </nav>
+        <div className="flex items-center gap-4">
+            <div className="text-right">
+                {isLoggedIn && currentUser ? (
+                    <div className="flex items-center gap-3">
+                        <div className="hidden sm:block text-right">
+                            <p className="text-sm font-semibold text-white truncate">{currentUser.username}</p>
+                            <p className="text-xs text-slate-400">Listener</p>
+                        </div>
+                        <button onClick={onLogout} className="px-3 py-2 text-sm bg-slate-700/50 text-slate-300 hover:bg-slate-700 hover:text-white rounded-md transition-colors">Logout</button>
+                    </div>
+                ) : (
+                    <button onClick={() => onLoginClick()} className="px-4 py-2 text-sm bg-amber-500 text-white font-semibold rounded-md hover:bg-amber-600 transition-colors">Login</button>
+                )}
+            </div>
+             <div className="hidden sm:flex items-center gap-2 pl-4 border-l border-slate-700">
+                <div className="relative flex h-3 w-3">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-3 w-3 bg-amber-500"></span>
+                </div>
+                <span className="text-sm font-mono font-semibold text-amber-300">{stationTime}</span>
+            </div>
+        </div>
       </div>
     </header>
   );
