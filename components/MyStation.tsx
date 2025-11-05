@@ -29,21 +29,25 @@ const MicrophoneIcon = () => (<svg xmlns="http://www.w3.org/2000/svg" className=
 const SuperfanIcon = ({ className = "h-8 w-8" }: {className?: string}) => <svg xmlns="http://www.w3.org/2000/svg" className={className} viewBox="0 0 20 20" fill="currentColor"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" /></svg>;
 const NightOwlIcon = ({ className = "h-8 w-8" }: {className?: string}) => <svg xmlns="http://www.w3.org/2000/svg" className={className} viewBox="0 0 20 20" fill="currentColor"><path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z" /></svg>;
 const TastemakerIcon = ({ className = "h-8 w-8" }: {className?: string}) => <svg xmlns="http://www.w3.org/2000/svg" className={className} viewBox="0 0 20 20" fill="currentColor"><path d="M18 3a1 1 0 00-1.196-.98l-10 2A1 1 0 006 5v9.114A4.369 4.369 0 005 14c-1.657 0-3 1.343-3 3s1.343 3 3 3 3-1.343 3-3V7.82l8-1.6v5.894A4.37 4.37 0 0015 12c-1.657 0-3 1.343-3 3s1.343 3 3 3 3-1.343 3-3V3z" /></svg>;
+const ChatterboxIcon = ({ className = "h-8 w-8" }: { className?: string }) => <svg xmlns="http://www.w3.org/2000/svg" className={className} viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M18 5v8a2 2 0 01-2 2h-5l-5 4v-4H4a2 2 0 01-2-2V5a2 2 0 012-2h12a2 2 0 012 2zM7 8H5v2h2V8zm2 0h2v2H9V8zm6 0h-2v2h2V8z" clipRule="evenodd" /></svg>;
+const EngagedIcon = ({ className = "h-8 w-8" }: { className?: string }) => <svg xmlns="http://www.w3.org/2000/svg" className={className} viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v2H7a1 1 0 100 2h2v2a1 1 0 102 0v-2h2a1 1 0 100-2h-2V7z" clipRule="evenodd" /></svg>;
+const EarlyBirdIcon = ({ className = "h-8 w-8" }: { className?: string }) => <svg xmlns="http://www.w3.org/2000/svg" className={className} viewBox="0 0 20 20" fill="currentColor"><path d="M10 2a1 1 0 00-1 1v1a1 1 0 002 0V3a1 1 0 00-1-1zM4 10a1 1 0 011-1h1a1 1 0 110 2H5a1 1 0 01-1-1zm15 0a1 1 0 01-1 1h-1a1 1 0 110-2h1a1 1 0 011 1zM10 18a1 1 0 011-1v-1a1 1 0 11-2 0v1a1 1 0 011 1zM5.636 5.636a1 1 0 011.414 0l.707.707a1 1 0 01-1.414 1.414l-.707-.707a1 1 0 010-1.414zm12.728 0a1 1 0 010 1.414l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 0zM5.636 14.364a1 1 0 010-1.414l.707-.707a1 1 0 011.414 1.414l-.707.707a1 1 0 01-1.414 0zm12.728 0a1 1 0 01-1.414 0l-.707-.707a1 1 0 011.414-1.414l.707.707a1 1 0 010 1.414z" /></svg>;
 
-const BADGES: Badge[] = [
+
+export const BADGES: Badge[] = [
   {
     id: 'superfan',
     name: 'Superfan',
     description: 'Listen for over 10 hours in a month.',
     icon: SuperfanIcon,
-    isEarned: (stats, songRequests) => stats.monthlyListeningTime > 36000, // 10 hours * 3600 s/hr
+    isEarned: (stats) => stats.monthlyListeningTime > 36000, // 10 hours * 3600 s/hr
   },
   {
     id: 'night_owl',
     name: 'Night Owl',
     description: 'Tune in after midnight.',
     icon: NightOwlIcon,
-    isEarned: (stats, songRequests) => stats.hasListenedPostMidnight,
+    isEarned: (stats) => stats.hasListenedPostMidnight,
   },
   {
     id: 'tastemaker',
@@ -51,6 +55,27 @@ const BADGES: Badge[] = [
     description: 'Request 5 or more songs.',
     icon: TastemakerIcon,
     isEarned: (stats, songRequests) => songRequests.length >= 5,
+  },
+  {
+    id: 'chatterbox',
+    name: 'Chatterbox',
+    description: 'Send 20 messages in the live chat.',
+    icon: ChatterboxIcon,
+    isEarned: (stats) => (stats.chatMessagesSent || 0) >= 20,
+  },
+  {
+    id: 'engaged',
+    name: 'Engaged Listener',
+    description: 'Vote in 5 polls or takeovers.',
+    icon: EngagedIcon,
+    isEarned: (stats) => (stats.votesCast || 0) >= 5,
+  },
+  {
+    id: 'early_bird',
+    name: 'Early Bird',
+    description: 'Listen to "Sunrise Beats" for over an hour.',
+    icon: EarlyBirdIcon,
+    isEarned: (stats) => (stats.showListeningTime['Sunrise Beats'] || 0) > 3600,
   }
 ];
 

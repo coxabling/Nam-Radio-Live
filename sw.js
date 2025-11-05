@@ -26,7 +26,8 @@ const urlsToCache = [
   '/components/LoginModal.tsx',
   '/components/ShareModal.tsx',
   '/components/VibeCheck.tsx',
-  '/components/DailyRewindModal.tsx'
+  '/components/DailyRewindModal.tsx',
+  '/components/Toast.tsx'
 ];
 
 self.addEventListener('install', event => {

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import Header from './components/Header';
 import NowPlaying from './components/NowPlaying';
 import SongRequest from './components/SongRequest';
@@ -10,12 +10,13 @@ import { getSchedule, getNowPlaying } from './services/azuracastService';
 import UpcomingShows from './components/UpcomingShows';
 import ScrollToTopButton from './components/ScrollToTopButton';
 import About from './components/About';
-import { ApiScheduleItem, Song, SongRequestRecord, Vibe, VibeType, ListeningStats } from './types';
+import { ApiScheduleItem, Song, SongRequestRecord, Vibe, VibeType, ListeningStats, Badge } from './types';
 import LiveChat from './components/LiveChat';
 import ContactPage from './components/ContactPage';
-import MyStation from './components/MyStation';
+import MyStation, { BADGES } from './components/MyStation';
 import ContentHub from './components/ContentHub';
 import LoginModal from './components/LoginModal';
+import Toast from './components/Toast';
 
 interface User {
   username: string;
@@ -54,6 +55,8 @@ const initialListeningStats: ListeningStats = {
   lastUpdated: new Date().toISOString(),
   showListeningTime: {},
   hasListenedPostMidnight: false,
+  chatMessagesSent: 0,
+  votesCast: 0,
 };
 
 const App: React.FC = () => {
@@ -80,6 +83,10 @@ const App: React.FC = () => {
   // Stats State
   const [listeningStats, setListeningStats] = useState<ListeningStats>(initialListeningStats);
   const [dailyShowsListened, setDailyShowsListened] = useState<string[]>([]);
+  
+  // Gamification UI State
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const earnedBadgesRef = useRef<Set<string>>(new Set());
 
 
   // Live broadcast state
@@ -140,6 +147,10 @@ const App: React.FC = () => {
                 loadedStats.monthlyListeningTime = 0;
                 loadedStats.lastUpdated = today.toISOString();
             }
+            // Ensure new stats properties exist
+            if (!loadedStats.chatMessagesSent) loadedStats.chatMessagesSent = 0;
+            if (!loadedStats.votesCast) loadedStats.votesCast = 0;
+
             setListeningStats(loadedStats);
         }
     } catch (e) { console.error("Failed to parse listening stats from localStorage", e); }
@@ -273,7 +284,7 @@ const App: React.FC = () => {
     return () => clearInterval(vibeInterval);
   }, []);
   
-  // Listening Stats Tracking
+  // Listening Stats Tracking & Badge Checking
   useEffect(() => {
     const trackingInterval = 5000; // 5 seconds
     const interval = setInterval(() => {
@@ -301,7 +312,6 @@ const App: React.FC = () => {
             });
           }
 
-          // Night Owl badge check
           if (currentHour >= 0 && currentHour < 5 && !newStats.hasListenedPostMidnight) {
             newStats.hasListenedPostMidnight = true;
           }
@@ -313,6 +323,43 @@ const App: React.FC = () => {
 
     return () => clearInterval(interval);
   }, [liveNowPlaying.show, currentUser]);
+
+  // Check for new badges
+  useEffect(() => {
+    if (!currentUser) return;
+  
+    const currentlyEarned = new Set<string>();
+    BADGES.forEach(badge => {
+      if (badge.isEarned(listeningStats, songRequests)) {
+        currentlyEarned.add(badge.id);
+      }
+    });
+  
+    const previouslyEarned = earnedBadgesRef.current;
+    
+    if (previouslyEarned.size < currentlyEarned.size) {
+      const newBadge = [...currentlyEarned].find(id => !previouslyEarned.has(id));
+      if (newBadge) {
+        const badgeData = BADGES.find(b => b.id === newBadge);
+        if (badgeData) {
+          setToastMessage(`You've unlocked the "${badgeData.name}" badge!`);
+        }
+      }
+    }
+  
+    earnedBadgesRef.current = currentlyEarned;
+  
+  }, [listeningStats, songRequests, currentUser]);
+
+  // Effect to clear toast message
+  useEffect(() => {
+    if (toastMessage) {
+        const timer = setTimeout(() => {
+            setToastMessage(null);
+        }, 5000);
+        return () => clearTimeout(timer);
+    }
+  }, [toastMessage]);
 
   // Save listening stats to localStorage periodically
   useEffect(() => {
@@ -438,6 +485,16 @@ const App: React.FC = () => {
     );
   }, [userVibe]);
 
+  const handleChatMessageSent = useCallback(() => {
+    if (!currentUser) return;
+    setListeningStats(prev => ({...prev, chatMessagesSent: (prev.chatMessagesSent || 0) + 1 }));
+  }, [currentUser]);
+
+  const handleVoteCast = useCallback(() => {
+    if (!currentUser) return;
+    setListeningStats(prev => ({...prev, votesCast: (prev.votesCast || 0) + 1 }));
+  }, [currentUser]);
+
   const upcomingShowsToday = useMemo(() => {
     if (!schedule || schedule.length === 0) return [];
     const now = new Date();
@@ -493,7 +550,7 @@ const App: React.FC = () => {
             </div>
             <div className="space-y-12">
               <SongRequest currentUser={currentUser} onAddSongRequest={handleAddSongRequest} />
-              <LiveChat liveNowPlaying={liveNowPlaying} recentlyPlayed={recentlyPlayed} currentUser={currentUser} dominantVibe={dominantVibe} />
+              <LiveChat liveNowPlaying={liveNowPlaying} recentlyPlayed={recentlyPlayed} currentUser={currentUser} dominantVibe={dominantVibe} onChatMessageSent={handleChatMessageSent} onVoteCast={handleVoteCast} />
               <ContentHub />
               <Djs 
                 djs={DJS} 
@@ -538,6 +595,7 @@ const App: React.FC = () => {
           onSignUp={handleSignUp}
         />
       )}
+      <Toast message={toastMessage} onDismiss={() => setToastMessage(null)} />
     </div>
   );
 };

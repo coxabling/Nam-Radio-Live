@@ -120,6 +120,8 @@ export interface ListeningStats {
   lastUpdated: string; // ISO string for monthly reset
   showListeningTime: Record<string, number>; // Show name -> seconds
   hasListenedPostMidnight: boolean; // For Night Owl badge
+  chatMessagesSent: number;
+  votesCast: number;
 }
 
 export interface Badge {

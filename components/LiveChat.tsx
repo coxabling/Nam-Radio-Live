@@ -21,6 +21,8 @@ interface LiveChatProps {
   recentlyPlayed: Song[];
   currentUser: User | null;
   dominantVibe: Vibe | null;
+  onChatMessageSent: () => void;
+  onVoteCast: () => void;
 }
 
 type FilterType = 'dj' | 'polls' | 'games' | 'takeovers';
@@ -28,7 +30,7 @@ type FilterType = 'dj' | 'polls' | 'games' | 'takeovers';
 const GEMINI_CALL_LIMIT = 50;
 const GEMINI_LIMIT_KEY = 'nam-radio-gemini-limit';
 
-const LiveChat: React.FC<LiveChatProps> = ({ recentlyPlayed, currentUser, dominantVibe }) => {
+const LiveChat: React.FC<LiveChatProps> = ({ recentlyPlayed, currentUser, dominantVibe, onChatMessageSent, onVoteCast }) => {
   const [messages, setMessages] = useState<Message[]>([{ id: 1, type: 'text', author: 'DJ Alex', text: 'Welcome to the live chat! Drop a message and say hi!', isDj: true }]);
   const [newMessage, setNewMessage] = useState('');
   const [votedIds, setVotedIds] = useState<number[]>([]);
@@ -195,6 +197,7 @@ const LiveChat: React.FC<LiveChatProps> = ({ recentlyPlayed, currentUser, domina
 
     const userMessage: Message = { id: Date.now(), type: 'text', author: userHandle, text: trimmedMessage, isDj: false };
     setMessages(prev => [...prev, userMessage]);
+    onChatMessageSent();
     setNewMessage('');
     
     if (trimmedMessage.startsWith('!ask ')) {
@@ -255,6 +258,7 @@ const LiveChat: React.FC<LiveChatProps> = ({ recentlyPlayed, currentUser, domina
       })
     );
     setVotedIds(prev => [...prev, messageId]);
+    onVoteCast();
   }
   
   const FilterButton: React.FC<{ filter: FilterType; label: string }> = ({ filter, label }) => (
