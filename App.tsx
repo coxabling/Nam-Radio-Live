@@ -566,6 +566,7 @@ const App: React.FC = () => {
               <ContentHub />
               <Djs 
                 djs={DJS} 
+                schedule={schedule}
                 currentShowName={currentShowName} 
                 favoriteDjs={favoriteDjs}
                 onToggleFavorite={toggleFavoriteDj}

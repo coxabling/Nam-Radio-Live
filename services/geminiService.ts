@@ -233,3 +233,15 @@ export const getLocalMusicEvents = async (): Promise<MusicEvent[]> => {
     throw new Error("Could not fetch local events at this time. Please try again later.");
   }
 };
+
+export const getAiDjIntroduction = async (djName: string, showName: string, djBio: string): Promise<string> => {
+  try {
+    const ai = new GoogleGenAI({ apiKey: getGeminiApiKey() });
+    const prompt = `You are DJ Alex, the AI host of Nam Radio Live. Give me a short (2-3 sentences), fun, and energetic introduction for your fellow DJ, ${djName}. They host the show "${showName}" and their bio is: "${djBio}". Make it sound like you're hyping them up to the listeners.`;
+    const response = await ai.models.generateContent({ model: 'gemini-2.5-flash', contents: prompt });
+    return response.text;
+  } catch (error) {
+    console.error("Error getting AI DJ introduction:", error);
+    return `Up next, we've got the one and only ${djName} with ${showName}! You're not gonna want to miss it!`;
+  }
+};
