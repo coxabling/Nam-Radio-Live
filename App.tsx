@@ -147,17 +147,51 @@ const App: React.FC = () => {
     return () => window.removeEventListener('hashchange', handleHashChange);
   }, [currentUser, openLoginModal]);
 
-  // Fetch schedule from mock data service
+  // Fetch schedule from API (with mock fallback)
   useEffect(() => {
     const fetchSchedule = async () => {
-        setScheduleLoading(true);
-        setScheduleError(null);
-        const mockSchedule = await getSchedule();
-        setSchedule(mockSchedule);
+      setScheduleLoading(true);
+      setScheduleError(null);
+      try {
+        const liveSchedule = await getSchedule();
+        setSchedule(liveSchedule);
+      } catch (e: any) {
+        setScheduleError(e.message || "An unexpected error occurred while loading the schedule.");
+      } finally {
         setScheduleLoading(false);
+      }
     };
     fetchSchedule();
   }, []);
+
+  // Poll for live broadcast data
+  useEffect(() => {
+    const pollNowPlaying = async () => {
+      const { currentSong, history, showName } = await getNowPlaying();
+
+      setLiveNowPlaying(prev => ({ ...prev, song: currentSong }));
+      setRecentlyPlayed(history);
+
+      setSchedule(currentSchedule => {
+        if (currentSchedule.length === 0) return [];
+
+        const currentShow = currentSchedule.find(s => s.name === showName) || null;
+        setLiveNowPlaying(prev => ({ ...prev, show: currentShow }));
+
+        const needsUpdate = currentSchedule.some(s => s.is_now !== (s.name === showName));
+        if (needsUpdate) {
+          return currentSchedule.map(s => ({ ...s, is_now: s.name === showName }));
+        }
+        return currentSchedule;
+      });
+    };
+
+    pollNowPlaying(); // Initial fetch
+    const interval = setInterval(pollNowPlaying, 15000); // Poll every 15 seconds
+
+    return () => clearInterval(interval);
+  }, []);
+
 
   // Vibe feature logic
    useEffect(() => {
@@ -188,43 +222,6 @@ const App: React.FC = () => {
 
     return () => clearInterval(vibeInterval);
   }, []);
-  
-  // Set initial Now Playing data & simulate live show updates
-  useEffect(() => {
-      // Set initial song data from mock service
-      getNowPlaying().then(({ currentSong, history }) => {
-          setLiveNowPlaying(prev => ({ ...prev, song: currentSong }));
-          setRecentlyPlayed(history);
-      });
-
-      const updateShowStatus = () => {
-          if (schedule.length === 0) return;
-
-          const now = new Date();
-          const currentMockShow = schedule.find(show => {
-              const start = new Date(show.start);
-              const end = new Date(show.end);
-              return start <= now && end > now;
-          }) || null;
-          
-          // Update the live show in the now playing state
-          setLiveNowPlaying(prev => ({ ...prev, show: currentMockShow }));
-
-          // Check if an update is needed before calling setSchedule to prevent infinite loops
-          const needsUpdate = schedule.some(s => s.is_now !== (s.id === currentMockShow?.id));
-          if (needsUpdate) {
-              setSchedule(prevSchedule => prevSchedule.map(s => ({
-                  ...s,
-                  is_now: s.id === currentMockShow?.id
-              })));
-          }
-      };
-      
-      updateShowStatus(); // Initial call to set status immediately
-      const interval = setInterval(updateShowStatus, 10000); // Check for show changes every 10 seconds
-      
-      return () => clearInterval(interval);
-  }, [schedule]); // Re-run this effect whenever the schedule data itself changes
   
   
   // Auth handlers
