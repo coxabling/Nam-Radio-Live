@@ -1,6 +1,6 @@
 import { GoogleGenAI, Type } from "@google/genai";
 // FIX: Import DedicationRecord for the new feature.
-import { Song, SongRequestRecord, DedicationRecord } from '../types';
+import { Song, SongRequestRecord, DedicationRecord, MusicEvent } from '../types';
 
 const getGeminiApiKey = (): string => {
   const apiKey = process.env.API_KEY;
@@ -195,4 +195,40 @@ export const generateDedicationShoutout = async (dedication: DedicationRecord): 
         console.error("Error generating dedication shoutout:", error);
         return `A special shoutout from ${dedication.from} to ${dedication.to}! They've dedicated "${dedication.song.title}" to you with the message: "${dedication.message}". Enjoy!`;
     }
+};
+
+export const getLocalMusicEvents = async (): Promise<MusicEvent[]> => {
+  try {
+    const ai = new GoogleGenAI({ apiKey: getGeminiApiKey() });
+    const prompt = "You are a local music and events curator for Nam Radio Live. Using Google Search, find upcoming live music events, concerts, or festivals happening in Namibia (focus on Windhoek) in the next month. For each event, provide the name, date, venue, and a brief description.";
+
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: prompt,
+      config: {
+        tools: [{googleSearch: {}}],
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.ARRAY,
+          items: {
+            type: Type.OBJECT,
+            properties: {
+              eventName: { type: Type.STRING, description: "The name of the event." },
+              date: { type: Type.STRING, description: "The date of the event." },
+              venue: { type: Type.STRING, description: "The venue where the event takes place." },
+              description: { type: Type.STRING, description: "A brief description of the event." },
+            },
+            required: ["eventName", "date", "venue", "description"],
+          },
+        },
+      },
+    });
+
+    const jsonText = response.text.trim();
+    const events = JSON.parse(jsonText);
+    return events as MusicEvent[];
+  } catch (error) {
+    console.error("Error fetching local music events:", error);
+    throw new Error("Could not fetch local events at this time. Please try again later.");
+  }
 };

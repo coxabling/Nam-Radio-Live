@@ -136,3 +136,10 @@ export interface Badge {
   icon: (props: { className?: string }) => ReactElement;
   isEarned: (stats: ListeningStats, songRequests: SongRequestRecord[]) => boolean;
 }
+
+export interface MusicEvent {
+  eventName: string;
+  date: string;
+  venue: string;
+  description: string;
+}

@@ -1,11 +1,12 @@
 
+
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
-import { Article } from '../types';
-import { getArticleSummary } from '../services/geminiService';
+import { Article, MusicEvent } from '../types';
+import { getArticleSummary, getLocalMusicEvents } from '../services/geminiService';
 import { fetchNews, fetchBlogPosts } from '../services/newsService';
 
 const ContentHub: React.FC = () => {
-  const [activeHubTab, setActiveHubTab] = useState<'news' | 'blog'>('news');
+  const [activeHubTab, setActiveHubTab] = useState<'news' | 'blog' | 'events'>('news');
   
   // News State
   const [activeNewsCategory, setActiveNewsCategory] = useState<string>('luton');
@@ -19,6 +20,11 @@ const ContentHub: React.FC = () => {
   const [isBlogLoading, setIsBlogLoading] = useState(true);
   const [blogError, setBlogError] = useState<string | null>(null);
   
+  // Events State
+  const [events, setEvents] = useState<MusicEvent[]>([]);
+  const [isEventsLoading, setIsEventsLoading] = useState(true);
+  const [eventsError, setEventsError] = useState<string | null>(null);
+
   // Summary State
   const [summaries, setSummaries] = useState<Record<string, string>>({});
   const [loadingSummary, setLoadingSummary] = useState<string | null>(null);
@@ -68,6 +74,27 @@ const ContentHub: React.FC = () => {
       loadBlogPosts();
     }
   }, [activeHubTab, blogArticles.length]);
+  
+  // Fetch Events Data (only once)
+  useEffect(() => {
+    const loadEvents = async () => {
+      if (events.length > 0) return; // Don't refetch
+      setIsEventsLoading(true);
+      setEventsError(null);
+      try {
+        const fetchedEvents = await getLocalMusicEvents();
+        setEvents(fetchedEvents);
+      } catch (error: any) {
+        setEventsError(error.message || 'Failed to load local events.');
+      } finally {
+        setIsEventsLoading(false);
+      }
+    };
+
+    if (activeHubTab === 'events') {
+      loadEvents();
+    }
+  }, [activeHubTab, events.length]);
 
 
   const blogCategories = useMemo(() => ['All', ...new Set(blogArticles.flatMap(a => a.category ? [a.category] : []))], [blogArticles]);
@@ -94,7 +121,7 @@ const ContentHub: React.FC = () => {
     }
   }, [summaries]);
   
-  const HubTab: React.FC<{ name: 'news' | 'blog'; children: React.ReactNode }> = ({ name, children }) => (
+  const HubTab: React.FC<{ name: 'news' | 'blog' | 'events'; children: React.ReactNode }> = ({ name, children }) => (
     <button onClick={() => setActiveHubTab(name)} className={`px-4 py-2 text-sm font-semibold rounded-t-md transition-colors w-full sm:w-auto ${activeHubTab === name ? 'bg-slate-800/50 text-amber-300 border-b-2 border-amber-400' : 'text-slate-400 hover:text-white'}`}>{children}</button>
   );
 
@@ -121,6 +148,28 @@ const ContentHub: React.FC = () => {
     if (articles.length === 0) return <p className="text-center text-slate-500 py-4">{noContentMsg}</p>;
     return <div className="space-y-2">{articles.map(article => <ArticleItem key={article.id} article={article} />)}</div>;
   };
+  
+  const renderEvents = () => {
+    if (isEventsLoading) return <div className="flex justify-center items-center h-48"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-amber-300"></div></div>;
+    if (eventsError) return <p className="text-center text-red-400 py-4">{eventsError}</p>;
+    if (events.length === 0) return <p className="text-center text-slate-500 py-4">No upcoming events found in the area. Check back soon!</p>;
+    
+    return (
+      <div className="space-y-4">
+        {events.map((event, index) => (
+          <div key={index} className="p-4 bg-slate-800/50 rounded-lg border border-slate-700/50">
+            <h4 className="font-bold text-lg text-white">{event.eventName}</h4>
+            <div className="mt-2 text-sm space-y-1 text-slate-300">
+              <p><span className="font-semibold text-amber-400">Date:</span> {event.date}</p>
+              <p><span className="font-semibold text-amber-400">Venue:</span> {event.venue}</p>
+              <p className="pt-2 border-t border-slate-700 mt-2">{event.description}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  };
+
 
   return (
     <section className="bg-slate-900/50 backdrop-blur-xl rounded-2xl p-6 shadow-lg border border-slate-700/50">
@@ -128,6 +177,7 @@ const ContentHub: React.FC = () => {
       <div className="flex flex-col sm:flex-row border-b border-slate-700/50 mt-4">
         <HubTab name="news">Latest Headlines</HubTab>
         <HubTab name="blog">African Music Blog</HubTab>
+        <HubTab name="events">Events Hub</HubTab>
       </div>
       
       <div className="mt-4">
@@ -146,6 +196,12 @@ const ContentHub: React.FC = () => {
               {blogCategories.map(cat => <CategoryButton key={cat} name={cat} activeCategory={activeBlogCategory} onClick={setActiveBlogCategory} />)}
             </div>
              {renderContent(isBlogLoading, blogError, filteredBlogArticles, 'No blog posts available at the moment.')}
+          </div>
+        )}
+        
+        {activeHubTab === 'events' && (
+          <div className="animate-fade-in" key="events">
+            {renderEvents()}
           </div>
         )}
       </div>
