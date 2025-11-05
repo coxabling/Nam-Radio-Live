@@ -1,5 +1,8 @@
 
 
+
+import { ReactElement } from 'react';
+
 export interface Dj {
   id: number;
   name: string;
@@ -109,4 +112,20 @@ export interface Vibe {
   emoji: string;
   label: string;
   count: number;
+}
+
+export interface ListeningStats {
+  totalListeningTime: number; // in seconds
+  monthlyListeningTime: number;
+  lastUpdated: string; // ISO string for monthly reset
+  showListeningTime: Record<string, number>; // Show name -> seconds
+  hasListenedPostMidnight: boolean; // For Night Owl badge
+}
+
+export interface Badge {
+  id: string;
+  name: string;
+  description: string;
+  icon: (props: { className?: string }) => ReactElement;
+  isEarned: (stats: ListeningStats, songRequests: SongRequestRecord[]) => boolean;
 }

@@ -10,7 +10,7 @@ import { getSchedule, getNowPlaying } from './services/azuracastService';
 import UpcomingShows from './components/UpcomingShows';
 import ScrollToTopButton from './components/ScrollToTopButton';
 import About from './components/About';
-import { ApiScheduleItem, Song, SongRequestRecord, Vibe, VibeType } from './types';
+import { ApiScheduleItem, Song, SongRequestRecord, Vibe, VibeType, ListeningStats } from './types';
 import LiveChat from './components/LiveChat';
 import ContactPage from './components/ContactPage';
 import MyStation from './components/MyStation';
@@ -38,6 +38,7 @@ const FAVORITES_KEY = 'nam-radio-live-favorite-shows';
 const FAVORITE_DJS_KEY = 'nam-radio-live-favorite-djs';
 const REQUESTS_KEY = 'nam-radio-live-song-requests';
 const VIBE_KEY = 'nam-radio-live-user-vibe';
+const LISTENING_STATS_KEY = 'nam-radio-live-listening-stats';
 
 const initialVibes: Vibe[] = [
     { type: 'hype', emoji: '🔥', label: 'Hype', count: 25 },
@@ -45,6 +46,14 @@ const initialVibes: Vibe[] = [
     { type: 'focus', emoji: '🧠', label: 'Focus', count: 15 },
     { type: 'party', emoji: '🎉', label: 'Party', count: 20 },
 ];
+
+const initialListeningStats: ListeningStats = {
+  totalListeningTime: 0,
+  monthlyListeningTime: 0,
+  lastUpdated: new Date().toISOString(),
+  showListeningTime: {},
+  hasListenedPostMidnight: false,
+};
 
 const App: React.FC = () => {
   // App state
@@ -66,6 +75,10 @@ const App: React.FC = () => {
   // Vibe state
   const [vibes, setVibes] = useState<Vibe[]>(initialVibes);
   const [userVibe, setUserVibe] = useState<VibeType | null>(null);
+
+  // Stats State
+  const [listeningStats, setListeningStats] = useState<ListeningStats>(initialListeningStats);
+
 
   // Live broadcast state
   const [liveNowPlaying, setLiveNowPlaying] = useState<LiveNowPlaying>({
@@ -113,6 +126,21 @@ const App: React.FC = () => {
         const storedRequests = localStorage.getItem(REQUESTS_KEY);
         if (storedRequests) setSongRequests(JSON.parse(storedRequests));
     } catch (e) { console.error("Failed to parse song requests from localStorage", e); }
+    
+    try {
+        const storedStats = localStorage.getItem(LISTENING_STATS_KEY);
+        if (storedStats) {
+            const loadedStats: ListeningStats = JSON.parse(storedStats);
+            // Check for monthly reset
+            const lastUpdatedDate = new Date(loadedStats.lastUpdated);
+            const today = new Date();
+            if (lastUpdatedDate.getMonth() !== today.getMonth() || lastUpdatedDate.getFullYear() !== today.getFullYear()) {
+                loadedStats.monthlyListeningTime = 0;
+                loadedStats.lastUpdated = today.toISOString();
+            }
+            setListeningStats(loadedStats);
+        }
+    } catch (e) { console.error("Failed to parse listening stats from localStorage", e); }
 
   }, []);
   
@@ -187,7 +215,6 @@ const App: React.FC = () => {
         setNowPlayingError(null); // Clear error on success
       } catch (error) {
         console.error("Error polling now playing data:", error);
-        setNowPlayingError("Connection to the server was lost. Reconnecting...");
       }
     };
 
@@ -228,6 +255,50 @@ const App: React.FC = () => {
     return () => clearInterval(vibeInterval);
   }, []);
   
+  // Listening Stats Tracking
+  useEffect(() => {
+    const trackingInterval = 5000; // 5 seconds
+    const interval = setInterval(() => {
+      if (!document.hidden && currentUser) { // Only track if the tab is visible and user is logged in
+        setListeningStats(prevStats => {
+          const now = new Date();
+          const currentHour = now.getHours();
+          
+          const newStats: ListeningStats = {
+            ...prevStats,
+            totalListeningTime: prevStats.totalListeningTime + (trackingInterval / 1000),
+            monthlyListeningTime: prevStats.monthlyListeningTime + (trackingInterval / 1000),
+            lastUpdated: now.toISOString(),
+          };
+
+          if (liveNowPlaying.show?.name) {
+            const showName = liveNowPlaying.show.name;
+            newStats.showListeningTime[showName] = (newStats.showListeningTime[showName] || 0) + (trackingInterval / 1000);
+          }
+
+          // Night Owl badge check
+          if (currentHour >= 0 && currentHour < 5 && !newStats.hasListenedPostMidnight) {
+            newStats.hasListenedPostMidnight = true;
+          }
+          
+          return newStats;
+        });
+      }
+    }, trackingInterval);
+
+    return () => clearInterval(interval);
+  }, [liveNowPlaying.show, currentUser]);
+
+  // Save listening stats to localStorage periodically
+  useEffect(() => {
+    if (!currentUser) return; // Don't save for guests
+
+    const saveTimer = setTimeout(() => {
+      localStorage.setItem(LISTENING_STATS_KEY, JSON.stringify(listeningStats));
+    }, 10000); // Save every 10 seconds of activity to avoid constant writes
+    
+    return () => clearTimeout(saveTimer);
+  }, [listeningStats, currentUser]);
   
   // Auth handlers
   const handleSignUp = async (username: string, password_plain: string): Promise<boolean> => {
@@ -370,6 +441,7 @@ const App: React.FC = () => {
             currentUser={currentUser}
             onUpdateUserProfile={handleUpdateUserProfile}
             songRequests={songRequests}
+            listeningStats={listeningStats}
           />
         ) : null;
       default:

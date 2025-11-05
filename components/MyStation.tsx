@@ -1,7 +1,11 @@
 
+
+
 import React, { useState, useEffect, useMemo } from 'react';
-import { Dj, ApiScheduleItem, SongRequestRecord } from '../types';
+import { Dj, ApiScheduleItem, SongRequestRecord, ListeningStats, Badge } from '../types';
 import { getShowRecommendations } from '../services/geminiService';
+import { DJS } from '../constants';
+
 
 interface User {
   username: string;
@@ -20,6 +24,34 @@ const CancelIcon = () => (<svg xmlns="http://www.w3.org/2000/svg" className="h-5
 const CheckCircleIcon = () => (<svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" /></svg>);
 const MicrophoneIcon = () => (<svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M7 4a3 3 0 016 0v4a3 3 0 11-6 0V4zm4 10.93V17a1 1 0 11-2 0v-2.07A5 5 0 014 11V7a1 1 0 012 0v4a3 3 0 006 0V7a1 1 0 112 0v4a5 5 0 01-3 4.93z" clipRule="evenodd" /></svg>);
 
+// Badge Icons & Definitions
+const SuperfanIcon = ({ className = "h-8 w-8" }: {className?: string}) => <svg xmlns="http://www.w3.org/2000/svg" className={className} viewBox="0 0 20 20" fill="currentColor"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" /></svg>;
+const NightOwlIcon = ({ className = "h-8 w-8" }: {className?: string}) => <svg xmlns="http://www.w3.org/2000/svg" className={className} viewBox="0 0 20 20" fill="currentColor"><path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z" /></svg>;
+const TastemakerIcon = ({ className = "h-8 w-8" }: {className?: string}) => <svg xmlns="http://www.w3.org/2000/svg" className={className} viewBox="0 0 20 20" fill="currentColor"><path d="M18 3a1 1 0 00-1.196-.98l-10 2A1 1 0 006 5v9.114A4.369 4.369 0 005 14c-1.657 0-3 1.343-3 3s1.343 3 3 3 3-1.343 3-3V7.82l8-1.6v5.894A4.37 4.37 0 0015 12c-1.657 0-3 1.343-3 3s1.343 3 3 3 3-1.343 3-3V3z" /></svg>;
+
+const BADGES: Badge[] = [
+  {
+    id: 'superfan',
+    name: 'Superfan',
+    description: 'Listen for over 10 hours in a month.',
+    icon: SuperfanIcon,
+    isEarned: (stats, songRequests) => stats.monthlyListeningTime > 36000, // 10 hours * 3600 s/hr
+  },
+  {
+    id: 'night_owl',
+    name: 'Night Owl',
+    description: 'Tune in after midnight.',
+    icon: NightOwlIcon,
+    isEarned: (stats, songRequests) => stats.hasListenedPostMidnight,
+  },
+  {
+    id: 'tastemaker',
+    name: 'Tastemaker',
+    description: 'Request 5 or more songs.',
+    icon: TastemakerIcon,
+    isEarned: (stats, songRequests) => songRequests.length >= 5,
+  }
+];
 
 interface MyStationProps {
   favoriteShows: ApiScheduleItem[];
@@ -31,9 +63,10 @@ interface MyStationProps {
   currentUser: User;
   onUpdateUserProfile: (updatedProfile: { username: string; avatarUrl: string; bio: string; }) => void;
   songRequests: SongRequestRecord[];
+  listeningStats: ListeningStats;
 }
 
-const MyStation: React.FC<MyStationProps> = ({ favoriteShows, favoriteDjs, allShows, onToggleFavorite, onToggleFavoriteDj, currentShowName, currentUser, onUpdateUserProfile, songRequests }) => {
+const MyStation: React.FC<MyStationProps> = ({ favoriteShows, favoriteDjs, allShows, onToggleFavorite, onToggleFavoriteDj, currentShowName, currentUser, onUpdateUserProfile, songRequests, listeningStats }) => {
   const [recommendations, setRecommendations] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -95,23 +128,20 @@ const MyStation: React.FC<MyStationProps> = ({ favoriteShows, favoriteDjs, allSh
   }, [songRequests]);
 
   const userStats = useMemo(() => {
-    if (songRequests.length < 2) return null;
+    const hours = (listeningStats.monthlyListeningTime / 3600).toFixed(1);
     
-    // FIX: Replaced `reduce` with a `for...of` loop to avoid type inference issues.
-    // This ensures `artistCounts` is correctly typed as Record<string, number>.
-    const artistCounts: Record<string, number> = {};
-    for (const req of songRequests) {
-        artistCounts[req.artist] = (artistCounts[req.artist] || 0) + 1;
+    let topShowName: string | null = null;
+    if (Object.keys(listeningStats.showListeningTime).length > 0) {
+        topShowName = Object.entries(listeningStats.showListeningTime).sort((a,b) => Number(b[1]) - Number(a[1]))[0][0];
     }
+    
+    const djForTopShow = DJS.find(dj => dj.show === topShowName);
 
-    const topArtist = Object.entries(artistCounts).sort((a, b) => b[1] - a[1])[0];
-    
-    if (!topArtist || topArtist[1] < 2) return null;
-    
     return {
-        topArtist: topArtist[0]
+        listeningHours: hours,
+        topDj: djForTopShow?.name || 'The Airwaves'
     };
-  }, [songRequests]);
+  }, [listeningStats]);
   
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
@@ -299,22 +329,38 @@ const MyStation: React.FC<MyStationProps> = ({ favoriteShows, favoriteDjs, allSh
                             </div>
                         )}
                         {profileData.bio && <p className="text-slate-300 bg-slate-800/50 p-3 rounded-lg text-sm italic">"{profileData.bio}"</p>}
-                        <div className="border-t border-slate-700/50 pt-4 space-y-3">
-                          <div className="flex items-center justify-between"><div className="flex items-center gap-3 text-slate-300"><StarIcon filled={true} /><span>Favorite Shows</span></div><span className="font-bold text-white text-lg">{favoriteShows.length}</span></div>
-                          <div className="flex items-center justify-between"><div className="flex items-center gap-3 text-slate-300"><UserGroupIcon /><span>Favorite DJs</span></div><span className="font-bold text-white text-lg">{favoriteDjs.length}</span></div>
-                          <div className="flex items-center justify-between"><div className="flex items-center gap-3 text-slate-300"><MusicIcon /><span>Songs Requested</span></div><span className="font-bold text-white text-lg">{songRequests.length}</span></div>
-                           {userStats && (
-                               <div className="flex items-center justify-between">
-                                   <div className="flex items-center gap-3 text-slate-300">
-                                       <MicrophoneIcon />
-                                       <span>Your Top Artist</span>
-                                   </div>
-                                   <span className="font-bold text-white text-lg">{userStats.topArtist}</span>
-                               </div>
-                           )}
-                        </div>
                       </div>
                     )}
+                </section>
+
+                 <section className="bg-slate-900/50 backdrop-blur-xl rounded-2xl p-6 md:p-8 shadow-lg border border-slate-700/50">
+                    <h2 className="text-2xl font-bold mb-6 tracking-wide text-white">Your Stats & Badges</h2>
+                    <div className="space-y-4 mb-6">
+                      <div className="flex items-center justify-between p-3 bg-slate-800/50 rounded-lg">
+                        <span className="text-slate-300">Listening Time (Month)</span>
+                        <span className="font-bold text-white text-lg">{userStats.listeningHours} hours</span>
+                      </div>
+                      <div className="flex items-center justify-between p-3 bg-slate-800/50 rounded-lg">
+                        <span className="text-slate-300">Your Top DJ</span>
+                        <span className="font-bold text-white text-lg">{userStats.topDj}</span>
+                      </div>
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-slate-300 mb-3">Achievements</h3>
+                      <div className="grid grid-cols-3 gap-4">
+                        {BADGES.map(badge => {
+                          const earned = badge.isEarned(listeningStats, songRequests);
+                          return (
+                            <div key={badge.id} className={`text-center p-3 rounded-lg transition-all ${earned ? 'bg-amber-500/10' : 'bg-slate-800/50'}`} title={badge.description}>
+                              <div className={`mx-auto mb-2 ${earned ? 'text-amber-400' : 'text-slate-500 grayscale'}`}>
+                                <badge.icon />
+                              </div>
+                              <p className={`text-xs font-semibold ${earned ? 'text-white' : 'text-slate-400'}`}>{badge.name}</p>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
                 </section>
 
                 <section className="bg-slate-900/50 backdrop-blur-xl rounded-2xl p-6 md:p-8 shadow-lg border border-slate-700/50 flex flex-col">
