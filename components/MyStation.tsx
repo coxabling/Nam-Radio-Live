@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { Dj, ApiScheduleItem, SongRequestRecord } from '../types';
 import { getShowRecommendations } from '../services/geminiService';
@@ -96,11 +97,12 @@ const MyStation: React.FC<MyStationProps> = ({ favoriteShows, favoriteDjs, allSh
   const userStats = useMemo(() => {
     if (songRequests.length < 2) return null;
     
-    // FIX: Type the initial value for the reduce accumulator to ensure correct type inference.
-    const artistCounts = songRequests.reduce((acc, req) => {
-        acc[req.artist] = (acc[req.artist] || 0) + 1;
-        return acc;
-    }, {} as Record<string, number>);
+    // FIX: Replaced `reduce` with a `for...of` loop to avoid type inference issues.
+    // This ensures `artistCounts` is correctly typed as Record<string, number>.
+    const artistCounts: Record<string, number> = {};
+    for (const req of songRequests) {
+        artistCounts[req.artist] = (artistCounts[req.artist] || 0) + 1;
+    }
 
     const topArtist = Object.entries(artistCounts).sort((a, b) => b[1] - a[1])[0];
     

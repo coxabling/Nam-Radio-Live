@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import Header from './components/Header';
 import NowPlaying from './components/NowPlaying';
@@ -6,7 +5,8 @@ import SongRequest from './components/SongRequest';
 import Schedule from './components/Schedule';
 import Djs from './components/Djs';
 import Footer from './components/Footer';
-import { DJS, WEEKLY_SCHEDULE, RECENTLY_PLAYED, TAKEOVER_SONGS } from './constants';
+import { DJS, WEEKLY_SCHEDULE, RECENTLY_PLAYED } from './constants';
+import { getSchedule, getNowPlaying } from './services/azuracastService';
 import UpcomingShows from './components/UpcomingShows';
 import ScrollToTopButton from './components/ScrollToTopButton';
 import About from './components/About';
@@ -42,12 +42,13 @@ const REQUESTS_KEY = 'nam-radio-live-song-requests';
 const App: React.FC = () => {
   // App state
   const [route, setRoute] = useState(window.location.hash || '#/');
-  const [schedule] = useState<ApiScheduleItem[]>(WEEKLY_SCHEDULE);
-  const [scheduleLoading] = useState(false);
-  const [scheduleError] = useState<string | null>(null);
+  const [schedule, setSchedule] = useState<ApiScheduleItem[]>([]);
+  const [scheduleLoading, setScheduleLoading] = useState(true);
+  const [scheduleError, setScheduleError] = useState<string | null>(null);
   const [favoriteShows, setFavoriteShows] = useState<number[]>([]);
   const [favoriteDjs, setFavoriteDjs] = useState<number[]>([]);
   const [songRequests, setSongRequests] = useState<SongRequestRecord[]>([]);
+  const [recentlyPlayed, setRecentlyPlayed] = useState<Song[]>(RECENTLY_PLAYED);
   
   // Auth state
   const [users, setUsers] = useState<User[]>([]);
@@ -55,7 +56,7 @@ const App: React.FC = () => {
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const [loginRedirectPath, setLoginRedirectPath] = useState<string | null>(null);
 
-  // Live broadcast simulation state
+  // Live broadcast state
   const [liveNowPlaying, setLiveNowPlaying] = useState<LiveNowPlaying>({
     song: RECENTLY_PLAYED[0],
     show: null
@@ -133,29 +134,40 @@ const App: React.FC = () => {
     return () => window.removeEventListener('hashchange', handleHashChange);
   }, [currentUser, openLoginModal]);
 
-  const updateLiveBroadcast = useCallback(() => {
-    const now = new Date();
-    const currentShow = schedule.find(show => {
-      const start = new Date(show.start);
-      const end = new Date(show.end);
-      return now >= start && now < end;
-    }) || null;
-    const allSongs = [...RECENTLY_PLAYED, ...TAKEOVER_SONGS];
-    const newSong = allSongs[Math.floor(Math.random() * allSongs.length)];
-    setLiveNowPlaying({ song: newSong, show: currentShow });
-  }, [schedule]);
-
+  // Fetch schedule from AzuraCast API
   useEffect(() => {
-    updateLiveBroadcast();
-    const broadcastInterval = setInterval(updateLiveBroadcast, 20000);
-    return () => clearInterval(broadcastInterval);
-  }, [updateLiveBroadcast]);
+    const fetchSchedule = async () => {
+        setScheduleLoading(true);
+        setScheduleError(null);
+        try {
+            const liveSchedule = await getSchedule();
+            setSchedule(liveSchedule);
+        } catch (error) {
+            console.error("Failed to fetch live schedule, using fallback.", error);
+            const errorMessage = error instanceof Error ? error.message : "Could not load live schedule. Displaying static data.";
+            setScheduleError(errorMessage);
+            setSchedule(WEEKLY_SCHEDULE); // Fallback to mock data
+        } finally {
+            setScheduleLoading(false);
+        }
+    };
+    fetchSchedule();
+  }, []);
   
+  // Poll AzuraCast for Now Playing data
   useEffect(() => {
-      const handleVisibilityChange = () => { if (!document.hidden) updateLiveBroadcast(); };
-      document.addEventListener('visibilitychange', handleVisibilityChange);
-      return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
-  }, [updateLiveBroadcast]);
+      const updateNowPlaying = async () => {
+          const { currentSong, history } = await getNowPlaying();
+          const currentShow = schedule.find(show => show.is_now) || null;
+          setLiveNowPlaying({ song: currentSong, show: currentShow });
+          setRecentlyPlayed(history);
+      };
+      
+      updateNowPlaying(); // Initial call
+      const interval = setInterval(updateNowPlaying, 8000); // Poll every 8 seconds
+      
+      return () => clearInterval(interval);
+  }, [schedule]); // Rerun if schedule changes
   
   // Auth handlers
   const handleSignUp = async (username: string, password_plain: string): Promise<boolean> => {
@@ -286,14 +298,14 @@ const App: React.FC = () => {
         return (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 md:gap-12">
             <div className="lg:col-span-2 space-y-12">
-              <NowPlaying liveNowPlaying={liveNowPlaying} />
+              <NowPlaying liveNowPlaying={liveNowPlaying} recentlyPlayed={recentlyPlayed} />
               <UpcomingShows shows={upcomingShowsToday} loading={scheduleLoading} error={scheduleError} favoriteShows={favoriteShows} onToggleFavorite={toggleFavoriteShow} />
               <About />
               <Schedule schedule={schedule} loading={scheduleLoading} error={scheduleError} favoriteShows={favoriteShows} onToggleFavorite={toggleFavoriteShow} />
             </div>
             <div className="space-y-12">
               <SongRequest currentUser={currentUser} onAddSongRequest={handleAddSongRequest} />
-              <LiveChat liveNowPlaying={liveNowPlaying} recentlyPlayed={RECENTLY_PLAYED} currentUser={currentUser} />
+              <LiveChat liveNowPlaying={liveNowPlaying} recentlyPlayed={recentlyPlayed} currentUser={currentUser} />
               <ContentHub />
               <Djs 
                 djs={DJS} 

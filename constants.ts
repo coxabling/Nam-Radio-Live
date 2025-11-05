@@ -1,5 +1,8 @@
-
 import { Dj, ApiScheduleItem, Article, Song } from './types';
+
+export const AZURACAST_BASE_URL = 'https://music-station.live';
+export const AZURACAST_STATION_ID = 'namradio';
+
 
 export const DJS: Dj[] = [
   {

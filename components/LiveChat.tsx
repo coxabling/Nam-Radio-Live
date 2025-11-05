@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Message, PollMessage, Song, TakeoverMessage, GameMessage } from '../types';
 import { getAiChatResponse, generateTakeoverAnnouncement, generateTakeoverWinnerShoutout, generateSongClue } from '../services/geminiService';
-import { TAKEOVER_SONGS, RECENTLY_PLAYED } from '../constants';
+import { TAKEOVER_SONGS } from '../constants';
 
 const djPolls: Omit<PollMessage, 'id' | 'author' | 'isDj' | 'type'>[] = [
   { question: "What genre should we play next?", options: [{ text: "Classic Rock", votes: 5 }, { text: "Indie Hits", votes: 8 }, { text: "90s Pop", votes: 3 }] },
@@ -24,6 +24,9 @@ interface LiveChatProps {
 
 type FilterType = 'dj' | 'polls' | 'games' | 'takeovers';
 
+const GEMINI_CALL_LIMIT = 10;
+const GEMINI_LIMIT_KEY = 'nam-radio-gemini-limit';
+
 const LiveChat: React.FC<LiveChatProps> = ({ recentlyPlayed, currentUser }) => {
   const [messages, setMessages] = useState<Message[]>([{ id: 1, type: 'text', author: 'DJ Alex', text: 'Welcome to the live chat! Drop a message and say hi!', isDj: true }]);
   const [newMessage, setNewMessage] = useState('');
@@ -37,6 +40,24 @@ const LiveChat: React.FC<LiveChatProps> = ({ recentlyPlayed, currentUser }) => {
     games: true,
     takeovers: true,
   });
+
+  const getGeminiCallCount = () => {
+      const stored = localStorage.getItem(GEMINI_LIMIT_KEY);
+      if (!stored) return { count: 0, date: new Date().toISOString().split('T')[0] };
+      const data = JSON.parse(stored);
+      const today = new Date().toISOString().split('T')[0];
+      if (data.date !== today) {
+          return { count: 0, date: today };
+      }
+      return data;
+  };
+
+  const incrementGeminiCallCount = () => {
+      let { count, date } = getGeminiCallCount();
+      count++;
+      localStorage.setItem(GEMINI_LIMIT_KEY, JSON.stringify({ count, date }));
+      return count;
+  };
 
   const userHandle = currentUser?.username || 'Guest';
   
@@ -68,6 +89,12 @@ const LiveChat: React.FC<LiveChatProps> = ({ recentlyPlayed, currentUser }) => {
 
   useEffect(() => {
     const postDjEvent = async () => {
+        const { count } = getGeminiCallCount();
+        if (count >= GEMINI_CALL_LIMIT) {
+            console.log("Gemini API daily limit reached. Skipping DJ event.");
+            return;
+        }
+
         const endTakeoverEvent = async (takeoverId: number) => {
             let winningSong: Song | null = null;
             setMessages(prev => prev.map(msg => {
@@ -79,16 +106,20 @@ const LiveChat: React.FC<LiveChatProps> = ({ recentlyPlayed, currentUser }) => {
                 return msg;
             }));
             if (winningSong) {
-                setIsDjTyping(true);
-                const shoutout = await generateTakeoverWinnerShoutout(winningSong);
-                setIsDjTyping(false);
-                setMessages(prev => [...prev, { id: Date.now() + 1, type: 'text', author: 'DJ Alex', text: shoutout, isDj: true }]);
+                if (getGeminiCallCount().count < GEMINI_CALL_LIMIT) {
+                    incrementGeminiCallCount();
+                    setIsDjTyping(true);
+                    const shoutout = await generateTakeoverWinnerShoutout(winningSong);
+                    setIsDjTyping(false);
+                    setMessages(prev => [...prev, { id: Date.now() + 1, type: 'text', author: 'DJ Alex', text: shoutout, isDj: true }]);
+                }
             }
         };
 
         const chance = Math.random();
 
         if (chance < 0.2) { // 20% chance for Listener Takeover
+            incrementGeminiCallCount();
             setIsDjTyping(true);
             const songA = TAKEOVER_SONGS[Math.floor(Math.random() * TAKEOVER_SONGS.length)];
             let songB = TAKEOVER_SONGS[Math.floor(Math.random() * TAKEOVER_SONGS.length)];
@@ -113,8 +144,10 @@ const LiveChat: React.FC<LiveChatProps> = ({ recentlyPlayed, currentUser }) => {
             });
 
         } else if (chance < 0.75) { // 25% chance for Guess the Song
+            incrementGeminiCallCount();
             setIsDjTyping(true);
-            const allSongs = [...RECENTLY_PLAYED, ...TAKEOVER_SONGS];
+            const allSongs = [...recentlyPlayed, ...TAKEOVER_SONGS];
+            if(allSongs.length === 0) { setIsDjTyping(false); return; }
             const songToGuess = allSongs[Math.floor(Math.random() * allSongs.length)];
             const clue = await generateSongClue(songToGuess);
             setIsDjTyping(false);
@@ -135,7 +168,7 @@ const LiveChat: React.FC<LiveChatProps> = ({ recentlyPlayed, currentUser }) => {
 
     djMessageTimer.current = window.setTimeout(postDjEvent, 25000); 
     return () => { if (djMessageTimer.current) clearTimeout(djMessageTimer.current) };
-  }, []); 
+  }, [recentlyPlayed]); 
   
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -147,8 +180,17 @@ const LiveChat: React.FC<LiveChatProps> = ({ recentlyPlayed, currentUser }) => {
     setNewMessage('');
     
     if (trimmedMessage.startsWith('!ask ')) {
+        const { count } = getGeminiCallCount();
+        if (count >= GEMINI_CALL_LIMIT) {
+            const limitMessage: Message = { id: Date.now() + 1, type: 'text', author: 'DJ Alex', text: "I've been chatting up a storm today! My circuits need a little rest. I'll be back to answer more questions tomorrow!", isDj: true };
+            setMessages(prev => [...prev, limitMessage]);
+            return;
+        }
+
         const query = trimmedMessage.substring(5);
         if (!query) return;
+        
+        incrementGeminiCallCount();
         setIsDjTyping(true);
         const insight = await getAiChatResponse(query);
         setIsDjTyping(false);
