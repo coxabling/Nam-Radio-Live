@@ -3,10 +3,11 @@ import { Article } from '../types';
 // This service uses the rss2json API to convert public RSS feeds into a usable JSON format.
 const RSS2JSON_API = 'https://api.rss2json.com/v1/api.json?rss_url=';
 
-// Public RSS Feeds
+// Public RSS Feeds - Updated to focus on Namibian and African content
 const RSS_FEEDS = {
-  luton: 'http://feeds.bbci.co.uk/sport/football/teams/luton-town/rss.xml',
-  uk: 'http://feeds.bbci.co.uk/news/uk/rss.xml',
+  namibia: 'https://www.namibian.com.na/feed/',
+  africa: 'http://feeds.bbci.co.uk/news/world/africa/rss.xml',
+  africanSports: 'https://allafrica.com/tools/headlines/rdf/sport/headlines.rdf',
   world: 'http://feeds.bbci.co.uk/news/world/rss.xml',
   africanMusic: 'https://news.google.com/rss/search?q=african+music&hl=en-GB&gl=GB&ceid=GB:en'
 };
@@ -27,10 +28,10 @@ const mapRssItemToArticle = (item: any, feedTitle: string): Article => ({
 
 /**
  * Fetches and processes live news for a given category.
- * @param category - The news category ('luton', 'uk', or 'world').
+ * @param category - The news category.
  * @returns A promise that resolves to an array of Articles.
  */
-export const fetchNews = async (category: 'luton' | 'uk' | 'world'): Promise<Article[]> => {
+export const fetchNews = async (category: 'namibia' | 'africa' | 'africanSports' | 'world'): Promise<Article[]> => {
   console.log(`Fetching live news for category: ${category}`);
   const feedUrl = RSS_FEEDS[category];
   if (!feedUrl) {

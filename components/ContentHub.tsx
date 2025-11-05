@@ -9,7 +9,7 @@ const ContentHub: React.FC = () => {
   const [activeHubTab, setActiveHubTab] = useState<'news' | 'blog' | 'events'>('news');
   
   // News State
-  const [activeNewsCategory, setActiveNewsCategory] = useState<string>('luton');
+  const [activeNewsCategory, setActiveNewsCategory] = useState<string>('namibia');
   const [newsArticles, setNewsArticles] = useState<Record<string, Article[]>>({});
   const [isNewsLoading, setIsNewsLoading] = useState(true);
   const [newsError, setNewsError] = useState<string | null>(null);
@@ -29,6 +29,13 @@ const ContentHub: React.FC = () => {
   const [summaries, setSummaries] = useState<Record<string, string>>({});
   const [loadingSummary, setLoadingSummary] = useState<string | null>(null);
   const [summaryError, setSummaryError] = useState<string | null>(null);
+  
+  const newsCategories: Record<string, string> = {
+    namibia: 'Namibia',
+    africa: 'Africa',
+    africanSports: 'African Sports',
+    world: 'World',
+  };
 
   // Fetch News Data
   useEffect(() => {
@@ -40,7 +47,7 @@ const ContentHub: React.FC = () => {
       setIsNewsLoading(true);
       setNewsError(null);
       try {
-        const fetchedArticles = await fetchNews(activeNewsCategory as 'luton' | 'uk' | 'world');
+        const fetchedArticles = await fetchNews(activeNewsCategory as 'namibia' | 'africa' | 'africanSports' | 'world');
         setNewsArticles(prev => ({ ...prev, [activeNewsCategory]: fetchedArticles }));
       } catch (error) {
         setNewsError(`Failed to load news for ${activeNewsCategory}. Please try again later.`);
@@ -125,7 +132,11 @@ const ContentHub: React.FC = () => {
     <button onClick={() => setActiveHubTab(name)} className={`px-4 py-2 text-sm font-semibold rounded-t-md transition-colors w-full sm:w-auto ${activeHubTab === name ? 'bg-slate-800/50 text-amber-300 border-b-2 border-amber-400' : 'text-slate-400 hover:text-white'}`}>{children}</button>
   );
 
-  const CategoryButton: React.FC<{ name: string; activeCategory: string; onClick: (name: string) => void }> = ({ name, activeCategory, onClick }) => (
+  const NewsCategoryButton: React.FC<{ id: string; label: string; activeCategory: string; onClick: (id: string) => void }> = ({ id, label, activeCategory, onClick }) => (
+     <button onClick={() => onClick(id)} className={`px-3 py-1 text-xs font-semibold rounded-full transition-colors ${activeCategory === id ? 'bg-amber-500 text-white' : 'bg-slate-700/50 text-slate-300 hover:bg-slate-600/50'}`}>{label}</button>
+  );
+  
+  const BlogCategoryButton: React.FC<{ name: string; activeCategory: string; onClick: (name: string) => void }> = ({ name, activeCategory, onClick }) => (
      <button onClick={() => onClick(name)} className={`px-3 py-1 text-xs font-semibold rounded-full transition-colors ${activeCategory === name ? 'bg-amber-500 text-white' : 'bg-slate-700/50 text-slate-300 hover:bg-slate-600/50'}`}>{name}</button>
   );
 
@@ -191,7 +202,15 @@ const ContentHub: React.FC = () => {
         {activeHubTab === 'news' && (
           <div className="animate-fade-in" key="news">
             <div className="flex flex-wrap gap-2 mb-4">
-              {['luton', 'uk', 'world'].map(cat => <CategoryButton key={cat} name={cat} activeCategory={activeNewsCategory} onClick={setActiveNewsCategory} />)}
+              {Object.entries(newsCategories).map(([id, label]) => 
+                <NewsCategoryButton 
+                  key={id}
+                  id={id}
+                  label={label}
+                  activeCategory={activeNewsCategory}
+                  onClick={setActiveNewsCategory}
+                />
+              )}
             </div>
             {renderContent(isNewsLoading, newsError, newsArticles[activeNewsCategory] || [], 'No headlines available for this category.')}
           </div>
@@ -200,7 +219,7 @@ const ContentHub: React.FC = () => {
         {activeHubTab === 'blog' && (
           <div className="animate-fade-in" key="blog">
             <div className="flex flex-wrap gap-2 mb-4">
-              {blogCategories.map(cat => <CategoryButton key={cat} name={cat} activeCategory={activeBlogCategory} onClick={setActiveBlogCategory} />)}
+              {blogCategories.map(cat => <BlogCategoryButton key={cat} name={cat} activeCategory={activeBlogCategory} onClick={setActiveBlogCategory} />)}
             </div>
              {renderContent(isBlogLoading, blogError, filteredBlogArticles, 'No blog posts available at the moment.')}
           </div>
