@@ -68,7 +68,7 @@ const ContactPage: React.FC = () => {
               <div className="space-y-6">
                   <div className="flex items-center gap-4 p-3 rounded-lg hover:bg-slate-800/50 transition-colors"><div className="p-2 bg-slate-800 rounded-full text-amber-400 flex-shrink-0"><MailIcon /></div><div><h3 className="font-semibold text-white">General Inquiries</h3><a href="mailto:info@namradiolive.com" className="text-slate-300 hover:text-amber-300 transition-colors break-all">info@namradiolive.com</a></div></div>
                   <div className="flex items-center gap-4 p-3 rounded-lg hover:bg-slate-800/50 transition-colors"><div className="p-2 bg-slate-800 rounded-full text-amber-400 flex-shrink-0"><PhoneIcon /></div><div><h3 className="font-semibold text-white">Studio Line</h3><a href="tel:+441234567890" className="text-slate-300 hover:text-amber-300 transition-colors">+44 1234 567890</a></div></div>
-                  <div className="flex items-center gap-4 p-3 rounded-lg hover:bg-slate-800/50 transition-colors"><div className="p-2 bg-slate-800 rounded-full text-amber-400 flex-shrink-0"><LocationIcon /></div><div><h3 className="font-semibold text-white">Our Location</h3><p className="text-slate-300">Luton, United Kingdom</p></div></div>
+                  <div className="flex items-center gap-4 p-3 rounded-lg hover:bg-slate-800/50 transition-colors"><div className="p-2 bg-slate-800 rounded-full text-amber-400 flex-shrink-0"><LocationIcon /></div><div><h3 className="font-semibold text-white">Our Location</h3><p className="text-slate-300">Windhoek, Namibia</p></div></div>
               </div>
               <div>
                   <h3 className="font-semibold text-white mb-3">Follow Us</h3>

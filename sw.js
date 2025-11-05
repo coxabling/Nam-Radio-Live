@@ -24,7 +24,8 @@ const urlsToCache = [
   '/components/ContactPage.tsx',
   '/components/ScrollToTopButton.tsx',
   '/components/LoginModal.tsx',
-  '/components/ShareModal.tsx'
+  '/components/ShareModal.tsx',
+  '/components/VibeCheck.tsx'
 ];
 
 self.addEventListener('install', event => {

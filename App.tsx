@@ -1,3 +1,5 @@
+
+
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import Header from './components/Header';
 import NowPlaying from './components/NowPlaying';
@@ -5,12 +7,12 @@ import SongRequest from './components/SongRequest';
 import Schedule from './components/Schedule';
 import Djs from './components/Djs';
 import Footer from './components/Footer';
-import { DJS, WEEKLY_SCHEDULE, RECENTLY_PLAYED } from './constants';
+import { DJS, RECENTLY_PLAYED } from './constants';
 import { getSchedule, getNowPlaying } from './services/azuracastService';
 import UpcomingShows from './components/UpcomingShows';
 import ScrollToTopButton from './components/ScrollToTopButton';
 import About from './components/About';
-import { ApiScheduleItem, Song, SongRequestRecord } from './types';
+import { ApiScheduleItem, Song, SongRequestRecord, Vibe, VibeType } from './types';
 import LiveChat from './components/LiveChat';
 import ContactPage from './components/ContactPage';
 import MyStation from './components/MyStation';
@@ -37,7 +39,14 @@ const SESSION_KEY = 'nam-radio-live-session-username';
 const FAVORITES_KEY = 'nam-radio-live-favorite-shows';
 const FAVORITE_DJS_KEY = 'nam-radio-live-favorite-djs';
 const REQUESTS_KEY = 'nam-radio-live-song-requests';
+const VIBE_KEY = 'nam-radio-live-user-vibe';
 
+const initialVibes: Vibe[] = [
+    { type: 'hype', emoji: '🔥', label: 'Hype', count: 25 },
+    { type: 'chill', emoji: '🧊', label: 'Chill', count: 30 },
+    { type: 'focus', emoji: '🧠', label: 'Focus', count: 15 },
+    { type: 'party', emoji: '🎉', label: 'Party', count: 20 },
+];
 
 const App: React.FC = () => {
   // App state
@@ -55,6 +64,10 @@ const App: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const [loginRedirectPath, setLoginRedirectPath] = useState<string | null>(null);
+
+  // Vibe state
+  const [vibes, setVibes] = useState<Vibe[]>(initialVibes);
+  const [userVibe, setUserVibe] = useState<VibeType | null>(null);
 
   // Live broadcast state
   const [liveNowPlaying, setLiveNowPlaying] = useState<LiveNowPlaying>({
@@ -134,40 +147,85 @@ const App: React.FC = () => {
     return () => window.removeEventListener('hashchange', handleHashChange);
   }, [currentUser, openLoginModal]);
 
-  // Fetch schedule from AzuraCast API
+  // Fetch schedule from mock data service
   useEffect(() => {
     const fetchSchedule = async () => {
         setScheduleLoading(true);
         setScheduleError(null);
-        try {
-            const liveSchedule = await getSchedule();
-            setSchedule(liveSchedule);
-        } catch (error) {
-            console.error("Failed to fetch live schedule, using fallback.", error);
-            const errorMessage = error instanceof Error ? error.message : "Could not load live schedule. Displaying static data.";
-            setScheduleError(errorMessage);
-            setSchedule(WEEKLY_SCHEDULE); // Fallback to mock data
-        } finally {
-            setScheduleLoading(false);
-        }
+        const mockSchedule = await getSchedule();
+        setSchedule(mockSchedule);
+        setScheduleLoading(false);
     };
     fetchSchedule();
   }, []);
+
+  // Vibe feature logic
+   useEffect(() => {
+    // Load user's vote from local storage
+    const storedVibe = localStorage.getItem(VIBE_KEY) as VibeType | null;
+    if (storedVibe) {
+      setUserVibe(storedVibe);
+    }
+
+    // Simulate collective vibe changes
+    const vibeInterval = setInterval(() => {
+      setVibes(currentVibes => {
+        const newVibes = [...currentVibes];
+        // Randomly increment a vibe
+        const vibeToIncrementIndex = Math.floor(Math.random() * newVibes.length);
+        newVibes[vibeToIncrementIndex].count += Math.floor(Math.random() * 3) + 1;
+
+        // Sometimes, decrement another vibe
+        if (Math.random() > 0.6) {
+          const vibeToDecrementIndex = Math.floor(Math.random() * newVibes.length);
+          if (vibeToDecrementIndex !== vibeToIncrementIndex) {
+            newVibes[vibeToDecrementIndex].count = Math.max(0, newVibes[vibeToDecrementIndex].count - 1);
+          }
+        }
+        return newVibes;
+      });
+    }, 4000); // Update every 4 seconds
+
+    return () => clearInterval(vibeInterval);
+  }, []);
   
-  // Poll AzuraCast for Now Playing data
+  // Set initial Now Playing data & simulate live show updates
   useEffect(() => {
-      const updateNowPlaying = async () => {
-          const { currentSong, history } = await getNowPlaying();
-          const currentShow = schedule.find(show => show.is_now) || null;
-          setLiveNowPlaying({ song: currentSong, show: currentShow });
+      // Set initial song data from mock service
+      getNowPlaying().then(({ currentSong, history }) => {
+          setLiveNowPlaying(prev => ({ ...prev, song: currentSong }));
           setRecentlyPlayed(history);
+      });
+
+      const updateShowStatus = () => {
+          if (schedule.length === 0) return;
+
+          const now = new Date();
+          const currentMockShow = schedule.find(show => {
+              const start = new Date(show.start);
+              const end = new Date(show.end);
+              return start <= now && end > now;
+          }) || null;
+          
+          // Update the live show in the now playing state
+          setLiveNowPlaying(prev => ({ ...prev, show: currentMockShow }));
+
+          // Check if an update is needed before calling setSchedule to prevent infinite loops
+          const needsUpdate = schedule.some(s => s.is_now !== (s.id === currentMockShow?.id));
+          if (needsUpdate) {
+              setSchedule(prevSchedule => prevSchedule.map(s => ({
+                  ...s,
+                  is_now: s.id === currentMockShow?.id
+              })));
+          }
       };
       
-      updateNowPlaying(); // Initial call
-      const interval = setInterval(updateNowPlaying, 8000); // Poll every 8 seconds
+      updateShowStatus(); // Initial call to set status immediately
+      const interval = setInterval(updateShowStatus, 10000); // Check for show changes every 10 seconds
       
       return () => clearInterval(interval);
-  }, [schedule]); // Rerun if schedule changes
+  }, [schedule]); // Re-run this effect whenever the schedule data itself changes
+  
   
   // Auth handlers
   const handleSignUp = async (username: string, password_plain: string): Promise<boolean> => {
@@ -257,6 +315,19 @@ const App: React.FC = () => {
     localStorage.setItem(REQUESTS_KEY, JSON.stringify(updatedRequests));
   }, [songRequests]);
 
+  const handleVibeVote = useCallback((vibeType: VibeType) => {
+    if (userVibe) return; // a user can only vote once per session
+    
+    setUserVibe(vibeType);
+    localStorage.setItem(VIBE_KEY, vibeType);
+
+    setVibes(currentVibes => 
+        currentVibes.map(v => 
+            v.type === vibeType ? { ...v, count: v.count + 1 } : v
+        )
+    );
+  }, [userVibe]);
+
   const upcomingShowsToday = useMemo(() => {
     if (!schedule || schedule.length === 0) return [];
     const now = new Date();
@@ -273,6 +344,11 @@ const App: React.FC = () => {
   const userFavoriteDjs = useMemo(() => {
       return DJS.filter(dj => favoriteDjs.includes(dj.id));
   }, [favoriteDjs]);
+
+  const dominantVibe = useMemo(() => {
+    if (!vibes || vibes.length === 0) return null;
+    return [...vibes].sort((a, b) => b.count - a.count)[0];
+  }, [vibes]);
   
   const currentShowName = liveNowPlaying.show ? liveNowPlaying.show.name : null;
 
@@ -298,14 +374,14 @@ const App: React.FC = () => {
         return (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 md:gap-12">
             <div className="lg:col-span-2 space-y-12">
-              <NowPlaying liveNowPlaying={liveNowPlaying} recentlyPlayed={recentlyPlayed} />
+              <NowPlaying liveNowPlaying={liveNowPlaying} recentlyPlayed={recentlyPlayed} vibes={vibes} userVibe={userVibe} onVibeVote={handleVibeVote} />
               <UpcomingShows shows={upcomingShowsToday} loading={scheduleLoading} error={scheduleError} favoriteShows={favoriteShows} onToggleFavorite={toggleFavoriteShow} />
               <About />
               <Schedule schedule={schedule} loading={scheduleLoading} error={scheduleError} favoriteShows={favoriteShows} onToggleFavorite={toggleFavoriteShow} />
             </div>
             <div className="space-y-12">
               <SongRequest currentUser={currentUser} onAddSongRequest={handleAddSongRequest} />
-              <LiveChat liveNowPlaying={liveNowPlaying} recentlyPlayed={recentlyPlayed} currentUser={currentUser} />
+              <LiveChat liveNowPlaying={liveNowPlaying} recentlyPlayed={recentlyPlayed} currentUser={currentUser} dominantVibe={dominantVibe} />
               <ContentHub />
               <Djs 
                 djs={DJS} 

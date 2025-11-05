@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { Message, PollMessage, Song, TakeoverMessage, GameMessage } from '../types';
-import { getAiChatResponse, generateTakeoverAnnouncement, generateTakeoverWinnerShoutout, generateSongClue } from '../services/geminiService';
+import { Message, PollMessage, Song, TakeoverMessage, GameMessage, Vibe } from '../types';
+import { getAiChatResponse, generateTakeoverAnnouncement, generateTakeoverWinnerShoutout, generateSongClue, generateDjChitchat, generateVibeCommentary } from '../services/geminiService';
 import { TAKEOVER_SONGS } from '../constants';
 
 const djPolls: Omit<PollMessage, 'id' | 'author' | 'isDj' | 'type'>[] = [
@@ -20,14 +20,15 @@ interface LiveChatProps {
   liveNowPlaying: { song: Song };
   recentlyPlayed: Song[];
   currentUser: User | null;
+  dominantVibe: Vibe | null;
 }
 
 type FilterType = 'dj' | 'polls' | 'games' | 'takeovers';
 
-const GEMINI_CALL_LIMIT = 10;
+const GEMINI_CALL_LIMIT = 50;
 const GEMINI_LIMIT_KEY = 'nam-radio-gemini-limit';
 
-const LiveChat: React.FC<LiveChatProps> = ({ recentlyPlayed, currentUser }) => {
+const LiveChat: React.FC<LiveChatProps> = ({ recentlyPlayed, currentUser, dominantVibe }) => {
   const [messages, setMessages] = useState<Message[]>([{ id: 1, type: 'text', author: 'DJ Alex', text: 'Welcome to the live chat! Drop a message and say hi!', isDj: true }]);
   const [newMessage, setNewMessage] = useState('');
   const [votedIds, setVotedIds] = useState<number[]>([]);
@@ -118,7 +119,7 @@ const LiveChat: React.FC<LiveChatProps> = ({ recentlyPlayed, currentUser }) => {
 
         const chance = Math.random();
 
-        if (chance < 0.2) { // 20% chance for Listener Takeover
+        if (chance < 0.15) { // 15% chance for Listener Takeover
             incrementGeminiCallCount();
             setIsDjTyping(true);
             const songA = TAKEOVER_SONGS[Math.floor(Math.random() * TAKEOVER_SONGS.length)];
@@ -133,7 +134,7 @@ const LiveChat: React.FC<LiveChatProps> = ({ recentlyPlayed, currentUser }) => {
 
             setTimeout(() => endTakeoverEvent(takeoverMessage.id), 30000);
 
-        } else if (chance < 0.5) { // 30% chance for a poll
+        } else if (chance < 0.30) { // 15% chance for a poll
             setMessages(prev => {
                 const unpostedPolls = djPolls.filter(p => !prev.some(m => m.type === 'poll' && m.question === p.question));
                 if (unpostedPolls.length > 0) {
@@ -143,7 +144,7 @@ const LiveChat: React.FC<LiveChatProps> = ({ recentlyPlayed, currentUser }) => {
                 return prev;
             });
 
-        } else if (chance < 0.75) { // 25% chance for Guess the Song
+        } else if (chance < 0.45) { // 15% chance for Guess the Song
             incrementGeminiCallCount();
             setIsDjTyping(true);
             const allSongs = [...recentlyPlayed, ...TAKEOVER_SONGS];
@@ -161,14 +162,31 @@ const LiveChat: React.FC<LiveChatProps> = ({ recentlyPlayed, currentUser }) => {
                 isDj: true,
             };
             setMessages(prev => [...prev, gameMessage]);
+        } else if (chance < 0.65) { // 20% chance for chit-chat
+            if (recentlyPlayed.length > 0) {
+                if (getGeminiCallCount().count >= GEMINI_CALL_LIMIT) { return; }
+                incrementGeminiCallCount();
+                setIsDjTyping(true);
+                const chitchat = await generateDjChitchat(recentlyPlayed);
+                setIsDjTyping(false);
+                setMessages(prev => [...prev, { id: Date.now(), type: 'text', author: 'DJ Alex', text: chitchat, isDj: true }]);
+            }
+        } else if (chance < 0.80 && dominantVibe) { // 15% chance for vibe commentary
+             if (getGeminiCallCount().count >= GEMINI_CALL_LIMIT) { return; }
+             incrementGeminiCallCount();
+             setIsDjTyping(true);
+             const vibeComment = await generateVibeCommentary(dominantVibe.label);
+             setIsDjTyping(false);
+             setMessages(prev => [...prev, { id: Date.now(), type: 'text', author: 'DJ Alex', text: vibeComment, isDj: true }]);
         }
+
         const nextPostDelay = Math.random() * (90000 - 45000) + 45000;
         djMessageTimer.current = window.setTimeout(postDjEvent, nextPostDelay);
     };
 
     djMessageTimer.current = window.setTimeout(postDjEvent, 25000); 
     return () => { if (djMessageTimer.current) clearTimeout(djMessageTimer.current) };
-  }, [recentlyPlayed]); 
+  }, [recentlyPlayed, dominantVibe]); 
   
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();

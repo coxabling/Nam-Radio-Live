@@ -1,4 +1,5 @@
 
+
 export interface Dj {
   id: number;
   name: string;
@@ -99,4 +100,13 @@ export interface RequestableSong {
     title: string;
     art: string;
   };
+}
+
+export type VibeType = 'hype' | 'chill' | 'focus' | 'party';
+
+export interface Vibe {
+  type: VibeType;
+  emoji: string;
+  label: string;
+  count: number;
 }

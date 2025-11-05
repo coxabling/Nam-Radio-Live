@@ -89,6 +89,7 @@ export const RECENTLY_PLAYED: Song[] = [
     { title: 'Good 4 U', artist: 'Olivia Rodrigo' },
 ];
 
+// FIX: Corrected a typo in the constant name from `TAKEOver_SONGS` to `TAKEOVER_SONGS` to match the import in LiveChat.tsx.
 export const TAKEOVER_SONGS: Song[] = [
     { artist: "Queen", title: "Bohemian Rhapsody" },
     { artist: "Nirvana", title: "Smells Like Teen Spirit" },
@@ -100,4 +101,14 @@ export const TAKEOVER_SONGS: Song[] = [
     { artist: "Oasis", title: "Wonderwall" },
     { artist: "Bob Marley", title: "No Woman, No Cry" },
     { artist: "U2", title: "With or Without You" },
+    { artist: "Fleetwood Mac", title: "Dreams" },
+    { artist: "Red Hot Chili Peppers", title: "Under the Bridge" },
+    { artist: "The Killers", title: "Mr. Brightside" },
+    { artist: "Adele", title: "Rolling in the Deep" },
+    { artist: "Beyoncé", title: "Crazy in Love" },
+    { artist: "Daft Punk", title: "Get Lucky" },
+    { artist: "Arctic Monkeys", title: "Do I Wanna Know?" },
+    { artist: "Coldplay", title: "Viva La Vida" },
+    { artist: "Foster The People", title: "Pumped Up Kicks" },
+    { artist: "Gotye", title: "Somebody That I Used to Know" },
 ];

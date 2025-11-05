@@ -1,4 +1,5 @@
 
+
 import { GoogleGenAI, Type } from "@google/genai";
 import { Song, SongRequestRecord } from '../types';
 
@@ -41,13 +42,13 @@ export const generateDjChitchat = async (recentlyPlayed: Song[]): Promise<string
     if (recentlyPlayed.length === 0) return "Keep the vibes going! Let me know what you want to hear next.";
     try {
         const ai = new GoogleGenAI({ apiKey: getGeminiApiKey() });
-        const song = recentlyPlayed[Math.floor(Math.random() * recentlyPlayed.length)];
+        const song = recentlyPlayed[0]; // Use the most recent song
         const prompt = `You are a cool and charismatic radio DJ for "Nam Radio Live". The song "${song.title}" by ${song.artist} just played. Write a very short, engaging, and creative comment about it for the live chat (1-2 sentences). Your tone should be friendly and energetic.`;
         const response = await ai.models.generateContent({ model: 'gemini-2.5-flash', contents: prompt });
         return response.text;
     } catch (error) {
         console.error("Error generating DJ chitchat:", error);
-        const song = recentlyPlayed[Math.floor(Math.random() * recentlyPlayed.length)];
+        const song = recentlyPlayed[0]; // Use the most recent song in fallback
         return `What a tune! That was ${song.title} by ${song.artist}. What's next?`;
     }
 };
@@ -146,5 +147,18 @@ export const generateSongClue = async (song: Song): Promise<string> => {
     } catch (error) {
         console.error("Error generating song clue:", error);
         return `This one's a classic from ${song.artist}. Can you name it?`;
+    }
+};
+
+// For "Vibe Check" commentary in LiveChat
+export const generateVibeCommentary = async (dominantVibeLabel: string): Promise<string> => {
+    try {
+        const ai = new GoogleGenAI({ apiKey: getGeminiApiKey() });
+        const prompt = `You are a cool radio DJ for "Nam Radio Live". The collective listener vibe is currently "${dominantVibeLabel}". Write a short, engaging comment (1-2 sentences) for the live chat, reacting to this mood. Your tone should be friendly and energetic.`;
+        const response = await ai.models.generateContent({ model: 'gemini-2.5-flash', contents: prompt });
+        return response.text;
+    } catch (error) {
+        console.error("Error generating vibe commentary:", error);
+        return `Looks like the vibe is definitely ${dominantVibeLabel.toLowerCase()} right now! I'm feeling it.`;
     }
 };
