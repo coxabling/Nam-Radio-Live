@@ -47,32 +47,39 @@ self.addEventListener('install', event => {
 });
 
 self.addEventListener('fetch', event => {
-  // We only want to cache GET requests.
+  // We only want to handle GET requests.
   if (event.request.method !== 'GET') {
     return;
   }
   
   event.respondWith(
-    caches.open(CACHE_NAME).then(cache => {
-      return cache.match(event.request).then(response => {
-        // Return from cache if found
-        if (response) {
-          return response;
-        }
+    // Try to find a match in the cache first
+    caches.match(event.request).then(response => {
+      // If a response is found in cache, return it
+      if (response) {
+        return response;
+      }
 
-        // Otherwise, fetch from network
-        return fetch(event.request).then(networkResponse => {
-          // Check if we received a valid response
-          if (networkResponse && networkResponse.status === 200 && networkResponse.type === 'basic') {
-             // IMPORTANT: Clone the response. A response is a stream
-             // and because we want the browser to consume the response
-             // as well as the cache consuming the response, we need
-             // to clone it so we have two streams.
+      // If not in cache, fetch from the network
+      return fetch(event.request).then(
+        networkResponse => {
+          // Check if we received a valid response to cache
+          if (networkResponse && networkResponse.status === 200) {
+             // Clone the response because it's a stream and can only be consumed once.
              const responseToCache = networkResponse.clone();
-             cache.put(event.request, responseToCache);
+             caches.open(CACHE_NAME).then(cache => {
+               cache.put(event.request, responseToCache);
+             });
           }
           return networkResponse;
-        });
+        }
+      ).catch(() => {
+        // If the network request fails (e.g., user is offline)
+        // and it's a navigation request, serve the main app shell as a fallback.
+        if (event.request.mode === 'navigate') {
+          return caches.match('/index.html');
+        }
+        // For other failed requests (like API calls), let the browser handle the error.
       });
     })
   );
