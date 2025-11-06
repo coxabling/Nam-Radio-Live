@@ -31,8 +31,8 @@ const urlsToCache = [
   '/components/AdminDashboard.tsx',
   '/components/InstallPwaButton.tsx',
   '/components/CommunityCountdown.tsx',
-  'logo192.svg',
-  'logo512.svg'
+  '/logo192.svg',
+  '/logo512.svg'
 ];
 
 self.addEventListener('install', event => {

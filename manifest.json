@@ -4,13 +4,13 @@
   "description": "Nam Radio Live is an internet-based radio station broadcasting from Windhoek, Namibia.",
   "icons": [
     {
-      "src": "logo192.svg",
+      "src": "/logo192.svg",
       "type": "image/svg+xml",
       "sizes": "192x192",
       "purpose": "any maskable"
     },
     {
-      "src": "logo512.svg",
+      "src": "/logo512.svg",
       "type": "image/svg+xml",
       "sizes": "512x512",
       "purpose": "any maskable"

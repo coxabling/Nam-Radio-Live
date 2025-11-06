@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import Header from './components/Header';
 import NowPlaying from './components/NowPlaying';
@@ -66,6 +67,8 @@ const initialListeningStats: ListeningStats = {
   dislikedSongs: [],
 };
 
+const DEFAULT_BG_URL = 'https://picsum.photos/1920/1080?grayscale&blur=5';
+
 const App: React.FC = () => {
   // App state
   const [route, setRoute] = useState(window.location.hash || '#/');
@@ -102,6 +105,9 @@ const App: React.FC = () => {
   // PWA Install state
   const [installPrompt, setInstallPrompt] = useState<any>(null);
 
+  // Background state
+  const [bgUrls, setBgUrls] = useState<[string, string]>([DEFAULT_BG_URL, '']);
+  const [activeBgIndex, setActiveBgIndex] = useState(0);
 
   // Live broadcast state
   const [liveNowPlaying, setLiveNowPlaying] = useState<LiveNowPlaying>({
@@ -304,6 +310,25 @@ const App: React.FC = () => {
 
     return () => clearInterval(interval);
   }, []);
+  
+  // Effect for smooth background transitions
+  useEffect(() => {
+    const newUrl = liveNowPlaying.show?.imageUrl || DEFAULT_BG_URL;
+    const currentUrl = bgUrls[activeBgIndex];
+
+    if (newUrl !== currentUrl) {
+        const nextIndex = (activeBgIndex + 1) % 2;
+        
+        setBgUrls(prevUrls => {
+            // FIX: Explicitly cast the spread array to a tuple `[string, string]` to fix a TypeScript type error.
+            // Spreading a tuple results in a general array type, which is not assignable back to a specific tuple type.
+            const newUrls = [...prevUrls] as [string, string];
+            newUrls[nextIndex] = newUrl;
+            return newUrls;
+        });
+        setActiveBgIndex(nextIndex);
+    }
+  }, [liveNowPlaying.show, activeBgIndex, bgUrls]);
 
 
   // Vibe feature logic
@@ -755,14 +780,23 @@ const App: React.FC = () => {
     }
   };
   
-  const bgUrl = liveNowPlaying.show?.imageUrl || 'https://picsum.photos/1920/1080?grayscale&blur=5';
-
   return (
     <div className="bg-slate-900 min-h-screen text-slate-200">
-      <div 
-        className="fixed top-0 left-0 w-full h-full bg-cover bg-center bg-no-repeat transition-all duration-1000 ease-in-out"
-        style={{ backgroundImage: `url(${bgUrl})`, filter: 'blur(5px)', transform: 'scale(1.1)', zIndex: 0 }}
-      />
+        {bgUrls.map((url, index) => (
+            url && (
+                <div 
+                    key={index}
+                    className="fixed top-0 left-0 w-full h-full bg-cover bg-center bg-no-repeat transition-opacity duration-1000 ease-in-out"
+                    style={{ 
+                        backgroundImage: `url(${url})`, 
+                        filter: 'blur(5px)', 
+                        transform: 'scale(1.1)', 
+                        zIndex: 0,
+                        opacity: index === activeBgIndex ? 1 : 0
+                    }}
+                />
+            )
+        ))}
       <div className="fixed top-0 left-0 w-full h-full bg-gradient-to-b from-slate-900/80 to-slate-900" style={{ zIndex: 1 }} />
       
       <div className="relative z-10 flex flex-col min-h-screen">
