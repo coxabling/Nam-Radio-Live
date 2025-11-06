@@ -73,9 +73,9 @@ const ContactPage: React.FC = () => {
               <div>
                   <h3 className="font-semibold text-white mb-3">Follow Us</h3>
                   <div className="flex items-center gap-4 text-slate-400">
-                      <a href="#" target="_blank" rel="noopener noreferrer" aria-label="Follow us on Twitter" className="p-3 bg-slate-800 hover:bg-slate-700 rounded-full transition-all text-white hover:scale-110"><TwitterIcon /></a>
-                      <a href="#" target="_blank" rel="noopener noreferrer" aria-label="Follow us on Facebook" className="p-3 bg-slate-800 hover:bg-slate-700 rounded-full transition-all text-white hover:scale-110"><FacebookIcon /></a>
-                      <a href="#" target="_blank" rel="noopener noreferrer" aria-label="Follow us on Instagram" className="p-3 bg-slate-800 hover:bg-slate-700 rounded-full transition-all text-white hover:scale-110"><InstagramIcon /></a>
+                      <a href="https://x.com/nam_radio" target="_blank" rel="noopener noreferrer" aria-label="Follow us on Twitter" className="p-3 bg-slate-800 hover:bg-slate-700 rounded-full transition-all text-white hover:scale-110"><TwitterIcon /></a>
+                      <a href="https://www.facebook.com/namradioglobal" target="_blank" rel="noopener noreferrer" aria-label="Follow us on Facebook" className="p-3 bg-slate-800 hover:bg-slate-700 rounded-full transition-all text-white hover:scale-110"><FacebookIcon /></a>
+                      <a href="https://www.instagram.com/nam_radio" target="_blank" rel="noopener noreferrer" aria-label="Follow us on Instagram" className="p-3 bg-slate-800 hover:bg-slate-700 rounded-full transition-all text-white hover:scale-110"><InstagramIcon /></a>
                   </div>
               </div>
           </div>
