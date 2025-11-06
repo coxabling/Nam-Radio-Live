@@ -80,6 +80,7 @@ export const WEEKLY_SCHEDULE: ApiScheduleItem[] = [
   { id: 201, start: `${tomorrow}T09:00:00Z`, end: `${tomorrow}T11:00:00Z`, name: 'Morning Fresh', description: 'The latest hits and trending music.', is_now: false, imageUrl: 'https://picsum.photos/seed/fresh/1920/1080' },
   { id: 202, start: `${tomorrow}T11:00:00Z`, end: `${tomorrow}T13:00:00Z`, name: 'Global Grooves', description: 'A journey through world music.', is_now: false, imageUrl: 'https://picsum.photos/seed/global/1920/1080' },
   { id: 203, start: `${tomorrow}T14:00:00Z`, end: `${tomorrow}T16:00:00Z`, name: 'Indie Spotlight', description: 'Featuring the best new independent artists.', is_now: false, imageUrl: 'https://picsum.photos/seed/indie/1920/1080' },
+  { id: 204, start: `${tomorrow}T20:00:00Z`, end: `${tomorrow}T21:00:00Z`, name: 'Local Spotlight', description: 'Championing the best music from Namibian artists.', is_now: false, imageUrl: 'https://picsum.photos/seed/spotlight/1920/1080' },
 ];
 
 export const RECENTLY_PLAYED: Song[] = [

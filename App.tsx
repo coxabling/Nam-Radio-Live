@@ -10,8 +10,8 @@ import { getSchedule, getNowPlaying } from './services/azuracastService';
 import UpcomingShows from './components/UpcomingShows';
 import ScrollToTopButton from './components/ScrollToTopButton';
 import About from './components/About';
-// FIX: Import DedicationRecord to support the new feature.
-import { ApiScheduleItem, Song, SongRequestRecord, Vibe, VibeType, ListeningStats, Badge, DedicationRecord } from './types';
+import { getLocalMusicEvents } from './services/geminiService';
+import { ApiScheduleItem, Song, SongRequestRecord, Vibe, VibeType, ListeningStats, Badge, DedicationRecord, MusicEvent } from './types';
 import LiveChat from './components/LiveChat';
 import ContactPage from './components/ContactPage';
 import MyStation, { BADGES } from './components/MyStation';
@@ -74,8 +74,10 @@ const App: React.FC = () => {
   const [favoriteDjs, setFavoriteDjs] = useState<number[]>([]);
   const [songRequests, setSongRequests] = useState<SongRequestRecord[]>([]);
   const [recentlyPlayed, setRecentlyPlayed] = useState<Song[]>([]);
-  // FIX: Add state to manage the latest song dedication for live announcements.
   const [latestDedication, setLatestDedication] = useState<DedicationRecord | null>(null);
+  const [events, setEvents] = useState<MusicEvent[]>([]);
+  const [isEventsLoading, setIsEventsLoading] = useState(true);
+  const [eventsError, setEventsError] = useState<string | null>(null);
   
   // Auth state
   const [users, setUsers] = useState<User[]>([]);
@@ -190,7 +192,21 @@ const App: React.FC = () => {
           localStorage.setItem(DAILY_REWIND_DATA_KEY, JSON.stringify({ date: todayStr, shows: [] }));
       }
     } catch (e) { console.error("Failed to parse daily rewind data from localStorage", e); }
-
+    
+    // Fetch events once on app load
+    const loadEvents = async () => {
+      setIsEventsLoading(true);
+      setEventsError(null);
+      try {
+        const fetchedEvents = await getLocalMusicEvents();
+        setEvents(fetchedEvents);
+      } catch (error: any) {
+        setEventsError(error.message || 'Failed to load local events.');
+      } finally {
+        setIsEventsLoading(false);
+      }
+    };
+    loadEvents();
   }, []);
   
   const openLoginModal = useCallback((redirectPath?: string) => {
@@ -657,11 +673,26 @@ const App: React.FC = () => {
               <Schedule schedule={schedule} loading={scheduleLoading} error={scheduleError} favoriteShows={favoriteShows} onToggleFavorite={toggleFavoriteShow} />
             </div>
             <div className="space-y-12">
-              {/* FIX: Pass the new onAddDedication handler to the SongRequest component. */}
               <SongRequest currentUser={currentUser} onAddSongRequest={handleAddSongRequest} onAddDedication={handleAddDedication} />
-              {/* FIX: Pass the latestDedication state to the LiveChat component. */}
-              <LiveChat liveNowPlaying={liveNowPlaying} recentlyPlayed={recentlyPlayed} currentUser={currentUser} dominantVibe={dominantVibe} onChatMessageSent={handleChatMessageSent} onVoteCast={handleVoteCast} latestDedication={latestDedication} />
-              <ContentHub />
+              <LiveChat 
+                liveNowPlaying={liveNowPlaying} 
+                recentlyPlayed={recentlyPlayed} 
+                currentUser={currentUser} 
+                dominantVibe={dominantVibe} 
+                onChatMessageSent={handleChatMessageSent} 
+                onVoteCast={handleVoteCast} 
+                latestDedication={latestDedication} 
+                events={events}
+                schedule={schedule}
+                userFavoriteShows={userFavoriteShows}
+                songRequests={songRequests}
+                listeningStats={listeningStats}
+              />
+              <ContentHub 
+                events={events}
+                isEventsLoading={isEventsLoading}
+                eventsError={eventsError}
+              />
               <Djs 
                 djs={DJS} 
                 schedule={schedule}

@@ -1,6 +1,6 @@
 import { GoogleGenAI, Type } from "@google/genai";
 // FIX: Import DedicationRecord for the new feature.
-import { Song, SongRequestRecord, DedicationRecord, MusicEvent } from '../types';
+import { Song, SongRequestRecord, DedicationRecord, MusicEvent, ApiScheduleItem } from '../types';
 
 const getGeminiApiKey = (): string => {
   const apiKey = process.env.API_KEY;
@@ -252,4 +252,78 @@ export const getAiDjIntroduction = async (djName: string, showName: string, djBi
     console.error("Error getting AI DJ introduction:", error);
     return `Up next, we've got the one and only ${djName} with ${showName}! You're not gonna want to miss it!`;
   }
+};
+
+export const getRankedShowRecommendations = async (
+    favoriteShowNames: string[],
+    allShows: ApiScheduleItem[],
+    songRequests: SongRequestRecord[],
+    likedSongs: string[],
+    dislikedSongs: string[]
+): Promise<ApiScheduleItem[]> => {
+    const ai = new GoogleGenAI({ apiKey: getGeminiApiKey() });
+    const otherShows = allShows.filter(show => !favoriteShowNames.includes(show.name));
+    if (otherShows.length === 0) return [];
+    
+    let prompt = `You are an AI recommendation engine for "Nam Radio Live". Analyze this listener's taste profile:\n`;
+     if (favoriteShowNames.length > 0) prompt += `- Favorite shows: "${favoriteShowNames.join(', ')}".\n`;
+     if (songRequests.length > 0) prompt += `- Requested songs: ${songRequests.map(r => `"${r.title}"`).join(', ')}.\n`;
+     if (likedSongs.length > 0) prompt += `- Likes these songs: "${likedSongs.join('", "')}".\n`;
+     if (dislikedSongs.length > 0) prompt += `- Dislikes these songs: "${dislikedSongs.join('", "')}".\n`;
+    
+    prompt += `Based on this, from the following list of shows, which one would be the absolute BEST single recommendation? Return ONLY the name of that show. Show list: "${otherShows.map(s => s.name).join('", "')}"`;
+
+    try {
+        const response = await ai.models.generateContent({ model: 'gemini-2.5-flash', contents: prompt });
+        const recommendedShowName = response.text.trim();
+        const recommendedShow = otherShows.find(s => s.name === recommendedShowName);
+        return recommendedShow ? [recommendedShow] : [];
+    } catch (error) {
+        console.error("Error getting ranked show recommendations:", error);
+        return []; // Return empty on error
+    }
+};
+
+export const generateShowScoutAlert = async (username: string, show: ApiScheduleItem, isFavorite: boolean): Promise<string> => {
+    const ai = new GoogleGenAI({ apiKey: getGeminiApiKey() });
+    let prompt: string;
+    if (isFavorite) {
+        prompt = `You are DJ Alex. Write a short, friendly heads-up for a listener named '${username}' that their favorite show, "${show.name}", is starting soon. Keep it personal and brief.`;
+    } else {
+        prompt = `You are DJ Alex. You've noticed a listener named '${username}' has great taste. Based on their listening habits, you think they'll love the upcoming show, "${show.name}", which is about "${show.description}". Write a short, personal recommendation encouraging them to check it out.`;
+    }
+    
+    try {
+        const response = await ai.models.generateContent({ model: 'gemini-2.5-flash', contents: prompt });
+        return response.text;
+    } catch (error) {
+        console.error("Error generating show scout alert:", error);
+        return isFavorite 
+            ? `Hey ${username}! Just a heads-up, your favorite show "${show.name}" is starting soon!`
+            : `Hey ${username}! Based on your vibe, I think you'll really dig the next show, "${show.name}". Check it out!`;
+    }
+};
+
+export const generateLocalSpotlightPromo = async (): Promise<string> => {
+  try {
+    const ai = new GoogleGenAI({ apiKey: getGeminiApiKey() });
+    const prompt = `You are DJ Alex, the AI host of Nam Radio Live. The station has a weekly show called "Local Spotlight" that features Namibian artists. Write a short, engaging message for the live chat to source suggestions from the community. Ask listeners which Namibian artists they think should be featured on the next show.`;
+    const response = await ai.models.generateContent({ model: 'gemini-2.5-flash', contents: prompt });
+    return response.text;
+  } catch (error) {
+    console.error("Error generating Local Spotlight promo:", error);
+    return "Who's your favorite local artist? Let us know who we should play on our 'Local Spotlight' show!";
+  }
+};
+
+export const generateEventShoutout = async (song: Song, event: MusicEvent): Promise<string> => {
+    try {
+        const ai = new GoogleGenAI({ apiKey: getGeminiApiKey() });
+        const prompt = `You are DJ Alex, the AI host for Nam Radio Live. The song "${song.title}" by ${song.artist} just played. You've noticed this artist has an upcoming local event. Announce their event: "${event.eventName}" at ${event.venue} on ${event.date}. Keep it exciting and encourage listeners to check the Events Hub for more details.`;
+        const response = await ai.models.generateContent({ model: 'gemini-2.5-flash', contents: prompt });
+        return response.text;
+    } catch (error) {
+        console.error("Error generating event shoutout:", error);
+        return `Great track from ${song.artist}! By the way, they're playing live at ${event.venue} on ${event.date}. Check the Events Hub for details!`;
+    }
 };

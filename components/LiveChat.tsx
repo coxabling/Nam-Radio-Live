@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-// FIX: Import DedicationRecord and generateDedicationShoutout for the new feature.
-import { Message, PollMessage, Song, TakeoverMessage, GameMessage, Vibe, DedicationRecord } from '../types';
-import { getAiChatResponse, generateTakeoverAnnouncement, generateTakeoverWinnerShoutout, generateSongClue, generateDjChitchat, generateVibeCommentary, generateDedicationShoutout } from '../services/geminiService';
+import { Message, PollMessage, Song, TakeoverMessage, GameMessage, Vibe, DedicationRecord, MusicEvent, ApiScheduleItem, SongRequestRecord, ListeningStats, PersonalizedMessage } from '../types';
+import { getAiChatResponse, generateTakeoverAnnouncement, generateTakeoverWinnerShoutout, generateSongClue, generateDjChitchat, generateVibeCommentary, generateDedicationShoutout, getRankedShowRecommendations, generateShowScoutAlert, generateLocalSpotlightPromo, generateEventShoutout } from '../services/geminiService';
 import { TAKEOVER_SONGS } from '../constants';
 
 const djPolls: Omit<PollMessage, 'id' | 'author' | 'isDj' | 'type'>[] = [
@@ -18,14 +17,18 @@ interface User {
 }
 
 interface LiveChatProps {
-  liveNowPlaying: { song: Song };
+  liveNowPlaying: { song: Song; show: ApiScheduleItem | null };
   recentlyPlayed: Song[];
   currentUser: User | null;
   dominantVibe: Vibe | null;
   onChatMessageSent: () => void;
   onVoteCast: () => void;
-  // FIX: Add a prop to receive the latest dedication.
   latestDedication: DedicationRecord | null;
+  events: MusicEvent[];
+  schedule: ApiScheduleItem[];
+  userFavoriteShows: ApiScheduleItem[];
+  songRequests: SongRequestRecord[];
+  listeningStats: ListeningStats;
 }
 
 type FilterType = 'dj' | 'polls' | 'games' | 'takeovers';
@@ -33,7 +36,7 @@ type FilterType = 'dj' | 'polls' | 'games' | 'takeovers';
 const GEMINI_CALL_LIMIT = 50;
 const GEMINI_LIMIT_KEY = 'nam-radio-gemini-limit';
 
-const LiveChat: React.FC<LiveChatProps> = ({ recentlyPlayed, currentUser, dominantVibe, onChatMessageSent, onVoteCast, latestDedication }) => {
+const LiveChat: React.FC<LiveChatProps> = ({ liveNowPlaying, recentlyPlayed, currentUser, dominantVibe, onChatMessageSent, onVoteCast, latestDedication, events, schedule, userFavoriteShows, songRequests, listeningStats }) => {
   const [messages, setMessages] = useState<Message[]>([{ id: 1, type: 'text', author: 'DJ Alex', text: 'Welcome to the live chat! Drop a message and say hi!', isDj: true }]);
   const [newMessage, setNewMessage] = useState('');
   const [userVotes, setUserVotes] = useState<Record<number, number>>({});
@@ -47,6 +50,67 @@ const LiveChat: React.FC<LiveChatProps> = ({ recentlyPlayed, currentUser, domina
     takeovers: true,
   });
   const dedicationAnnouncedRef = useRef(false);
+  const scoutedShowIds = useRef<Set<number>>(new Set());
+
+  // AI Show Scout Logic
+  useEffect(() => {
+    const scoutInterval = 3 * 60 * 1000; // Check every 3 minutes
+    
+    const showScout = async () => {
+        if (!currentUser || schedule.length === 0) return;
+
+        const now = new Date();
+        const thirtyMinsFromNow = new Date(now.getTime() + 30 * 60 * 1000);
+        const favShowNames = userFavoriteShows.map(s => s.name);
+
+        const upcomingShows = schedule.filter(s => {
+            const startTime = new Date(s.start);
+            return startTime > now && startTime <= thirtyMinsFromNow && !scoutedShowIds.current.has(s.id);
+        });
+
+        if (upcomingShows.length === 0) return;
+        
+        // Prioritize favorited shows
+        const upcomingFavorite = upcomingShows.find(s => favShowNames.includes(s.name));
+        
+        let alertToShow: ApiScheduleItem | null = upcomingFavorite || null;
+        let isFavorite = !!upcomingFavorite;
+        
+        // If no upcoming favorite, check for a recommendation
+        if (!alertToShow) {
+            const recommendations = await getRankedShowRecommendations(favShowNames, upcomingShows, songRequests, listeningStats.likedSongs, listeningStats.dislikedSongs);
+            if (recommendations.length > 0) {
+                alertToShow = recommendations[0];
+            }
+        }
+
+        if (alertToShow) {
+            const { count } = getGeminiCallCount();
+            if (count >= GEMINI_CALL_LIMIT) return;
+            incrementGeminiCallCount();
+
+            setIsDjTyping(true);
+            const alertText = await generateShowScoutAlert(currentUser.username, alertToShow, isFavorite);
+            setIsDjTyping(false);
+            
+            const scoutMessage: PersonalizedMessage = {
+                id: Date.now(),
+                type: 'personalized',
+                author: 'DJ Alex',
+                text: alertText,
+                isDj: true,
+                recipient: currentUser.username,
+            };
+            setMessages(prev => [...prev, scoutMessage]);
+            scoutedShowIds.current.add(alertToShow.id);
+        }
+    };
+    
+    const timer = setInterval(showScout, scoutInterval);
+    return () => clearInterval(timer);
+
+  }, [currentUser, schedule, userFavoriteShows, songRequests, listeningStats]);
+
 
   // Announce dedications
   useEffect(() => {
@@ -95,6 +159,9 @@ const LiveChat: React.FC<LiveChatProps> = ({ recentlyPlayed, currentUser, domina
     if (Object.values(filters).every(v => v)) return messages;
     
     return messages.filter(msg => {
+      if (msg.type === 'personalized') {
+          return msg.recipient === userHandle;
+      }
       if (msg.author === userHandle) return true;
       if (msg.type === 'poll') return filters.polls;
       if (msg.type === 'game') return filters.games;
@@ -187,14 +254,23 @@ const LiveChat: React.FC<LiveChatProps> = ({ recentlyPlayed, currentUser, domina
                 isDj: true,
             };
             setMessages(prev => [...prev, gameMessage]);
-        } else if (chance < 0.65) { // 20% chance for chit-chat
+        } else if (chance < 0.65) { // 20% chance for chit-chat or event shoutout
             if (recentlyPlayed.length > 0) {
                 if (getGeminiCallCount().count >= GEMINI_CALL_LIMIT) { return; }
+                const lastPlayedSong = recentlyPlayed[0];
+                const artistName = lastPlayedSong.artist;
+                const upcomingEvent = events.find(event => event.eventName.toLowerCase().includes(artistName.toLowerCase()));
+
                 incrementGeminiCallCount();
                 setIsDjTyping(true);
-                const chitchat = await generateDjChitchat(recentlyPlayed);
+                let text: string;
+                if (upcomingEvent) {
+                    text = await generateEventShoutout(lastPlayedSong, upcomingEvent);
+                } else {
+                    text = await generateDjChitchat(recentlyPlayed);
+                }
                 setIsDjTyping(false);
-                setMessages(prev => [...prev, { id: Date.now(), type: 'text', author: 'DJ Alex', text: chitchat, isDj: true }]);
+                setMessages(prev => [...prev, { id: Date.now(), type: 'text', author: 'DJ Alex', text, isDj: true }]);
             }
         } else if (chance < 0.80 && dominantVibe) { // 15% chance for vibe commentary
              if (getGeminiCallCount().count >= GEMINI_CALL_LIMIT) { return; }
@@ -203,7 +279,15 @@ const LiveChat: React.FC<LiveChatProps> = ({ recentlyPlayed, currentUser, domina
              const vibeComment = await generateVibeCommentary(dominantVibe.label);
              setIsDjTyping(false);
              setMessages(prev => [...prev, { id: Date.now(), type: 'text', author: 'DJ Alex', text: vibeComment, isDj: true }]);
+        } else if (chance < 0.90) { // 10% chance for Local Spotlight promo
+            if (getGeminiCallCount().count >= GEMINI_CALL_LIMIT) { return; }
+            incrementGeminiCallCount();
+            setIsDjTyping(true);
+            const promoText = await generateLocalSpotlightPromo();
+            setIsDjTyping(false);
+            setMessages(prev => [...prev, { id: Date.now(), type: 'text', author: 'DJ Alex', text: promoText, isDj: true }]);
         }
+
 
         const nextPostDelay = Math.random() * (90000 - 45000) + 45000;
         djMessageTimer.current = window.setTimeout(postDjEvent, nextPostDelay);
@@ -211,7 +295,7 @@ const LiveChat: React.FC<LiveChatProps> = ({ recentlyPlayed, currentUser, domina
 
     djMessageTimer.current = window.setTimeout(postDjEvent, 25000); 
     return () => { if (djMessageTimer.current) clearTimeout(djMessageTimer.current) };
-  }, [recentlyPlayed, dominantVibe]); 
+  }, [recentlyPlayed, dominantVibe, events]); 
   
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -315,6 +399,14 @@ const LiveChat: React.FC<LiveChatProps> = ({ recentlyPlayed, currentUser, domina
 
       <div className="flex-grow bg-slate-800/50 rounded-lg p-4 overflow-y-auto mb-4 space-y-4 shadow-inner-lg">
         {filteredMessages.map(msg => {
+          if (msg.type === 'personalized') {
+              return (
+                  <div key={msg.id} className="p-3 bg-indigo-900/70 rounded-lg border-l-4 border-indigo-400 animate-fade-in">
+                      <span className="text-xs font-bold block text-indigo-200">For your eyes only, {msg.recipient}:</span>
+                      <p className="text-sm text-white break-words mt-1">"{msg.text}"</p>
+                  </div>
+              )
+          }
           if (msg.type === 'game') {
               return (
                 <div key={msg.id} className="p-3 bg-gradient-to-br from-indigo-800 to-purple-900 rounded-lg text-center border-2 border-indigo-500 shadow-lg animate-fade-in">

@@ -77,12 +77,22 @@ export interface TakeoverMessage {
   isDj: boolean;
 }
 
+export interface PersonalizedMessage {
+  id: number;
+  type: 'personalized';
+  author: string;
+  text: string;
+  isDj: boolean;
+  recipient: string; // username
+}
 
-export type Message = TextMessage | PollMessage | GameMessage | TakeoverMessage;
+
+export type Message = TextMessage | PollMessage | GameMessage | TakeoverMessage | PersonalizedMessage;
 
 export interface Song {
   title: string;
   artist: string;
+  origin?: string;
 }
 
 export interface SongRequestRecord {

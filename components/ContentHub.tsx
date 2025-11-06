@@ -1,11 +1,15 @@
-
-
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { Article, MusicEvent } from '../types';
-import { getArticleSummary, getLocalMusicEvents } from '../services/geminiService';
+import { getArticleSummary } from '../services/geminiService';
 import { fetchNews, fetchBlogPosts } from '../services/newsService';
 
-const ContentHub: React.FC = () => {
+interface ContentHubProps {
+  events: MusicEvent[];
+  isEventsLoading: boolean;
+  eventsError: string | null;
+}
+
+const ContentHub: React.FC<ContentHubProps> = ({ events, isEventsLoading, eventsError }) => {
   const [activeHubTab, setActiveHubTab] = useState<'news' | 'blog' | 'events'>('news');
   
   // News State
@@ -19,11 +23,6 @@ const ContentHub: React.FC = () => {
   const [activeBlogCategory, setActiveBlogCategory] = useState<string>('All');
   const [isBlogLoading, setIsBlogLoading] = useState(true);
   const [blogError, setBlogError] = useState<string | null>(null);
-  
-  // Events State
-  const [events, setEvents] = useState<MusicEvent[]>([]);
-  const [isEventsLoading, setIsEventsLoading] = useState(true);
-  const [eventsError, setEventsError] = useState<string | null>(null);
 
   // Summary State
   const [summaries, setSummaries] = useState<Record<string, string>>({});
@@ -81,28 +80,6 @@ const ContentHub: React.FC = () => {
       loadBlogPosts();
     }
   }, [activeHubTab, blogArticles.length]);
-  
-  // Fetch Events Data (only once)
-  useEffect(() => {
-    const loadEvents = async () => {
-      if (events.length > 0) return; // Don't refetch
-      setIsEventsLoading(true);
-      setEventsError(null);
-      try {
-        const fetchedEvents = await getLocalMusicEvents();
-        setEvents(fetchedEvents);
-      } catch (error: any) {
-        setEventsError(error.message || 'Failed to load local events.');
-      } finally {
-        setIsEventsLoading(false);
-      }
-    };
-
-    if (activeHubTab === 'events') {
-      loadEvents();
-    }
-  }, [activeHubTab, events.length]);
-
 
   const blogCategories = useMemo(() => ['All', ...new Set(blogArticles.flatMap(a => a.category ? [a.category] : []))], [blogArticles]);
 
