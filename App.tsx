@@ -19,6 +19,7 @@ import ContentHub from './components/ContentHub';
 import LoginModal from './components/LoginModal';
 import Toast from './components/Toast';
 import AdminDashboard from './components/AdminDashboard';
+import InstallPwaButton from './components/InstallPwaButton';
 
 interface User {
   username: string;
@@ -96,6 +97,9 @@ const App: React.FC = () => {
   // Gamification UI State
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const earnedBadgesRef = useRef<Set<string>>(new Set());
+
+  // PWA Install state
+  const [installPrompt, setInstallPrompt] = useState<any>(null);
 
 
   // Live broadcast state
@@ -403,6 +407,20 @@ const App: React.FC = () => {
   
   }, [listeningStats, songRequests, currentUser]);
 
+  // PWA Install prompt listener
+  useEffect(() => {
+    const handleBeforeInstallPrompt = (e: Event) => {
+      e.preventDefault();
+      setInstallPrompt(e);
+    };
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    };
+  }, []);
+
   // Effect to clear toast message
   useEffect(() => {
     if (toastMessage) {
@@ -607,6 +625,21 @@ const App: React.FC = () => {
     });
   }, [currentUser]);
 
+  const handleInstallClick = () => {
+    if (!installPrompt) {
+      return;
+    }
+    installPrompt.prompt();
+    installPrompt.userChoice.then((choiceResult: { outcome: string }) => {
+      if (choiceResult.outcome === 'accepted') {
+        console.log('User accepted the install prompt');
+      } else {
+        console.log('User dismissed the install prompt');
+      }
+      setInstallPrompt(null);
+    });
+  };
+
   const upcomingShowsToday = useMemo(() => {
     if (!schedule || schedule.length === 0) return [];
     const now = new Date();
@@ -671,7 +704,15 @@ const App: React.FC = () => {
               />
               <UpcomingShows shows={upcomingShowsToday} loading={scheduleLoading} error={scheduleError} favoriteShows={favoriteShows} onToggleFavorite={toggleFavoriteShow} />
               <About />
-              <Schedule schedule={schedule} loading={scheduleLoading} error={scheduleError} favoriteShows={favoriteShows} onToggleFavorite={toggleFavoriteShow} />
+              <Schedule 
+                schedule={schedule} 
+                loading={scheduleLoading} 
+                error={scheduleError} 
+                favoriteShows={favoriteShows} 
+                onToggleFavorite={toggleFavoriteShow}
+                songRequests={songRequests}
+                listeningStats={listeningStats}
+              />
             </div>
             <div className="space-y-12">
               <SongRequest currentUser={currentUser} onAddSongRequest={handleAddSongRequest} onAddDedication={handleAddDedication} />
@@ -732,6 +773,7 @@ const App: React.FC = () => {
         <Footer />
       </div>
       <ScrollToTopButton />
+      <InstallPwaButton onInstallClick={handleInstallClick} isVisible={!!installPrompt} />
       {isLoginModalOpen && (
         <LoginModal
           onClose={closeLoginModal}

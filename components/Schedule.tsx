@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ApiScheduleItem, SongOfTheWeek } from '../types';
+import { ApiScheduleItem, SongOfTheWeek, SongRequestRecord, ListeningStats } from '../types';
 import ShareModal from './ShareModal';
 import { getSongOfTheWeek } from '../services/geminiService';
 
@@ -9,6 +9,8 @@ interface ScheduleProps {
   error: string | null;
   favoriteShows: number[];
   onToggleFavorite: (showId: number) => void;
+  songRequests: SongRequestRecord[];
+  listeningStats: ListeningStats;
 }
 
 const StarIcon = ({ filled }: { filled: boolean }) => (
@@ -24,7 +26,7 @@ const ShareIcon = () => (
 );
 
 
-const Schedule: React.FC<ScheduleProps> = ({ schedule, loading, error, favoriteShows, onToggleFavorite }) => {
+const Schedule: React.FC<ScheduleProps> = ({ schedule, loading, error, favoriteShows, onToggleFavorite, songRequests, listeningStats }) => {
   const [showToShare, setShowToShare] = useState<ApiScheduleItem | null>(null);
   const [songOfTheWeek, setSongOfTheWeek] = useState<SongOfTheWeek | null>(null);
   const [isSotwLoading, setIsSotwLoading] = useState(true);
@@ -51,7 +53,7 @@ const Schedule: React.FC<ScheduleProps> = ({ schedule, loading, error, favoriteS
       setIsSotwLoading(true);
       setSotwError(null);
       try {
-        const data = await getSongOfTheWeek();
+        const data = await getSongOfTheWeek(songRequests, listeningStats);
         setSongOfTheWeek(data);
         sessionStorage.setItem(SOTW_CACHE_KEY, JSON.stringify({ data, timestamp: Date.now() }));
       } catch (err: any) {
@@ -62,7 +64,7 @@ const Schedule: React.FC<ScheduleProps> = ({ schedule, loading, error, favoriteS
     };
 
     fetchSotw();
-  }, []);
+  }, [songRequests, listeningStats]);
 
   const groupShowsByDay = (shows: ApiScheduleItem[]) => {
     return shows.reduce((acc, show) => {

@@ -1,6 +1,6 @@
 import { GoogleGenAI, Type } from "@google/genai";
 // FIX: Import DedicationRecord for the new feature.
-import { Song, SongRequestRecord, DedicationRecord, MusicEvent, ApiScheduleItem, SongOfTheWeek } from '../types';
+import { Song, SongRequestRecord, DedicationRecord, MusicEvent, ApiScheduleItem, SongOfTheWeek, ListeningStats } from '../types';
 
 const getGeminiApiKey = (): string => {
   const apiKey = process.env.API_KEY;
@@ -51,15 +51,16 @@ export const generateDjChitchat = async (recentlyPlayed: Song[]): Promise<string
     }
 };
 
+// FIX: Add missing getSongFunFact function.
 export const getSongFunFact = async (song: Song): Promise<string> => {
   try {
     const ai = new GoogleGenAI({ apiKey: getGeminiApiKey() });
-    const prompt = `You are a charismatic radio DJ. Tell me a fun fact or a short, interesting story about the song '${song.title}' by ${song.artist}. Keep it concise and engaging, like you're sharing a cool piece of trivia on air.`;
-    const response = await ai.models.generateContent({ model: 'gemini-2.5-flash', contents: prompt, config: { tools: [{googleSearch: {}}] }});
+    const prompt = `You are a knowledgeable and fun radio DJ. A listener wants to know a fun fact about the song "${song.title}" by ${song.artist}. Provide a short, interesting fact (1-2 sentences) suitable for a radio shoutout.`;
+    const response = await ai.models.generateContent({ model: 'gemini-2.5-flash', contents: prompt });
     return response.text;
   } catch (error) {
     console.error("Error fetching song fun fact:", error);
-    return "Couldn't dig up any trivia on that one, but it's a certified banger!";
+    return "Looks like my encyclopedia of music facts is on a coffee break! Try again in a bit.";
   }
 };
 
@@ -123,6 +124,52 @@ export const generateTakeoverAnnouncement = async (songA: Song, songB: Song): Pr
         console.error("Error generating takeover announcement:", error);
         return `It's time for a LISTENER TAKEOVER! Vote now: "${songA.title}" or "${songB.title}"?`;
     }
+};
+
+export const generateTakeoverOptions = async (context: { show?: ApiScheduleItem | null, lastSong?: Song | null }): Promise<[Song, Song]> => {
+  const ai = new GoogleGenAI({ apiKey: getGeminiApiKey() });
+  
+  let prompt = `You are an AI Music Director for Nam Radio Live. You need to select two great songs for a "Listener Takeover" vote. The songs should be well-known enough for people to have an opinion on them. `;
+
+  if (context.show) {
+    prompt += `The current show is "${context.show.name}", which is about "${context.show.description}". Select two songs that fit the vibe of this show.`;
+  } else if (context.lastSong) {
+    prompt += `The station is on auto-DJ. The last song played was "${context.lastSong.title}" by ${context.lastSong.artist}. Select two songs that have a similar genre or mood.`;
+  } else {
+    prompt += `The station is on auto-DJ. Select two popular and contrasting songs that would create a fun vote.`;
+  }
+
+  prompt += ` Return your answer as a JSON array of two objects, where each object has "title" and "artist" keys.`;
+
+  try {
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: prompt,
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.ARRAY,
+          items: {
+            type: Type.OBJECT,
+            properties: {
+              title: { type: Type.STRING },
+              artist: { type: Type.STRING },
+            },
+            required: ["title", "artist"],
+          },
+        },
+      },
+    });
+
+    const jsonText = response.text.trim();
+    const songs = JSON.parse(jsonText);
+    if (songs.length < 2) throw new Error("AI returned less than 2 songs.");
+    return songs as [Song, Song];
+
+  } catch (error) {
+    console.error("Error generating takeover options:", error);
+    throw new Error("Failed to get AI-curated takeover options.");
+  }
 };
 
 export const generateTakeoverWinnerShoutout = async (winningSong: Song): Promise<string> => {
@@ -251,10 +298,44 @@ For each event found, provide the following details. Prioritize official sources
   }
 };
 
-export const getSongOfTheWeek = async (): Promise<SongOfTheWeek> => {
+export const getSongOfTheWeek = async (
+  songRequests: SongRequestRecord[], 
+  listeningStats: ListeningStats
+): Promise<SongOfTheWeek> => {
   try {
     const ai = new GoogleGenAI({ apiKey: getGeminiApiKey() });
-    const prompt = `You are an expert music curator and DJ for "Nam Radio Live", an online station based in Namibia that plays a vibrant mix of global hits, African grooves, and indie gems. Your task is to select a "Song of the Week". Pick a song that is either currently trending, a classic hit that fits the station's vibe, or an amazing track from an emerging African artist. Provide a short, exciting, one-paragraph description explaining why this song is a must-listen.`;
+
+    const getTopItems = (items: string[], count: number) => {
+        if (!items.length) return [];
+        const frequency: Record<string, number> = {};
+        for (const item of items) {
+            frequency[item] = (frequency[item] || 0) + 1;
+        }
+        return Object.entries(frequency)
+            .sort(([, a], [, b]) => b - a)
+            .slice(0, count)
+            .map(([name]) => name);
+    };
+
+    const topRequests = getTopItems(songRequests.map(r => `${r.title} by ${r.artist}`), 5);
+    const topLikes = getTopItems(listeningStats.likedSongs, 5);
+
+    let prompt = `You are an expert music curator and DJ for "Nam Radio Live", an online station based in Namibia that plays a vibrant mix of global hits, African grooves, and indie gems. Your task is to select a "Song of the Week".
+
+    To make your decision, you must consider the following data about our listeners' recent activity:
+    `;
+
+    if (topRequests.length > 0) {
+      prompt += `\n- Most Requested Songs: "${topRequests.join('", "')}"`;
+    }
+
+    if (topLikes.length > 0) {
+      prompt += `\n- Most Liked Songs: "${topLikes.join('", "')}"`;
+    }
+
+    prompt += `\n\nUse this listener data, along with your knowledge of general music trends (feel free to use web search), to select ONE song that would be a perfect fit for our "Song of the Week". It could be one of the songs from the lists, or a different song that matches the vibe.
+
+    After selecting the song, provide a short, exciting, one-paragraph description explaining why this song is a must-listen for our audience.`;
 
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash',

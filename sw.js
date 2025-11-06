@@ -29,6 +29,7 @@ const urlsToCache = [
   '/components/DailyRewindModal.tsx',
   '/components/Toast.tsx',
   '/components/AdminDashboard.tsx',
+  '/components/InstallPwaButton.tsx',
   'logo192.svg',
   'logo512.svg'
 ];
