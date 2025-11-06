@@ -66,16 +66,18 @@ export const getSongFunFact = async (song: Song): Promise<string> => {
 export const getShowRecommendations = async (
     favoriteShowNames: string[],
     allShowNames: string[],
-    songRequests: SongRequestRecord[]
+    songRequests: SongRequestRecord[],
+    likedSongs: string[],
+    dislikedSongs: string[]
 ): Promise<string> => {
-    if (favoriteShowNames.length === 0 && songRequests.length === 0) {
-        return "You haven't favorited any shows or requested any songs yet! Star a show on the main schedule or request a song, then come back here for your personalized recommendations.";
+    if (favoriteShowNames.length === 0 && songRequests.length === 0 && likedSongs.length === 0) {
+        return "You haven't favorited any shows or rated any songs yet! Star a show, request a song, or give a thumbs-up to a recently played track to get your personalized recommendations.";
     }
     try {
         const ai = new GoogleGenAI({ apiKey: getGeminiApiKey() });
         const otherShows = allShowNames.filter(show => !favoriteShowNames.includes(show));
 
-        let prompt = `You are "DJ Alex", Nam Radio Live's AI curator, known for your great taste and finding hidden gems. A listener has this profile:\n`;
+        let prompt = `You are "DJ Alex", Nam Radio Live's AI curator, known for your great taste and finding hidden gems. A listener has this taste profile:\n`;
         if (favoriteShowNames.length > 0) {
             prompt += `- Their favorite shows are: "${favoriteShowNames.join(', ')}".\n`;
         }
@@ -83,7 +85,13 @@ export const getShowRecommendations = async (
             const requestedSongs = songRequests.map(r => `"${r.title}" by ${r.artist}`).join(', ');
             prompt += `- They've recently requested: ${requestedSongs}.\n`;
         }
-        prompt += `Looking at our other shows ("${otherShows.join(', ')}"), pick up to 3 that you think they'll absolutely love. Give a short, punchy, one-sentence reason for each, like you're talking to them on air. Make it exciting! Format it as a simple list with show names in bold.`;
+        if (likedSongs.length > 0) {
+            prompt += `- They LIKE these songs: "${likedSongs.join('", "')}".\n`;
+        }
+        if (dislikedSongs.length > 0) {
+            prompt += `- They DISLIKE these songs: "${dislikedSongs.join('", "')}".\n`;
+        }
+        prompt += `Based on this, look at our other shows ("${otherShows.join(', ')}") and pick up to 3 that you think they'll absolutely love. Give a short, punchy, one-sentence reason for each, like you're talking to them on air. Make it exciting! Format it as a simple list with show names in bold.`;
         
         const response = await ai.models.generateContent({ model: 'gemini-2.5-flash', contents: prompt });
         return response.text;

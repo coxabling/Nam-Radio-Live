@@ -127,6 +127,9 @@ export interface ListeningStats {
   hasListenedPostMidnight: boolean; // For Night Owl badge
   chatMessagesSent: number;
   votesCast: number;
+  points: number;
+  likedSongs: string[]; // Stored as "Title - Artist"
+  dislikedSongs: string[]; // Stored as "Title - Artist"
 }
 
 export interface Badge {

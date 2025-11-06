@@ -59,6 +59,9 @@ const initialListeningStats: ListeningStats = {
   hasListenedPostMidnight: false,
   chatMessagesSent: 0,
   votesCast: 0,
+  points: 0,
+  likedSongs: [],
+  dislikedSongs: [],
 };
 
 const App: React.FC = () => {
@@ -163,6 +166,10 @@ const App: React.FC = () => {
             // Ensure new stats properties exist
             if (!loadedStats.chatMessagesSent) loadedStats.chatMessagesSent = 0;
             if (!loadedStats.votesCast) loadedStats.votesCast = 0;
+            if (!loadedStats.points) loadedStats.points = 0;
+            if (!loadedStats.likedSongs) loadedStats.likedSongs = [];
+            if (!loadedStats.dislikedSongs) loadedStats.dislikedSongs = [];
+
 
             setListeningStats(loadedStats);
         }
@@ -182,7 +189,7 @@ const App: React.FC = () => {
       } else {
           localStorage.setItem(DAILY_REWIND_DATA_KEY, JSON.stringify({ date: todayStr, shows: [] }));
       }
-    } catch (e) { console.error("Failed to parse daily rewind data", e); }
+    } catch (e) { console.error("Failed to parse daily rewind data from localStorage", e); }
 
   }, []);
   
@@ -315,12 +322,17 @@ const App: React.FC = () => {
         setListeningStats(prevStats => {
           const now = new Date();
           const currentHour = now.getHours();
+          const pointsPer5Min = 2;
+          const secondsPerInterval = trackingInterval / 1000;
+          const intervalsPer5Min = (5 * 60) / secondsPerInterval;
+          const pointsForInterval = pointsPer5Min / intervalsPer5Min;
           
           const newStats: ListeningStats = {
             ...prevStats,
             totalListeningTime: prevStats.totalListeningTime + (trackingInterval / 1000),
             monthlyListeningTime: prevStats.monthlyListeningTime + (trackingInterval / 1000),
             lastUpdated: now.toISOString(),
+            points: (prevStats.points || 0) + pointsForInterval,
           };
 
           if (liveNowPlaying.show?.name) {
@@ -505,6 +517,7 @@ const App: React.FC = () => {
   }, [favoriteDjs]);
 
   const handleAddSongRequest = useCallback((request: SongRequestRecord) => {
+    setListeningStats(prev => ({ ...prev, points: (prev.points || 0) + 50 }));
     const updatedRequests = [request, ...songRequests].slice(0, 10);
     setSongRequests(updatedRequests);
     localStorage.setItem(REQUESTS_KEY, JSON.stringify(updatedRequests));
@@ -512,6 +525,7 @@ const App: React.FC = () => {
 
   // FIX: Add a handler to receive dedication data from the SongRequest component.
   const handleAddDedication = useCallback((dedication: DedicationRecord) => {
+    setListeningStats(prev => ({ ...prev, points: (prev.points || 0) + 75 }));
     setLatestDedication(dedication);
     // Clear the dedication after some time so it's not repeatedly announced on re-renders.
     setTimeout(() => setLatestDedication(null), 60000); // 1 minute
@@ -532,12 +546,48 @@ const App: React.FC = () => {
 
   const handleChatMessageSent = useCallback(() => {
     if (!currentUser) return;
-    setListeningStats(prev => ({...prev, chatMessagesSent: (prev.chatMessagesSent || 0) + 1 }));
+    setListeningStats(prev => ({...prev, chatMessagesSent: (prev.chatMessagesSent || 0) + 1, points: (prev.points || 0) + 5 }));
   }, [currentUser]);
 
   const handleVoteCast = useCallback(() => {
     if (!currentUser) return;
-    setListeningStats(prev => ({...prev, votesCast: (prev.votesCast || 0) + 1 }));
+    setListeningStats(prev => ({...prev, votesCast: (prev.votesCast || 0) + 1, points: (prev.points || 0) + 10 }));
+  }, [currentUser]);
+
+  const handleSongRating = useCallback((song: Song, rating: 'like' | 'dislike') => {
+    if (!currentUser) return;
+
+    const songId = `${song.title} - ${song.artist}`;
+    
+    setListeningStats(prev => {
+        const newStats = { ...prev };
+        const wasLiked = newStats.likedSongs.includes(songId);
+        const wasDisliked = newStats.dislikedSongs.includes(songId);
+
+        // Remove from both lists first to handle toggling
+        newStats.likedSongs = newStats.likedSongs.filter(id => id !== songId);
+        newStats.dislikedSongs = newStats.dislikedSongs.filter(id => id !== songId);
+
+        let pointsAwarded = false;
+
+        if (rating === 'like') {
+            if (!wasLiked) {
+                newStats.likedSongs.push(songId);
+                pointsAwarded = true;
+            }
+        } else if (rating === 'dislike') {
+            if (!wasDisliked) {
+                newStats.dislikedSongs.push(songId);
+                pointsAwarded = true;
+            }
+        }
+        
+        if (pointsAwarded && !wasLiked && !wasDisliked) {
+            newStats.points = (newStats.points || 0) + 15; // Award points only on the first rating of a song
+        }
+
+        return newStats;
+    });
   }, [currentUser]);
 
   const upcomingShowsToday = useMemo(() => {
@@ -590,7 +640,18 @@ const App: React.FC = () => {
         return (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 md:gap-12">
             <div className="lg:col-span-2 space-y-12">
-              <NowPlaying liveNowPlaying={liveNowPlaying} recentlyPlayed={recentlyPlayed} vibes={vibes} userVibe={userVibe} onVibeVote={handleVibeVote} nowPlayingError={nowPlayingError} />
+              <NowPlaying 
+                liveNowPlaying={liveNowPlaying} 
+                recentlyPlayed={recentlyPlayed} 
+                vibes={vibes} 
+                userVibe={userVibe} 
+                onVibeVote={handleVibeVote} 
+                nowPlayingError={nowPlayingError}
+                likedSongs={listeningStats.likedSongs}
+                dislikedSongs={listeningStats.dislikedSongs}
+                onSongRating={handleSongRating}
+                isLoggedIn={!!currentUser}
+              />
               <UpcomingShows shows={upcomingShowsToday} loading={scheduleLoading} error={scheduleError} favoriteShows={favoriteShows} onToggleFavorite={toggleFavoriteShow} />
               <About />
               <Schedule schedule={schedule} loading={scheduleLoading} error={scheduleError} favoriteShows={favoriteShows} onToggleFavorite={toggleFavoriteShow} />

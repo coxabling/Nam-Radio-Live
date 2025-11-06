@@ -1,6 +1,7 @@
 
 
 
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { Dj, ApiScheduleItem, SongRequestRecord, ListeningStats, Badge } from '../types';
 import { getShowRecommendations, generateDailyRewind } from '../services/geminiService';
@@ -32,6 +33,7 @@ const TastemakerIcon = ({ className = "h-8 w-8" }: {className?: string}) => <svg
 const ChatterboxIcon = ({ className = "h-8 w-8" }: { className?: string }) => <svg xmlns="http://www.w3.org/2000/svg" className={className} viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M18 5v8a2 2 0 01-2 2h-5l-5 4v-4H4a2 2 0 01-2-2V5a2 2 0 012-2h12a2 2 0 012 2zM7 8H5v2h2V8zm2 0h2v2H9V8zm6 0h-2v2h2V8z" clipRule="evenodd" /></svg>;
 const EngagedIcon = ({ className = "h-8 w-8" }: { className?: string }) => <svg xmlns="http://www.w3.org/2000/svg" className={className} viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v2H7a1 1 0 100 2h2v2a1 1 0 102 0v-2h2a1 1 0 100-2h-2V7z" clipRule="evenodd" /></svg>;
 const EarlyBirdIcon = ({ className = "h-8 w-8" }: { className?: string }) => <svg xmlns="http://www.w3.org/2000/svg" className={className} viewBox="0 0 20 20" fill="currentColor"><path d="M10 2a1 1 0 00-1 1v1a1 1 0 002 0V3a1 1 0 00-1-1zM4 10a1 1 0 011-1h1a1 1 0 110 2H5a1 1 0 01-1-1zm15 0a1 1 0 01-1 1h-1a1 1 0 110-2h1a1 1 0 011 1zM10 18a1 1 0 011-1v-1a1 1 0 11-2 0v1a1 1 0 011 1zM5.636 5.636a1 1 0 011.414 0l.707.707a1 1 0 01-1.414 1.414l-.707-.707a1 1 0 010-1.414zm12.728 0a1 1 0 010 1.414l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 0zM5.636 14.364a1 1 0 010-1.414l.707-.707a1 1 0 011.414 1.414l-.707.707a1 1 0 01-1.414 0zm12.728 0a1 1 0 01-1.414 0l-.707-.707a1 1 0 011.414-1.414l.707.707a1 1 0 010 1.414z" /></svg>;
+const CriticIcon = ({ className = "h-8 w-8" }: { className?: string }) => <svg xmlns="http://www.w3.org/2000/svg" className={className} viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM4.332 8.027a6.012 6.012 0 011.912-2.706C6.512 5.73 6.974 6 7.5 6A1.5 1.5 0 019 7.5V8a2 2 0 004 0 2 2 0 011.527-1.973 6.012 6.012 0 011.912 2.706C16.27 8.57 16 9.225 16 10c0 .775.27 1.43.668 1.973a6.012 6.012 0 01-1.912 2.706C13.488 14.27 13.026 14 12.5 14a1.5 1.5 0 01-1.5-1.5v-.5a2 2 0 00-4 0v.5A1.5 1.5 0 015.5 14c-.526 0-.988.27-1.262.707a6.012 6.012 0 01-1.912-2.706C3.73 11.43 4 10.775 4 10c0-.775-.27-1.43-.668-1.973z" clipRule="evenodd" /></svg>;
 
 
 export const BADGES: Badge[] = [
@@ -55,6 +57,13 @@ export const BADGES: Badge[] = [
     description: 'Request 5 or more songs.',
     icon: TastemakerIcon,
     isEarned: (stats, songRequests) => songRequests.length >= 5,
+  },
+  {
+    id: 'critic',
+    name: 'The Critic',
+    description: 'Rate 20 or more songs.',
+    icon: CriticIcon,
+    isEarned: (stats) => (stats.likedSongs.length + stats.dislikedSongs.length) >= 20,
   },
   {
     id: 'chatterbox',
@@ -129,7 +138,7 @@ const MyStation: React.FC<MyStationProps> = ({ favoriteShows, favoriteDjs, allSh
     try {
       const favShowNames = favoriteShows.map(s => s.name);
       const allShowNames = allShows.map(s => s.name);
-      const result = await getShowRecommendations(favShowNames, allShowNames, songRequests);
+      const result = await getShowRecommendations(favShowNames, allShowNames, songRequests, listeningStats.likedSongs, listeningStats.dislikedSongs);
       setRecommendations(result);
     } catch (err) {
       setError('Failed to get recommendations. Please try again.');
@@ -189,7 +198,8 @@ const MyStation: React.FC<MyStationProps> = ({ favoriteShows, favoriteDjs, allSh
 
     return {
         listeningHours: hours,
-        topDj: djForTopShow?.name || 'The Airwaves'
+        topDj: djForTopShow?.name || 'The Airwaves',
+        points: Math.floor(listeningStats.points || 0),
     };
   }, [listeningStats]);
   
@@ -401,6 +411,10 @@ const MyStation: React.FC<MyStationProps> = ({ favoriteShows, favoriteDjs, allSh
                       <div className="flex items-center justify-between p-3 bg-slate-800/50 rounded-lg">
                         <span className="text-slate-300">Your Top DJ</span>
                         <span className="font-bold text-white text-lg">{userStats.topDj}</span>
+                      </div>
+                      <div className="flex items-center justify-between p-3 bg-slate-800/50 rounded-lg">
+                        <span className="text-slate-300">Station Points</span>
+                        <span className="font-bold text-white text-lg">{userStats.points.toLocaleString()} pts</span>
                       </div>
                     </div>
                     <div>
