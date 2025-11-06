@@ -1,5 +1,5 @@
 import { AZURACAST_BASE_URL, AZURACAST_STATION_ID, WEEKLY_SCHEDULE } from '../constants';
-import { ApiScheduleItem, Song, RequestableSong } from '../types';
+import { ApiScheduleItem, Song, RequestableSong, AzuraListeners, AzuraListenersReport, AzuraPerformanceReportItem, AzuraHistoryItem } from '../types';
 
 // AzuraCast raw API types (for internal mapping)
 interface AzuraNowPlayingSong {
@@ -8,6 +8,7 @@ interface AzuraNowPlayingSong {
 }
 
 interface AzuraNowPlaying {
+  listeners: AzuraListeners;
   now_playing: {
     song: AzuraNowPlayingSong;
     playlist: string; // This is the show name
@@ -123,5 +124,56 @@ export const submitSongRequest = async (requestId: string): Promise<{ success: b
     } catch (error: any) {
         console.error("Failed to submit song request:", error);
         return { success: false, message: error.message || 'Could not connect to the server.' };
+    }
+};
+
+// Admin Dashboard Services
+
+export const getLiveStats = async (): Promise<AzuraListeners> => {
+    try {
+        const response = await fetch(`${AZURACAST_BASE_URL}/api/nowplaying/${AZURACAST_STATION_ID}`);
+        if (!response.ok) throw new Error(`Network response was not ok`);
+        const data: AzuraNowPlaying = await response.json();
+        return data.listeners;
+    } catch (error) {
+        console.error("Failed to fetch live stats.", error);
+        throw error;
+    }
+};
+
+export const getListenerReport = async (): Promise<AzuraListenersReport> => {
+    try {
+        const response = await fetch(`${AZURACAST_BASE_URL}/api/station/${AZURACAST_STATION_ID}/listeners`);
+        if (!response.ok) throw new Error(`Network response was not ok`);
+        return await response.json();
+    } catch (error) {
+        console.error("Failed to fetch listener report.", error);
+        throw error;
+    }
+};
+
+export const getPerformanceReport = async (): Promise<AzuraPerformanceReportItem[]> => {
+    try {
+        const response = await fetch(`${AZURACAST_BASE_URL}/api/station/${AZURACAST_STATION_ID}/performance`);
+        if (!response.ok) throw new Error(`Network response was not ok`);
+        const data: AzuraPerformanceReportItem[] = await response.json();
+        // Return top 5 by play count
+        return data.sort((a,b) => b.play_count - a.play_count).slice(0, 5);
+    } catch (error) {
+        console.error("Failed to fetch performance report.", error);
+        throw error;
+    }
+};
+
+export const getSongHistory = async (): Promise<AzuraHistoryItem[]> => {
+    try {
+        const response = await fetch(`${AZURACAST_BASE_URL}/api/station/${AZURACAST_STATION_ID}/history`);
+        if (!response.ok) throw new Error(`Network response was not ok`);
+        // Return last 10 songs
+        const data: AzuraHistoryItem[] = await response.json();
+        return data.slice(0, 10);
+    } catch (error) {
+        console.error("Failed to fetch song history.", error);
+        throw error;
     }
 };

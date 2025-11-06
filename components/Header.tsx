@@ -12,9 +12,10 @@ interface HeaderProps {
     currentShowName: string | null;
     onLoginClick: (redirectPath?: string) => void;
     onLogout: () => void;
+    isAdmin: boolean;
 }
 
-const Header: React.FC<HeaderProps> = ({ isLoggedIn, currentUser, currentShowName, onLoginClick, onLogout }) => {
+const Header: React.FC<HeaderProps> = ({ isLoggedIn, currentUser, currentShowName, onLoginClick, onLogout, isAdmin }) => {
   const [stationTime, setStationTime] = useState('');
   const [activeRoute, setActiveRoute] = useState(window.location.hash || '#/');
 
@@ -77,6 +78,7 @@ const Header: React.FC<HeaderProps> = ({ isLoggedIn, currentUser, currentShowNam
                 My Station
             </a>
             <NavLink href="#/contact">Contact</NavLink>
+            {isAdmin && <NavLink href="#/admin">Admin</NavLink>}
         </nav>
         <div className="flex items-center gap-4">
             <div className="text-right">

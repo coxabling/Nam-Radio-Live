@@ -144,3 +144,39 @@ export interface MusicEvent {
   description: string;
   sourceUrl?: string;
 }
+
+export interface AzuraListeners {
+    total: number;
+    unique: number;
+    current: number;
+}
+
+export interface StationStats {
+    listeners: AzuraListeners;
+}
+
+export interface AzuraListenersReport {
+    total: {
+        avg_listeners: number;
+        max_listeners: number;
+    };
+    tlh: {
+        text: string; // e.g., "16 hours, 2 minutes"
+    };
+}
+
+export interface AzuraPerformanceReportItem {
+    song: Song;
+    stat_start: number;
+    stat_end: number;
+    listeners_start: number;
+    listeners_end: number;
+    delta_total: number;
+    play_count: number;
+    stat_count: number;
+}
+
+export interface AzuraHistoryItem {
+    played_at: number;
+    song: Song;
+}

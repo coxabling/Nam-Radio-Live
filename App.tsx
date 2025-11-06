@@ -18,6 +18,7 @@ import MyStation, { BADGES } from './components/MyStation';
 import ContentHub from './components/ContentHub';
 import LoginModal from './components/LoginModal';
 import Toast from './components/Toast';
+import AdminDashboard from './components/AdminDashboard';
 
 interface User {
   username: string;
@@ -99,6 +100,10 @@ const App: React.FC = () => {
   });
   const [nowPlayingError, setNowPlayingError] = useState<string | null>(null);
 
+  const isAdmin = useMemo(() => {
+    return currentUser?.username.toLowerCase() === 'admin';
+  }, [currentUser]);
+
   // Check for stored data on initial load
   useEffect(() => {
     let loadedUsers: User[] = [];
@@ -114,12 +119,17 @@ const App: React.FC = () => {
       const storedUsernameStr = localStorage.getItem(SESSION_KEY);
       if (storedUsernameStr) {
         const storedUsername = JSON.parse(storedUsernameStr);
-        const sessionUser = loadedUsers.find(u => u.username === storedUsername);
-        if (sessionUser) {
-          setCurrentUser(sessionUser);
+        // Special case for admin who might not be in the regular user list
+        if (storedUsername.toLowerCase() === 'admin') {
+            setCurrentUser({ username: 'admin', passwordHash: ''});
         } else {
-          // Clean up session if user doesn't exist anymore
-          localStorage.removeItem(SESSION_KEY);
+            const sessionUser = loadedUsers.find(u => u.username === storedUsername);
+            if (sessionUser) {
+                setCurrentUser(sessionUser);
+            } else {
+                // Clean up session if user doesn't exist anymore
+                localStorage.removeItem(SESSION_KEY);
+            }
         }
       }
     } catch(e) { console.error("Failed to parse session user from localStorage", e); }
@@ -192,19 +202,29 @@ const App: React.FC = () => {
       const newRoute = window.location.hash || '#/';
       const protectedRoutes = ['#/mystation'];
 
+      // Check regular protected routes first
       if (protectedRoutes.includes(newRoute) && !currentUser) {
-        openLoginModal(newRoute);
-        if (window.location.hash !== '#/') window.location.hash = '#/';
-        setRoute('#/');
-      } else {
-        setRoute(newRoute);
+          openLoginModal(newRoute);
+          if (window.location.hash !== '#/') window.location.hash = '#/';
+          setRoute('#/');
+          return;
       }
+
+      // Check admin route
+      if (newRoute === '#/admin' && !isAdmin) {
+          // If a non-admin tries to access, redirect to home.
+          window.location.hash = '#/';
+          setRoute('#/');
+          return;
+      }
+
+      setRoute(newRoute);
     };
     
     handleHashChange();
     window.addEventListener('hashchange', handleHashChange);
     return () => window.removeEventListener('hashchange', handleHashChange);
-  }, [currentUser, openLoginModal]);
+  }, [currentUser, openLoginModal, isAdmin]);
 
   // Fetch schedule from API
   useEffect(() => {
@@ -411,6 +431,20 @@ const App: React.FC = () => {
 
   const handleLogin = async (username: string, password_plain: string): Promise<boolean> => {
     await new Promise(res => setTimeout(res, 500)); // Simulate latency
+
+    // Special case for admin login
+    if (username.toLowerCase() === 'admin' && password_plain === 'admin') {
+        const adminUser: User = { username: 'admin', passwordHash: simpleHash('admin') };
+        setCurrentUser(adminUser);
+        localStorage.setItem(SESSION_KEY, JSON.stringify(adminUser.username));
+        closeLoginModal();
+        if (loginRedirectPath) {
+            window.location.hash = loginRedirectPath;
+            setLoginRedirectPath(null);
+        }
+        return true;
+    }
+
     const user = users.find(u => u.username.toLowerCase() === username.toLowerCase() && u.passwordHash === simpleHash(password_plain));
     if (!user) return false;
 
@@ -428,7 +462,8 @@ const App: React.FC = () => {
   const handleLogout = () => {
     setCurrentUser(null);
     localStorage.removeItem(SESSION_KEY);
-    if (route === '#/mystation') {
+    const protectedRoutes = ['#/mystation', '#/admin'];
+    if (protectedRoutes.includes(route)) {
       window.location.hash = '#/';
       setRoute('#/');
     }
@@ -533,6 +568,8 @@ const App: React.FC = () => {
     switch (route) {
       case '#/contact':
         return <ContactPage />;
+      case '#/admin':
+        return isAdmin ? <AdminDashboard /> : null;
       case '#/mystation':
         return currentUser ? (
           <MyStation 
@@ -594,6 +631,7 @@ const App: React.FC = () => {
           currentShowName={currentShowName}
           onLoginClick={openLoginModal}
           onLogout={handleLogout}
+          isAdmin={isAdmin}
         />
         <main className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-grow">
           {renderPage()}
