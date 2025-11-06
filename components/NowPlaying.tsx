@@ -28,8 +28,8 @@ const WhatsAppIcon = () => ( <svg className="w-5 h-5" fill="currentColor" viewBo
 const YouTubeIcon = () => (<svg className="w-7 h-7" fill="currentColor" viewBox="0 0 24 24"><path d="M21.582,6.186c-0.23-0.86-0.908-1.538-1.768-1.768C18.25,4,12,4,12,4S5.75,4,4.186,4.418 c-0.86,0.23-1.538,0.908-1.768,1.768C2,7.75,2,12,2,12s0,4.25,0.418,5.814c0.23,0.86,0.908,1.538,1.768,1.768 C5.75,20,12,20,12,20s6.25,0,7.814-0.418c0.861-0.23,1.538-0.908,1.768-1.768C22,16.25,22,12,22,12S22,7.75,21.582,6.186z M10,15.464V8.536L16,12L10,15.464z" /></svg>);
 const SpotifyIcon = () => (<svg className="w-7 h-7" fill="currentColor" viewBox="0 0 24 24"><path d="M12,2C6.477,2,2,6.477,2,12s4.477,10,10,10s10-4.477,10-10S17.523,2,12,2z M16.7,16.4c-0.2-0.3-0.6-0.4-0.9-0.2 c-2.3,1.4-5.2,1.7-8.6,0.9c-0.4,0-0.7,0.3-0.7,0.6c0,0.3,0.3,0.7,0.6,0.7c3.7,0.8,7.1,0.5,9.7-1.1C17,16.9,17.1,16.6,16.7,16.4z M17.9,13.4c-0.2-0.4-0.8-0.5-1.1-0.2c-2.6,1.6-6.5,2.1-9.5,1.1c-0.4-0.1-0.9,0.1-1,0.5c-0.1,0.4,0.1,0.9,0.5,1 c3.4,1,7.8,0.5,10.7-1.3C18.1,14.1,18.2,13.7,17.9,13.4z M18,10.1c-3.1,1.9-8.3,2.2-11,1.2C6.5,11.1,6,11.3,5.8,11.8 c-0.2,0.5,0.1,1,0.6,1.2c3.1,1.1,8.9,0.8,12.4-1.4c0.5-0.3,0.6-0.9,0.4-1.3C18.9,9.8,18.4,9.8,18,10.1z" /></svg>);
 const AppleMusicIcon = () => (<svg className="w-7 h-7" fill="currentColor" viewBox="0 0 24 24"><path d="M12.15,6.32c-0.1-1.3-0.93-2.58-2.05-3.18c-0.85-0.45-1.93-0.46-2.73,0.2c-1.38,1.13-2.3,3.13-2.12,5.2 c0.02,0.28,0.05,0.55,0.08,0.84c1.23,0.09,2.44,0.01,3.65-0.18c0.9-0.14,1.98-0.4,2.65-1.18C12.35,7.29,12.24,6.77,12.15,6.32z M11.83,7.99c-0.48,0.62-1.35,0.88-2.12,1.01c-1,0.16-2,0.25-3,0.25c-0.12,0-0.24,0-0.36-0.01c0.01-0.12,0.02-0.24,0.03-0.36 c0.31-2.92,2.2-5.49,4.8-6.57c0.88-0.37,1.93-0.26,2.7,0.36C14.7,3.2,15.5,4.3,15.5,6c0,0.04,0,0.09,0,0.13 c-0.83-0.11-1.66-0.09-2.48,0.06C12.34,6.3,12.01,7.2,11.83,7.99z M19,8.54c-1.4-0.11-2.78,0.12-4.14,0.61 c-0.91,0.33-1.68,0.92-2.32,1.64c-1.3,1.48-2,3.39-1.92,5.33c0.05,1.21,0.46,2.37,1.18,3.33c0.88,1.16,2.23,1.86,3.66,1.75 c0.54-0.04,1.08-0.18,1.6-0.4c1.37-0.57,2.44-1.73,3.01-3.13C21.16,15.2,20.8,11.39,19,8.54z" /></svg>);
-const ThumbsUpIcon = ({ filled }: { filled: boolean }) => (<svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-8.707l-3-3a1 1 0 00-1.414 0l-3 3a1 1 0 101.414 1.414L9 9.414V13a1 1 0 102 0V9.414l1.293 1.293a1 1 0 001.414-1.414z" clipRule="evenodd" transform="rotate(90 10 10) scale(1, -1)" /></svg>);
-const ThumbsDownIcon = ({ filled }: { filled: boolean }) => (<svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-8.707l-3-3a1 1 0 00-1.414 0l-3 3a1 1 0 101.414 1.414L9 9.414V13a1 1 0 102 0V9.414l1.293 1.293a1 1 0 001.414-1.414z" clipRule="evenodd" transform="rotate(-90 10 10)" /></svg>);
+const ThumbsUpIcon = ({ filled }: { filled: boolean }) => (<svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M2 10.5a1.5 1.5 0 113 0v6a1.5 1.5 0 01-3 0v-6zM6 10.333V17a1 1 0 001 1h6.768a2 2 0 001.945-1.556l1.28-5.123a2 2 0 00-1.242-2.355V7.5a2 2 0 00-2-2h-1.586a1 1 0 00-.949.684l-1.888 3.817A1.5 1.5 0 016 10.333z" /></svg>);
+const ThumbsDownIcon = ({ filled }: { filled: boolean }) => (<svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M18 9.5a1.5 1.5 0 11-3 0v-6a1.5 1.5 0 013 0v6zM14 9.667V3a1 1 0 00-1-1h-6.768a2 2 0 00-1.945 1.556L3.002 8.679a2 2 0 001.242 2.355V12.5a2 2 0 002 2h1.586a1 1 0 00.949-.684l1.888-3.817A1.5 1.5 0 0114 9.667z" /></svg>);
 
 
 const NowPlaying: React.FC<NowPlayingProps> = ({ liveNowPlaying, recentlyPlayed, vibes, userVibe, onVibeVote, nowPlayingError, likedSongs, dislikedSongs, onSongRating, isLoggedIn }) => {
@@ -68,6 +68,10 @@ const NowPlaying: React.FC<NowPlayingProps> = ({ liveNowPlaying, recentlyPlayed,
   const youtubeSearchUrl = `https://www.youtube.com/results?search_query=${songSearchQuery}`;
   const spotifySearchUrl = `https://open.spotify.com/search/${songSearchQuery}`;
   const appleMusicSearchUrl = `https://music.apple.com/us/search?term=${songSearchQuery}`;
+
+  const currentSongId = `${liveNowPlaying.song.title} - ${liveNowPlaying.song.artist}`;
+  const isCurrentLiked = likedSongs.includes(currentSongId);
+  const isCurrentDisliked = dislikedSongs.includes(currentSongId);
 
   return (
     <section className="bg-slate-900/50 backdrop-blur-xl rounded-2xl p-6 md:p-8 shadow-lg border border-slate-700/50 space-y-8">
@@ -117,6 +121,29 @@ const NowPlaying: React.FC<NowPlayingProps> = ({ liveNowPlaying, recentlyPlayed,
                         <a href={appleMusicSearchUrl} target="_blank" rel="noopener noreferrer" aria-label="Search on Apple Music" className="text-slate-400 hover:text-white transition-all hover:scale-110"><AppleMusicIcon/></a>
                     </div>
                  </div>
+                 <div className="mt-3 pt-3 border-t border-slate-700/50">
+                    {isLoggedIn ? (
+                        <div className="flex items-center gap-2">
+                            <span className="text-xs text-slate-400">Rate this song:</span>
+                            <button 
+                                onClick={() => onSongRating(liveNowPlaying.song, 'like')}
+                                className={`p-2 rounded-full transition-colors ${isCurrentLiked ? 'text-green-400 bg-green-500/20' : 'text-slate-500 hover:text-green-400'}`}
+                                aria-label="Like current song"
+                            >
+                                <ThumbsUpIcon filled={isCurrentLiked} />
+                            </button>
+                            <button 
+                                onClick={() => onSongRating(liveNowPlaying.song, 'dislike')}
+                                className={`p-2 rounded-full transition-colors ${isCurrentDisliked ? 'text-red-400 bg-red-500/20' : 'text-slate-500 hover:text-red-400'}`}
+                                aria-label="Dislike current song"
+                            >
+                                <ThumbsDownIcon filled={isCurrentDisliked} />
+                            </button>
+                        </div>
+                    ) : (
+                        <p className="text-xs text-slate-500">Log in to rate this song.</p>
+                    )}
+                </div>
               </div>
               <button 
                 onClick={handleGetFunFact}

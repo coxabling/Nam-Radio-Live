@@ -272,14 +272,15 @@ const App: React.FC = () => {
       try {
         const { currentSong, history, showName } = await getNowPlaying();
 
-        setLiveNowPlaying(prev => ({ ...prev, song: currentSong }));
         setRecentlyPlayed(history);
 
         setSchedule(currentSchedule => {
-          if (currentSchedule.length === 0) return [];
-
           const currentShow = currentSchedule.find(s => s.name === showName) || null;
-          setLiveNowPlaying(prev => ({ ...prev, show: currentShow }));
+          
+          // Update song and show state together to avoid race conditions
+          setLiveNowPlaying({ song: currentSong, show: currentShow });
+
+          if (currentSchedule.length === 0) return [];
 
           const needsUpdate = currentSchedule.some(s => s.is_now !== (s.name === showName));
           if (needsUpdate) {
