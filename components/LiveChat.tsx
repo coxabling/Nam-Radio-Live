@@ -33,7 +33,7 @@ interface LiveChatProps {
 
 type FilterType = 'dj' | 'polls' | 'games' | 'takeovers';
 
-const GEMINI_CALL_LIMIT = 50;
+const GEMINI_CALL_LIMIT = 100;
 const GEMINI_LIMIT_KEY = 'nam-radio-gemini-limit';
 
 const LiveChat: React.FC<LiveChatProps> = ({ liveNowPlaying, recentlyPlayed, currentUser, dominantVibe, onChatMessageSent, onVoteCast, latestDedication, events, schedule, userFavoriteShows, songRequests, listeningStats }) => {

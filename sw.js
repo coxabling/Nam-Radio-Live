@@ -29,8 +29,8 @@ const urlsToCache = [
   '/components/DailyRewindModal.tsx',
   '/components/Toast.tsx',
   '/components/AdminDashboard.tsx',
-  '/logo192.svg',
-  '/logo512.svg'
+  'logo192.svg',
+  'logo512.svg'
 ];
 
 self.addEventListener('install', event => {
