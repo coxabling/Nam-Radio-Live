@@ -29,6 +29,7 @@ const Schedule: React.FC<ScheduleProps> = ({ schedule, loading, error, favoriteS
   const [songOfTheWeek, setSongOfTheWeek] = useState<SongOfTheWeek | null>(null);
   const [isSotwLoading, setIsSotwLoading] = useState(true);
   const [sotwError, setSotwError] = useState<string | null>(null);
+  const [showOnlySotw, setShowOnlySotw] = useState(false);
 
   useEffect(() => {
     const fetchSotw = async () => {
@@ -163,7 +164,22 @@ const Schedule: React.FC<ScheduleProps> = ({ schedule, loading, error, favoriteS
 
   return (
     <section className="bg-slate-900/50 backdrop-blur-xl rounded-2xl p-6 md:p-8 shadow-lg border border-slate-700/50">
-      <h2 className="text-2xl font-bold mb-6 tracking-wide text-amber-300">Weekly Schedule</h2>
+       <div className="flex flex-col sm:flex-row justify-between sm:items-center mb-6 gap-4">
+        <h2 className="text-2xl font-bold tracking-wide text-amber-300">Weekly Schedule</h2>
+        {songOfTheWeek && (
+          <div className="flex items-center gap-2 flex-shrink-0">
+              <label htmlFor="sotw-toggle" className="text-sm font-semibold text-slate-300 cursor-pointer">Show only Song of the Week</label>
+              <button
+                  id="sotw-toggle"
+                  onClick={() => setShowOnlySotw(!showOnlySotw)}
+                  className={`relative inline-flex items-center h-6 rounded-full w-11 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-800 focus:ring-amber-400 ${showOnlySotw ? 'bg-amber-500' : 'bg-slate-700'}`}
+                  aria-pressed={showOnlySotw}
+              >
+                  <span className={`inline-block w-4 h-4 transform bg-white rounded-full transition-transform ${showOnlySotw ? 'translate-x-6' : 'translate-x-1'}`} />
+              </button>
+          </div>
+        )}
+      </div>
       
       <div className="mb-8">
         <h3 className="text-xl font-bold text-white mb-4">Song of the Week</h3>
@@ -189,7 +205,8 @@ const Schedule: React.FC<ScheduleProps> = ({ schedule, loading, error, favoriteS
         )}
       </div>
 
-      {renderContent()}
+      {!showOnlySotw && renderContent()}
+      
       {showToShare && (
         <ShareModal 
           show={showToShare}
