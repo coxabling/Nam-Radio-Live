@@ -1,13 +1,12 @@
 
 import React, { useState, useEffect } from 'react';
 import { Article } from '../types';
-// FIX: Import fetchNews service instead of non-existent constant.
 import { fetchNews } from '../services/newsService';
 
-type Category = 'luton' | 'uk' | 'world';
+type Category = 'namibia' | 'africa' | 'world';
 
 const LatestNews: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<Category>('luton');
+  const [activeTab, setActiveTab] = useState<Category>('namibia');
   const [articles, setArticles] = useState<Article[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -17,7 +16,7 @@ const LatestNews: React.FC = () => {
       setIsLoading(true);
       setError(null);
       try {
-        const fetchedArticles = await fetchNews(activeTab);
+        const fetchedArticles = await fetchNews(activeTab as any); // Use `as any` because the component's type is slightly stricter
         setArticles(fetchedArticles);
       } catch (err) {
         setError(`Failed to load news for ${activeTab}. Please try again later.`);
@@ -72,8 +71,8 @@ const LatestNews: React.FC = () => {
     <section className="bg-slate-900/50 backdrop-blur-xl rounded-2xl p-6 shadow-lg border border-slate-700/50">
       <h2 className="text-2xl font-bold mb-4 tracking-wide text-amber-300">Latest Headlines</h2>
       <div className="flex space-x-2 border-b border-slate-700/50 mb-2">
-        <button className={getTabClass('luton')} onClick={() => setActiveTab('luton')}>Luton Town</button>
-        <button className={getTabClass('uk')} onClick={() => setActiveTab('uk')}>UK News</button>
+        <button className={getTabClass('namibia')} onClick={() => setActiveTab('namibia')}>Namibia</button>
+        <button className={getTabClass('africa')} onClick={() => setActiveTab('africa')}>Africa</button>
         <button className={getTabClass('world')} onClick={() => setActiveTab('world')}>World News</button>
       </div>
       {renderContent()}

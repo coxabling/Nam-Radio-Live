@@ -86,7 +86,7 @@ const LoginModal: React.FC<LoginModalProps> = ({ onClose, onLogin, onSignUp }) =
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <label htmlFor="username" className="block text-sm font-medium text-slate-300 mb-1">Username</label>
-                <input type="text" id="username" value={username} onChange={(e) => setUsername(e.target.value)} className="w-full bg-slate-800 border border-slate-600 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-amber-400 disabled:opacity-50" required autoFocus disabled={isLoading} />
+                <input type="text" id="username" value={username} onChange={(e) => setUsername(e.target.value)} className="w-full bg-slate-800 border border-slate-600 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-amber-400 disabled:opacity-50" required autoFocus disabled={isLoading} autoComplete="username" />
               </div>
               <div>
                 <div className="flex justify-between items-center mb-1">
@@ -95,12 +95,12 @@ const LoginModal: React.FC<LoginModalProps> = ({ onClose, onLogin, onSignUp }) =
                         <button type="button" onClick={() => setMode('forgot')} className="text-xs text-amber-400 hover:text-amber-300 font-semibold disabled:opacity-50" disabled={isLoading}>Forgot Password?</button>
                     )}
                 </div>
-                <input type="password" id="password" value={password} onChange={(e) => setPassword(e.target.value)} className="w-full bg-slate-800 border border-slate-600 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-amber-400 disabled:opacity-50" required disabled={isLoading} />
+                <input type="password" id="password" value={password} onChange={(e) => setPassword(e.target.value)} className="w-full bg-slate-800 border border-slate-600 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-amber-400 disabled:opacity-50" required disabled={isLoading} autoComplete={mode === 'login' ? 'current-password' : 'new-password'} />
               </div>
               {mode === 'signup' && (
                 <div>
                   <label htmlFor="confirmPassword"className="block text-sm font-medium text-slate-300 mb-1">Confirm Password</label>
-                  <input type="password" id="confirmPassword" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} className="w-full bg-slate-800 border border-slate-600 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-amber-400 disabled:opacity-50" required disabled={isLoading}/>
+                  <input type="password" id="confirmPassword" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} className="w-full bg-slate-800 border border-slate-600 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-amber-400 disabled:opacity-50" required disabled={isLoading} autoComplete="new-password"/>
                 </div>
               )}
               
