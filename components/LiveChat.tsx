@@ -5,8 +5,8 @@ import { getAiChatResponse, generateTakeoverAnnouncement, generateTakeoverWinner
 import { TAKEOVER_SONGS } from '../constants';
 
 const djPolls: Omit<PollMessage, 'id' | 'author' | 'isDj' | 'type'>[] = [
-  { question: "What genre should we play next?", options: [{ text: "Classic Rock", votes: 5 }, { text: "Indie Hits", votes: 8 }, { text: "90s Pop", votes: 3 }] },
-  { question: "Which decade had the best music?", options: [{ text: "The 80s", votes: 12 }, { text: "The 90s", votes: 9 }, { text: "The 2000s", votes: 11 }] }
+  { question: "What genre should we play next?", options: [{ text: "Classic Rock", votes: 0 }, { text: "Indie Hits", votes: 0 }, { text: "90s Pop", votes: 0 }] },
+  { question: "Which decade had the best music?", options: [{ text: "The 80s", votes: 0 }, { text: "The 90s", votes: 0 }, { text: "The 2000s", votes: 0 }] }
 ];
 
 const TypingIndicator: React.FC<{ author: string }> = ({ author }) => (
@@ -36,7 +36,7 @@ const GEMINI_LIMIT_KEY = 'nam-radio-gemini-limit';
 const LiveChat: React.FC<LiveChatProps> = ({ recentlyPlayed, currentUser, dominantVibe, onChatMessageSent, onVoteCast, latestDedication }) => {
   const [messages, setMessages] = useState<Message[]>([{ id: 1, type: 'text', author: 'DJ Alex', text: 'Welcome to the live chat! Drop a message and say hi!', isDj: true }]);
   const [newMessage, setNewMessage] = useState('');
-  const [votedIds, setVotedIds] = useState<number[]>([]);
+  const [userVotes, setUserVotes] = useState<Record<number, number>>({});
   const [isDjTyping, setIsDjTyping] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const djMessageTimer = useRef<number | null>(null);
@@ -156,12 +156,17 @@ const LiveChat: React.FC<LiveChatProps> = ({ recentlyPlayed, currentUser, domina
 
         } else if (chance < 0.30) { // 15% chance for a poll
             setMessages(prev => {
-                const unpostedPolls = djPolls.filter(p => !prev.some(m => m.type === 'poll' && m.question === p.question));
-                if (unpostedPolls.length > 0) {
-                  const randomPoll = unpostedPolls[Math.floor(Math.random() * unpostedPolls.length)];
-                  return [...prev, { ...randomPoll, id: Date.now(), type: 'poll', author: 'DJ Alex', isDj: true }];
-                }
-                return prev;
+                const randomPollTemplate = djPolls[Math.floor(Math.random() * djPolls.length)];
+                // Create a fresh poll object with votes reset to 0
+                const newPoll: Message = {
+                    ...randomPollTemplate,
+                    options: randomPollTemplate.options.map(opt => ({...opt, votes: 0})),
+                    id: Date.now(),
+                    type: 'poll',
+                    author: 'DJ Alex',
+                    isDj: true
+                };
+                return [...prev, newPoll];
             });
 
         } else if (chance < 0.45) { // 15% chance for Guess the Song
@@ -264,7 +269,7 @@ const LiveChat: React.FC<LiveChatProps> = ({ recentlyPlayed, currentUser, domina
 
 
   const handleVote = (messageId: number, optionIndex: number, type: 'poll' | 'takeover') => {
-    if (votedIds.includes(messageId)) return;
+    if (userVotes[messageId] !== undefined) return; // User has already voted
     setMessages(prevMessages => 
       prevMessages.map(msg => {
         if (msg.id === messageId && msg.type === type) {
@@ -275,7 +280,7 @@ const LiveChat: React.FC<LiveChatProps> = ({ recentlyPlayed, currentUser, domina
         return msg;
       })
     );
-    setVotedIds(prev => [...prev, messageId]);
+    setUserVotes(prev => ({ ...prev, [messageId]: optionIndex }));
     onVoteCast();
   }
   
@@ -287,7 +292,15 @@ const LiveChat: React.FC<LiveChatProps> = ({ recentlyPlayed, currentUser, domina
 
   return (
     <section className="bg-slate-900/50 backdrop-blur-xl rounded-2xl p-6 shadow-lg border border-slate-700/50 flex flex-col h-[40rem]">
-      <h2 className="text-2xl font-bold mb-2 tracking-wide text-amber-300">Live Shoutbox</h2>
+      <div className="flex justify-between items-center mb-2">
+        <h2 className="text-2xl font-bold tracking-wide text-amber-300">Live Shoutbox</h2>
+        {dominantVibe && (
+            <div key={dominantVibe.type} className="flex items-center gap-2 px-3 py-1.5 bg-slate-800/50 rounded-full text-xs font-semibold animate-fade-in">
+                <span className="text-lg">{dominantVibe.emoji}</span>
+                <span className="text-amber-300">{dominantVibe.label} Vibe</span>
+            </div>
+        )}
+      </div>
       <div className="mb-3 p-2 bg-slate-800/50 rounded-lg flex items-center justify-between">
          <span className="text-sm text-slate-400 truncate">Chatting as: <span className="font-bold text-amber-300">{userHandle}</span></span>
       </div>
@@ -319,6 +332,7 @@ const LiveChat: React.FC<LiveChatProps> = ({ recentlyPlayed, currentUser, domina
           }
           if (msg.type === 'poll') {
             const totalVotes = msg.options.reduce((sum, opt) => sum + opt.votes, 0);
+            const hasVoted = userVotes[msg.id] !== undefined;
             return (
               <div key={msg.id} className="p-3 bg-gradient-to-br from-slate-800 to-slate-900 rounded-lg border border-slate-700 animate-fade-in">
                 <span className="text-xs font-bold block text-amber-200">{msg.author} posted a poll:</span>
@@ -326,10 +340,17 @@ const LiveChat: React.FC<LiveChatProps> = ({ recentlyPlayed, currentUser, domina
                 <div className="space-y-2">
                   {msg.options.map((option, index) => {
                     const percentage = totalVotes > 0 ? (option.votes / totalVotes) * 100 : 0;
+                    const isSelected = userVotes[msg.id] === index;
                     return (
-                      <button key={index} onClick={() => handleVote(msg.id, index, 'poll')} disabled={votedIds.includes(msg.id)} className="w-full text-left p-2 rounded-md bg-slate-700/50 relative overflow-hidden disabled:cursor-not-allowed group">
-                        <div className="absolute top-0 left-0 h-full bg-amber-500/60 transition-all duration-500" style={{ width: `${percentage}%` }}></div>
-                        <div className="relative flex justify-between items-center"><span className="text-sm font-medium text-white">{option.text}</span>{votedIds.includes(msg.id) && <span className="text-xs font-bold text-slate-300">{option.votes} ({Math.round(percentage)}%)</span>}</div>
+                      <button key={index} onClick={() => handleVote(msg.id, index, 'poll')} disabled={hasVoted} className="w-full text-left p-2 rounded-md bg-slate-700/50 relative overflow-hidden disabled:cursor-not-allowed group">
+                        <div className="absolute top-0 left-0 h-full bg-amber-500/60 transition-all duration-500" style={{ width: hasVoted ? `${percentage}%` : `0%` }}></div>
+                        <div className="relative flex justify-between items-center">
+                            <div className="flex items-center gap-2">
+                                {hasVoted && isSelected && <span className="text-amber-300">&#10003;</span>}
+                                <span className="text-sm font-medium text-white">{option.text}</span>
+                            </div>
+                            {hasVoted && <span className="text-xs font-bold text-slate-300">{option.votes} ({Math.round(percentage)}%)</span>}
+                        </div>
                       </button>
                     );
                   })}
@@ -338,7 +359,7 @@ const LiveChat: React.FC<LiveChatProps> = ({ recentlyPlayed, currentUser, domina
             );
           }
           if (msg.type === 'takeover') {
-            const hasVoted = votedIds.includes(msg.id);
+            const hasVoted = userVotes[msg.id] !== undefined;
             return (
               <div key={msg.id} className="p-3 bg-gradient-to-br from-amber-800 to-red-900 rounded-lg text-center border-2 border-amber-500 shadow-lg animate-fade-in">
                 <span className="text-lg font-bold block text-amber-200 animate-pulse">LISTENER TAKEOVER!</span>
