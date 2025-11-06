@@ -158,6 +158,12 @@ export interface MusicEvent {
   sourceUrl?: string;
 }
 
+export interface SongOfTheWeek {
+  title: string;
+  artist: string;
+  description: string;
+}
+
 export interface AzuraListeners {
     total: number;
     unique: number;

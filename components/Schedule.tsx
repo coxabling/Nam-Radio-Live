@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
-import { ApiScheduleItem } from '../types';
+import React, { useState, useEffect } from 'react';
+import { ApiScheduleItem, SongOfTheWeek } from '../types';
 import ShareModal from './ShareModal';
+import { getSongOfTheWeek } from '../services/geminiService';
 
 interface ScheduleProps {
   schedule: ApiScheduleItem[];
@@ -25,6 +26,42 @@ const ShareIcon = () => (
 
 const Schedule: React.FC<ScheduleProps> = ({ schedule, loading, error, favoriteShows, onToggleFavorite }) => {
   const [showToShare, setShowToShare] = useState<ApiScheduleItem | null>(null);
+  const [songOfTheWeek, setSongOfTheWeek] = useState<SongOfTheWeek | null>(null);
+  const [isSotwLoading, setIsSotwLoading] = useState(true);
+  const [sotwError, setSotwError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchSotw = async () => {
+      const SOTW_CACHE_KEY = 'nam-radio-sotw-cache';
+      const CACHE_DURATION = 4 * 60 * 60 * 1000; // 4 hours
+
+      try {
+        const cachedItem = sessionStorage.getItem(SOTW_CACHE_KEY);
+        if (cachedItem) {
+          const { data, timestamp } = JSON.parse(cachedItem);
+          if (Date.now() - timestamp < CACHE_DURATION) {
+            setSongOfTheWeek(data);
+            setIsSotwLoading(false);
+            return;
+          }
+        }
+      } catch (e) { console.error("Failed to read SOTW from cache", e); }
+
+      setIsSotwLoading(true);
+      setSotwError(null);
+      try {
+        const data = await getSongOfTheWeek();
+        setSongOfTheWeek(data);
+        sessionStorage.setItem(SOTW_CACHE_KEY, JSON.stringify({ data, timestamp: Date.now() }));
+      } catch (err: any) {
+        setSotwError(err.message);
+      } finally {
+        setIsSotwLoading(false);
+      }
+    };
+
+    fetchSotw();
+  }, []);
 
   const groupShowsByDay = (shows: ApiScheduleItem[]) => {
     return shows.reduce((acc, show) => {
@@ -127,6 +164,31 @@ const Schedule: React.FC<ScheduleProps> = ({ schedule, loading, error, favoriteS
   return (
     <section className="bg-slate-900/50 backdrop-blur-xl rounded-2xl p-6 md:p-8 shadow-lg border border-slate-700/50">
       <h2 className="text-2xl font-bold mb-6 tracking-wide text-amber-300">Weekly Schedule</h2>
+      
+      <div className="mb-8">
+        <h3 className="text-xl font-bold text-white mb-4">Song of the Week</h3>
+        {isSotwLoading && (
+          <div className="flex items-center justify-center h-24 bg-slate-800/50 rounded-lg">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-amber-300"></div>
+          </div>
+        )}
+        {sotwError && (
+          <div className="p-4 bg-red-500/10 text-red-300 rounded-lg">
+            <p className="font-semibold">Error fetching Song of the Week</p>
+            <p className="text-sm">{sotwError}</p>
+          </div>
+        )}
+        {songOfTheWeek && (
+          <div className="bg-amber-500/10 p-4 rounded-lg border-l-4 border-amber-400 animate-fade-in">
+            <p className="text-lg font-bold text-white">{songOfTheWeek.title}</p>
+            <p className="text-md text-slate-300 mb-2">{songOfTheWeek.artist}</p>
+            <div className="prose prose-sm prose-invert text-slate-400">
+              <p className="italic">"{songOfTheWeek.description}"</p>
+            </div>
+          </div>
+        )}
+      </div>
+
       {renderContent()}
       {showToShare && (
         <ShareModal 

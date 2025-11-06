@@ -1,6 +1,6 @@
 import { GoogleGenAI, Type } from "@google/genai";
 // FIX: Import DedicationRecord for the new feature.
-import { Song, SongRequestRecord, DedicationRecord, MusicEvent, ApiScheduleItem } from '../types';
+import { Song, SongRequestRecord, DedicationRecord, MusicEvent, ApiScheduleItem, SongOfTheWeek } from '../types';
 
 const getGeminiApiKey = (): string => {
   const apiKey = process.env.API_KEY;
@@ -208,7 +208,16 @@ export const generateDedicationShoutout = async (dedication: DedicationRecord): 
 export const getLocalMusicEvents = async (): Promise<MusicEvent[]> => {
   try {
     const ai = new GoogleGenAI({ apiKey: getGeminiApiKey() });
-    const prompt = "You are a local music and events curator for Nam Radio Live. Your task is to conduct a comprehensive search across multiple online sources (like event listings sites, social media, and local news) to find upcoming live music events, concerts, or festivals happening in Namibia (focus on Windhoek) in the next month. For each event, provide the name, date, venue, a brief description, and the source URL where you found the information.";
+    const prompt = `You are an expert events curator for Nam Radio Live, a station in Windhoek, Namibia. Your mission is to create the most comprehensive and reliable list of upcoming live music events in Namibia for the next month, with a strong focus on the Windhoek area.
+
+To do this, you must search across a diverse range of web sources. Do not rely on a single site. Your search should include:
+- Major event platforms (e.g., Eventbrite, AllEvents.in)
+- Local news outlets and their entertainment sections
+- Social media platforms (Facebook Events, Instagram posts from local venues)
+- Official venue websites
+- Artist social media pages
+
+For each event found, provide the following details. Prioritize official sources for accuracy. Return this as a structured JSON array.`;
 
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash',
@@ -239,6 +248,37 @@ export const getLocalMusicEvents = async (): Promise<MusicEvent[]> => {
   } catch (error) {
     console.error("Error fetching local music events:", error);
     throw new Error("Could not fetch local events at this time. Please try again later.");
+  }
+};
+
+export const getSongOfTheWeek = async (): Promise<SongOfTheWeek> => {
+  try {
+    const ai = new GoogleGenAI({ apiKey: getGeminiApiKey() });
+    const prompt = `You are an expert music curator and DJ for "Nam Radio Live", an online station based in Namibia that plays a vibrant mix of global hits, African grooves, and indie gems. Your task is to select a "Song of the Week". Pick a song that is either currently trending, a classic hit that fits the station's vibe, or an amazing track from an emerging African artist. Provide a short, exciting, one-paragraph description explaining why this song is a must-listen.`;
+
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: prompt,
+      config: {
+        tools: [{googleSearch: {}}],
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            title: { type: Type.STRING, description: "The title of the song." },
+            artist: { type: Type.STRING, description: "The name of the artist or band." },
+            description: { type: Type.STRING, description: "The short, exciting description of the song." }
+          },
+          required: ["title", "artist", "description"],
+        },
+      },
+    });
+
+    const jsonText = response.text.trim();
+    return JSON.parse(jsonText) as SongOfTheWeek;
+  } catch (error) {
+    console.error("Error fetching Song of the Week:", error);
+    throw new Error("DJ Alex is busy digging in the crates... couldn't pick a song right now. Please try again later.");
   }
 };
 

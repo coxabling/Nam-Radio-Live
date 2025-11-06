@@ -137,6 +137,15 @@ const ContentHub: React.FC<ContentHubProps> = ({ events, isEventsLoading, events
     return <div className="space-y-2">{articles.map(article => <ArticleItem key={article.id} article={article} />)}</div>;
   };
   
+  const getHostname = (url: string | undefined): string | null => {
+    if (!url) return null;
+    try {
+        return new URL(url).hostname.replace('www.', '');
+    } catch (e) {
+        return null;
+    }
+  };
+  
   const renderEvents = () => {
     if (isEventsLoading) return <div className="flex justify-center items-center h-48"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-amber-300"></div></div>;
     if (eventsError) return <p className="text-center text-red-400 py-4">{eventsError}</p>;
@@ -144,23 +153,27 @@ const ContentHub: React.FC<ContentHubProps> = ({ events, isEventsLoading, events
     
     return (
       <div className="space-y-4">
-        {events.map((event, index) => (
-          <div key={index} className="p-4 bg-slate-800/50 rounded-lg border border-slate-700/50">
-            <h4 className="font-bold text-lg text-white">{event.eventName}</h4>
-            <div className="mt-2 text-sm space-y-1 text-slate-300">
-              <p><span className="font-semibold text-amber-400">Date:</span> {event.date}</p>
-              <p><span className="font-semibold text-amber-400">Venue:</span> {event.venue}</p>
-              <p className="pt-2 border-t border-slate-700 mt-2">{event.description}</p>
-              {event.sourceUrl && (
-                <div className="pt-2 border-t border-slate-700 mt-2">
-                  <a href={event.sourceUrl} target="_blank" rel="noopener noreferrer" className="text-amber-400 hover:text-amber-300 font-semibold text-xs transition-colors">
-                    View Source &rarr;
-                  </a>
-                </div>
-              )}
+        {events.map((event, index) => {
+          const sourceHostname = getHostname(event.sourceUrl);
+          return (
+            <div key={index} className="p-4 bg-slate-800/50 rounded-lg border border-slate-700/50">
+              <h4 className="font-bold text-lg text-white">{event.eventName}</h4>
+              <div className="mt-2 text-sm space-y-1 text-slate-300">
+                <p><span className="font-semibold text-amber-400">Date:</span> {event.date}</p>
+                <p><span className="font-semibold text-amber-400">Venue:</span> {event.venue}</p>
+                <p className="pt-2 border-t border-slate-700 mt-2">{event.description}</p>
+                {event.sourceUrl && (
+                  <div className="pt-2 border-t border-slate-700 mt-2 flex justify-between items-center">
+                    <span className="text-xs text-slate-500">Source: {sourceHostname}</span>
+                    <a href={event.sourceUrl} target="_blank" rel="noopener noreferrer" className="text-amber-400 hover:text-amber-300 font-semibold text-xs transition-colors">
+                      More Info &rarr;
+                    </a>
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     );
   };

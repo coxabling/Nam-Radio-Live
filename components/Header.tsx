@@ -68,7 +68,7 @@ const Header: React.FC<HeaderProps> = ({ isLoggedIn, currentUser, currentShowNam
       <div className="container mx-auto flex justify-between items-center">
         <div className="flex items-center">
            <a href="#/" onClick={handleHomeClick} className="flex items-center gap-3">
-             <img src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTkyIiBoZWlnaHQ9IjE5MiIgdmlld0JveD0iMCAwIDE5MiAxOTIiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjE5MiIgaGVpZ2h0PSIxOTIiIHJ4PSIzMiIgZmlsbD0iIzExMTgyNyIvPjxwYXRoIGQ9Ik01NiA5Nkg3MiIgc3Ryb2tlPSIjRkJCRjI0IiBzdHJva2Utd2lkdGg9IjgiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPjxwYXRoIGQ9Ik04MCA4MFYxMTIiIHN0cm9rZT0iI0ZCQkYyNCIgc3Ryb2tlLXdpZHRoPSI4IiBzdHJva2UtbGluZWNhcD0icm91bmQiLz48cGF0aCBkPSJNOTYgNjRWMTI4IiBzdHJva2U9IiNGQkJGMjQiIHN0cm9rZS13aWR0aD0iOCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+PHBhdGggZD0iTTExMiA4MFYxMTIiIHN0cm9rZT0iI0ZCQkYyNCIgc3Ryb2tlLXdpZHRoPSI4IiBzdHJva2UtbGluZWNhcD0icm91bmQiLz48cGF0aCBkPSJNMTI4IDk2SDE0NCIgc3Ryb2tlPSIjRkJCRjI0IiBzdHJva2Utd2lkdGg9IjgiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPjxjaXJjbGUgY3g9Ijk2IiBjeT0iOTYiIHI9IjYwIiBzdHJva2U9IiNGNTlFMEIiIHN0cm9rZS13aWR0aD0iOCIvPjwvc3ZnPg==" alt="Nam Radio Live Logo" className="w-12 h-12" />
+             <img src="/logo192.svg" alt="Nam Radio Live Logo" className="w-12 h-12" />
              <span className="text-xl font-bold tracking-wider text-white hidden sm:inline">Nam Radio Live</span>
            </a>
         </div>
