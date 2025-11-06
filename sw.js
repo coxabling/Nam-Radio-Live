@@ -30,6 +30,7 @@ const urlsToCache = [
   '/components/Toast.tsx',
   '/components/AdminDashboard.tsx',
   '/components/InstallPwaButton.tsx',
+  '/components/CommunityCountdown.tsx',
   'logo192.svg',
   'logo512.svg'
 ];

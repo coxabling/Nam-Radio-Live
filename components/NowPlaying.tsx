@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { getSongFunFact } from '../services/geminiService';
-import { Song, ApiScheduleItem, Vibe, VibeType } from '../types';
+import { Song, ApiScheduleItem, Vibe, VibeType, SongRating } from '../types';
 import VibeCheck from './VibeCheck';
 
 interface LiveNowPlaying {
@@ -15,8 +15,8 @@ interface NowPlayingProps {
     userVibe: VibeType | null;
     onVibeVote: (vibe: VibeType) => void;
     nowPlayingError: string | null;
-    likedSongs: string[];
-    dislikedSongs: string[];
+    likedSongs: SongRating[];
+    dislikedSongs: SongRating[];
     onSongRating: (song: Song, rating: 'like' | 'dislike') => void;
     isLoggedIn: boolean;
 }
@@ -70,8 +70,8 @@ const NowPlaying: React.FC<NowPlayingProps> = ({ liveNowPlaying, recentlyPlayed,
   const appleMusicSearchUrl = `https://music.apple.com/us/search?term=${songSearchQuery}`;
 
   const currentSongId = `${liveNowPlaying.song.title} - ${liveNowPlaying.song.artist}`;
-  const isCurrentLiked = likedSongs.includes(currentSongId);
-  const isCurrentDisliked = dislikedSongs.includes(currentSongId);
+  const isCurrentLiked = likedSongs.some(s => s.id === currentSongId);
+  const isCurrentDisliked = dislikedSongs.some(s => s.id === currentSongId);
 
   return (
     <section className="bg-slate-900/50 backdrop-blur-xl rounded-2xl p-6 md:p-8 shadow-lg border border-slate-700/50 space-y-8">
@@ -184,8 +184,8 @@ const NowPlaying: React.FC<NowPlayingProps> = ({ liveNowPlaying, recentlyPlayed,
                 <ul className="space-y-1">
                     {recentlyPlayed.map((song, index) => {
                         const songId = `${song.title} - ${song.artist}`;
-                        const isLiked = likedSongs.includes(songId);
-                        const isDisliked = dislikedSongs.includes(songId);
+                        const isLiked = likedSongs.some(s => s.id === songId);
+                        const isDisliked = dislikedSongs.some(s => s.id === songId);
 
                         return (
                             <li key={`${song.title}-${index}`} className="flex items-center gap-3 p-2 hover:bg-slate-700/50 rounded-md transition-colors">

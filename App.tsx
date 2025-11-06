@@ -11,7 +11,7 @@ import UpcomingShows from './components/UpcomingShows';
 import ScrollToTopButton from './components/ScrollToTopButton';
 import About from './components/About';
 import { getLocalMusicEvents } from './services/geminiService';
-import { ApiScheduleItem, Song, SongRequestRecord, Vibe, VibeType, ListeningStats, Badge, DedicationRecord, MusicEvent } from './types';
+import { ApiScheduleItem, Song, SongRequestRecord, Vibe, VibeType, ListeningStats, Badge, DedicationRecord, MusicEvent, SongRating } from './types';
 import LiveChat from './components/LiveChat';
 import ContactPage from './components/ContactPage';
 import MyStation, { BADGES } from './components/MyStation';
@@ -20,6 +20,7 @@ import LoginModal from './components/LoginModal';
 import Toast from './components/Toast';
 import AdminDashboard from './components/AdminDashboard';
 import InstallPwaButton from './components/InstallPwaButton';
+import CommunityCountdown from './components/CommunityCountdown';
 
 interface User {
   username: string;
@@ -595,30 +596,35 @@ const App: React.FC = () => {
     const songId = `${song.title} - ${song.artist}`;
     
     setListeningStats(prev => {
-        const newStats = { ...prev };
-        const wasLiked = newStats.likedSongs.includes(songId);
-        const wasDisliked = newStats.dislikedSongs.includes(songId);
+        const newStats: ListeningStats = {
+          ...prev,
+          likedSongs: [...prev.likedSongs],
+          dislikedSongs: [...prev.dislikedSongs],
+        };
 
-        // Remove from both lists first to handle toggling
-        newStats.likedSongs = newStats.likedSongs.filter(id => id !== songId);
-        newStats.dislikedSongs = newStats.dislikedSongs.filter(id => id !== songId);
+        const likedIndex = newStats.likedSongs.findIndex(s => s.id === songId);
+        const dislikedIndex = newStats.dislikedSongs.findIndex(s => s.id === songId);
 
         let pointsAwarded = false;
+        const isFirstTimeRating = likedIndex === -1 && dislikedIndex === -1;
 
+        if (likedIndex > -1) newStats.likedSongs.splice(likedIndex, 1);
+        if (dislikedIndex > -1) newStats.dislikedSongs.splice(dislikedIndex, 1);
+        
         if (rating === 'like') {
-            if (!wasLiked) {
-                newStats.likedSongs.push(songId);
-                pointsAwarded = true;
+            if (likedIndex === -1) {
+                newStats.likedSongs.push({ id: songId, timestamp: Date.now() });
+                if (isFirstTimeRating) pointsAwarded = true;
             }
         } else if (rating === 'dislike') {
-            if (!wasDisliked) {
-                newStats.dislikedSongs.push(songId);
-                pointsAwarded = true;
+            if (dislikedIndex === -1) {
+                newStats.dislikedSongs.push({ id: songId, timestamp: Date.now() });
+                if (isFirstTimeRating) pointsAwarded = true;
             }
         }
         
-        if (pointsAwarded && !wasLiked && !wasDisliked) {
-            newStats.points = (newStats.points || 0) + 15; // Award points only on the first rating of a song
+        if (pointsAwarded) {
+            newStats.points = (newStats.points || 0) + 15;
         }
 
         return newStats;
@@ -703,6 +709,7 @@ const App: React.FC = () => {
                 isLoggedIn={!!currentUser}
               />
               <UpcomingShows shows={upcomingShowsToday} loading={scheduleLoading} error={scheduleError} favoriteShows={favoriteShows} onToggleFavorite={toggleFavoriteShow} />
+              <CommunityCountdown likedSongs={listeningStats.likedSongs} />
               <About />
               <Schedule 
                 schedule={schedule} 

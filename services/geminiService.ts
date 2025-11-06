@@ -318,7 +318,7 @@ export const getSongOfTheWeek = async (
     };
 
     const topRequests = getTopItems(songRequests.map(r => `${r.title} by ${r.artist}`), 5);
-    const topLikes = getTopItems(listeningStats.likedSongs, 5);
+    const topLikes = getTopItems(listeningStats.likedSongs.map(s => s.id), 5);
 
     let prompt = `You are an expert music curator and DJ for "Nam Radio Live", an online station based in Namibia that plays a vibrant mix of global hits, African grooves, and indie gems. Your task is to select a "Song of the Week".
 
@@ -447,4 +447,19 @@ export const generateEventShoutout = async (song: Song, event: MusicEvent): Prom
         console.error("Error generating event shoutout:", error);
         return `Great track from ${song.artist}! By the way, they're playing live at ${event.venue} on ${event.date}. Check the Events Hub for details!`;
     }
+};
+
+export const generateCountdownCommentary = async (topSongs: { song: string; likes: number }[]): Promise<string> => {
+  if (topSongs.length === 0) return "No songs to comment on!";
+  const chartString = topSongs.map((s, i) => `${i + 1}. ${s.song} (${s.likes} likes)`).join('\n');
+  
+  try {
+    const ai = new GoogleGenAI({ apiKey: getGeminiApiKey() });
+    const prompt = `You are DJ Alex, the AI host of Nam Radio Live. Here is our weekly Community Countdown, based on listener likes:\n\n${chartString}\n\nGive some short, exciting, and fun commentary about this week's chart. You could highlight the #1 song, mention a surprising new entry, or talk about how close the votes were. Keep it conversational and energetic, like you're on air!`;
+    const response = await ai.models.generateContent({ model: 'gemini-2.5-flash', contents: prompt });
+    return response.text;
+  } catch (error) {
+    console.error("Error generating countdown commentary:", error);
+    return `What a chart this week! You all have some amazing taste. That number one spot was well-deserved!`;
+  }
 };

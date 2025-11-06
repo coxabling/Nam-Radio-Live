@@ -1,7 +1,3 @@
-
-
-
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { Dj, ApiScheduleItem, SongRequestRecord, ListeningStats, Badge } from '../types';
 import { getShowRecommendations, generateDailyRewind } from '../services/geminiService';
@@ -138,7 +134,13 @@ const MyStation: React.FC<MyStationProps> = ({ favoriteShows, favoriteDjs, allSh
     try {
       const favShowNames = favoriteShows.map(s => s.name);
       const allShowNames = allShows.map(s => s.name);
-      const result = await getShowRecommendations(favShowNames, allShowNames, songRequests, listeningStats.likedSongs, listeningStats.dislikedSongs);
+      const result = await getShowRecommendations(
+        favShowNames, 
+        allShowNames, 
+        songRequests, 
+        listeningStats.likedSongs.map(s => s.id), 
+        listeningStats.dislikedSongs.map(s => s.id)
+      );
       setRecommendations(result);
     } catch (err) {
       setError('Failed to get recommendations. Please try again.');

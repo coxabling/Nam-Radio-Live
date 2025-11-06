@@ -129,6 +129,11 @@ export interface Vibe {
   count: number;
 }
 
+export interface SongRating {
+  id: string; // "Title - Artist"
+  timestamp: number; // Date.now()
+}
+
 export interface ListeningStats {
   totalListeningTime: number; // in seconds
   monthlyListeningTime: number;
@@ -138,8 +143,8 @@ export interface ListeningStats {
   chatMessagesSent: number;
   votesCast: number;
   points: number;
-  likedSongs: string[]; // Stored as "Title - Artist"
-  dislikedSongs: string[]; // Stored as "Title - Artist"
+  likedSongs: SongRating[];
+  dislikedSongs: SongRating[];
 }
 
 export interface Badge {

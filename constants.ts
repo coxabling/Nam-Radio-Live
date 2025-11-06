@@ -75,6 +75,7 @@ export const WEEKLY_SCHEDULE: ApiScheduleItem[] = [
   { id: 102, start: `${today}T11:00:00Z`, end: `${today}T13:00:00Z`, name: 'Midday Mix', description: 'The perfect lunchtime soundtrack.', is_now: false, imageUrl: 'https://picsum.photos/seed/midday/1920/1080' },
   { id: 103, start: `${today}T14:00:00Z`, end: `${today}T16:00:00Z`, name: 'Afternoon Chill', description: 'Relax and unwind with smooth vibes.', is_now: false, imageUrl: 'https://picsum.photos/seed/chill/1920/1080' },
   { id: 104, start: `${today}T18:00:00Z`, end: `${today}T20:00:00Z`, name: 'Drive Time Power Hour', description: 'Hits to get you through the evening commute.', is_now: false, imageUrl: 'https://picsum.photos/seed/drive/1920/1080' },
+  { id: 105, start: `${today}T21:00:00Z`, end: `${today}T22:00:00Z`, name: 'Community Countdown', description: 'Your top 10 most-liked songs of the week, counted down!', is_now: false, imageUrl: 'https://picsum.photos/seed/countdown/1920/1080' },
   
   // Tomorrow's schedule
   { id: 201, start: `${tomorrow}T09:00:00Z`, end: `${tomorrow}T11:00:00Z`, name: 'Morning Fresh', description: 'The latest hits and trending music.', is_now: false, imageUrl: 'https://picsum.photos/seed/fresh/1920/1080' },
