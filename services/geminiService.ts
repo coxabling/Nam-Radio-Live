@@ -1,6 +1,7 @@
 import { GoogleGenAI, Type } from "@google/genai";
 // FIX: Import DedicationRecord for the new feature.
-import { Song, SongRequestRecord, DedicationRecord, MusicEvent, ApiScheduleItem, SongOfTheWeek, ListeningStats } from '../types';
+// FIX: Import SongRating to resolve type errors.
+import { Song, SongRequestRecord, DedicationRecord, MusicEvent, ApiScheduleItem, SongOfTheWeek, ListeningStats, SongRating } from '../types';
 
 const getGeminiApiKey = (): string => {
   const apiKey = process.env.API_KEY;
@@ -264,7 +265,7 @@ To do this, you must search across a diverse range of web sources. Do not rely o
 - Official venue websites
 - Artist social media pages
 
-For each event found, provide the following details. Prioritize official sources for accuracy. Return this as a structured JSON array.`;
+For each event found, provide the following details. Prioritize official sources for accuracy. Also, find a publicly accessible URL for a relevant promotional image (like a poster, artist photo, or venue picture). Return this as a structured JSON array.`;
 
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash',
@@ -281,7 +282,8 @@ For each event found, provide the following details. Prioritize official sources
               date: { type: Type.STRING, description: "The date of the event." },
               venue: { type: Type.STRING, description: "The venue where the event takes place." },
               description: { type: Type.STRING, description: "A brief description of the event." },
-              sourceUrl: { type: Type.STRING, description: "The direct URL to the source of the event information." }
+              sourceUrl: { type: Type.STRING, description: "The direct URL to the source of the event information." },
+              imageUrl: { type: Type.STRING, description: "A publicly accessible URL for a relevant promotional image." }
             },
             required: ["eventName", "date", "venue", "description", "sourceUrl"],
           },
@@ -379,8 +381,8 @@ export const getRankedShowRecommendations = async (
     favoriteShowNames: string[],
     allShows: ApiScheduleItem[],
     songRequests: SongRequestRecord[],
-    likedSongs: string[],
-    dislikedSongs: string[]
+    likedSongs: SongRating[],
+    dislikedSongs: SongRating[]
 ): Promise<ApiScheduleItem[]> => {
     const ai = new GoogleGenAI({ apiKey: getGeminiApiKey() });
     const otherShows = allShows.filter(show => !favoriteShowNames.includes(show.name));
@@ -389,8 +391,8 @@ export const getRankedShowRecommendations = async (
     let prompt = `You are an AI recommendation engine for "Nam Radio Live". Analyze this listener's taste profile:\n`;
      if (favoriteShowNames.length > 0) prompt += `- Favorite shows: "${favoriteShowNames.join(', ')}".\n`;
      if (songRequests.length > 0) prompt += `- Requested songs: ${songRequests.map(r => `"${r.title}"`).join(', ')}.\n`;
-     if (likedSongs.length > 0) prompt += `- Likes these songs: "${likedSongs.join('", "')}".\n`;
-     if (dislikedSongs.length > 0) prompt += `- Dislikes these songs: "${dislikedSongs.join('", "')}".\n`;
+     if (likedSongs.length > 0) prompt += `- Likes these songs: "${likedSongs.map(s => s.id).join('", "')}".\n`;
+     if (dislikedSongs.length > 0) prompt += `- Dislikes these songs: "${dislikedSongs.map(s => s.id).join('", "')}".\n`;
     
     prompt += `Based on this, from the following list of shows, which one would be the absolute BEST single recommendation? Return ONLY the name of that show. Show list: "${otherShows.map(s => s.name).join('", "')}"`;
 

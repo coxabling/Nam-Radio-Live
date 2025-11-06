@@ -161,6 +161,7 @@ export interface MusicEvent {
   venue: string;
   description: string;
   sourceUrl?: string;
+  imageUrl?: string;
 }
 
 export interface SongOfTheWeek {
