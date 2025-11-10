@@ -94,8 +94,18 @@ export interface OnThisDayMessage {
   isDj: boolean;
 }
 
+export interface LevelUpMessage {
+  id: number;
+  type: 'level_up';
+  author: string; // DJ Alex
+  text: string; // The generated shoutout
+  isDj: boolean;
+  recipient: string; // username of who leveled up
+  levelName: string;
+}
 
-export type Message = TextMessage | PollMessage | GameMessage | TakeoverMessage | PersonalizedMessage | OnThisDayMessage;
+
+export type Message = TextMessage | PollMessage | GameMessage | TakeoverMessage | PersonalizedMessage | OnThisDayMessage | LevelUpMessage;
 
 export interface Song {
   title: string;
@@ -162,6 +172,12 @@ export interface Badge {
   description: string;
   icon: (props: { className?: string }) => ReactElement;
   isEarned: (stats: ListeningStats, songRequests: SongRequestRecord[]) => boolean;
+}
+
+export interface ListenerLevel {
+  name: string;
+  minPoints: number;
+  color: string; // e.g., 'ring-slate-500'
 }
 
 export interface MusicEvent {

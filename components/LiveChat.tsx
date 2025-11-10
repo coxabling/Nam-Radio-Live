@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { Message, PollMessage, Song, TakeoverMessage, GameMessage, Vibe, DedicationRecord, MusicEvent, ApiScheduleItem, SongRequestRecord, ListeningStats, PersonalizedMessage, OnThisDayMessage } from '../types';
-import { getAiChatResponse, generateTakeoverAnnouncement, generateTakeoverWinnerShoutout, generateSongClue, generateDjChitchat, generateVibeCommentary, generateDedicationShoutout, getRankedShowRecommendations, generateShowScoutAlert, generateLocalSpotlightPromo, generateEventShoutout, getOnThisDayInMusic } from '../services/geminiService';
+import { Message, PollMessage, Song, TakeoverMessage, GameMessage, Vibe, DedicationRecord, MusicEvent, ApiScheduleItem, SongRequestRecord, ListeningStats, PersonalizedMessage, OnThisDayMessage, LevelUpMessage } from '../types';
+import { getAiChatResponse, generateTakeoverAnnouncement, generateTakeoverWinnerShoutout, generateSongClue, generateDjChitchat, generateVibeCommentary, generateDedicationShoutout, getRankedShowRecommendations, generateShowScoutAlert, generateLocalSpotlightPromo, generateEventShoutout, getOnThisDayInMusic, generateLevelUpMessage } from '../services/geminiService';
 import { TAKEOVER_SONGS } from '../constants';
 
 const djPolls: Omit<PollMessage, 'id' | 'author' | 'isDj' | 'type'>[] = [
@@ -31,6 +31,7 @@ interface LiveChatProps {
   userFavoriteShows: ApiScheduleItem[];
   songRequests: SongRequestRecord[];
   listeningStats: ListeningStats;
+  latestLevelUp: { username: string; levelName: string } | null;
 }
 
 type FilterType = 'dj' | 'polls' | 'games' | 'takeovers';
@@ -38,7 +39,7 @@ type FilterType = 'dj' | 'polls' | 'games' | 'takeovers';
 const GEMINI_CALL_LIMIT = 100;
 const GEMINI_LIMIT_KEY = 'nam-radio-gemini-limit';
 
-const LiveChat: React.FC<LiveChatProps> = ({ liveNowPlaying, recentlyPlayed, currentUser, dominantVibe, onChatMessageSent, onVoteCast, latestDedication, events, schedule, userFavoriteShows, songRequests, listeningStats }) => {
+const LiveChat: React.FC<LiveChatProps> = ({ liveNowPlaying, recentlyPlayed, currentUser, dominantVibe, onChatMessageSent, onVoteCast, latestDedication, events, schedule, userFavoriteShows, songRequests, listeningStats, latestLevelUp }) => {
   const [messages, setMessages] = useState<Message[]>([{ id: 1, type: 'text', author: 'DJ Alex', text: 'Welcome to the live chat! Drop a message and say hi!', isDj: true }]);
   const [newMessage, setNewMessage] = useState('');
   const [userVotes, setUserVotes] = useState<Record<number, number>>({});
@@ -52,6 +53,7 @@ const LiveChat: React.FC<LiveChatProps> = ({ liveNowPlaying, recentlyPlayed, cur
     takeovers: true,
   });
   const dedicationAnnouncedRef = useRef(false);
+  const levelUpAnnouncedRef = useRef(false);
   const scoutedShowIds = useRef<Set<number>>(new Set());
 
   // "On This Day" feature logic
@@ -177,6 +179,36 @@ const LiveChat: React.FC<LiveChatProps> = ({ liveNowPlaying, recentlyPlayed, cur
     };
     announceDedication();
   }, [latestDedication]);
+  
+  // Announce Level Ups
+  useEffect(() => {
+    const announceLevelUp = async () => {
+        if (latestLevelUp && !levelUpAnnouncedRef.current) {
+            levelUpAnnouncedRef.current = true; // Prevent re-announcing
+            
+            const { count } = getGeminiCallCount();
+            if (count < GEMINI_CALL_LIMIT) {
+                incrementGeminiCallCount();
+                setIsDjTyping(true);
+                const shoutout = await generateLevelUpMessage(latestLevelUp.username, latestLevelUp.levelName);
+                setIsDjTyping(false);
+                const levelUpMessage: LevelUpMessage = {
+                    id: Date.now(),
+                    type: 'level_up',
+                    author: 'DJ Alex',
+                    text: shoutout,
+                    isDj: true,
+                    recipient: latestLevelUp.username,
+                    levelName: latestLevelUp.levelName,
+                };
+                setMessages(prev => [...prev, levelUpMessage]);
+            }
+
+            setTimeout(() => { levelUpAnnouncedRef.current = false; }, 10000); // Reset after a delay
+        }
+    };
+    announceLevelUp();
+  }, [latestLevelUp]);
 
 
   const getGeminiCallCount = () => {
@@ -207,7 +239,7 @@ const LiveChat: React.FC<LiveChatProps> = ({ liveNowPlaying, recentlyPlayed, cur
     if (Object.values(filters).every(v => v)) return messages;
     
     return messages.filter(msg => {
-      if (msg.type === 'personalized') {
+      if (msg.type === 'personalized' || msg.type === 'level_up') {
           return msg.recipient === userHandle;
       }
       if (msg.author === userHandle) return true;
@@ -448,6 +480,15 @@ const LiveChat: React.FC<LiveChatProps> = ({ liveNowPlaying, recentlyPlayed, cur
 
       <div className="flex-grow bg-slate-800/50 rounded-lg p-4 overflow-y-auto mb-4 space-y-4 shadow-inner-lg">
         {filteredMessages.map(msg => {
+          if (msg.type === 'level_up') {
+            return (
+                <div key={msg.id} className="p-4 bg-gradient-to-br from-purple-800 to-indigo-900 rounded-lg border-2 border-purple-500 shadow-lg animate-fade-in text-center">
+                    <span className="text-xl font-bold block text-purple-200 animate-pulse">LEVEL UP!</span>
+                    <p className="text-lg font-bold text-white my-2">{msg.recipient} reached level <span className="text-amber-300">{msg.levelName}</span>!</p>
+                    <p className="text-sm text-slate-200 italic">"{msg.text}"</p>
+                </div>
+            )
+          }
           if (msg.type === 'personalized') {
               return (
                   <div key={msg.id} className="p-3 bg-indigo-900/70 rounded-lg border-l-4 border-indigo-400 animate-fade-in">

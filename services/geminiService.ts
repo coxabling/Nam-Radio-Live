@@ -495,3 +495,15 @@ export const getOnThisDayInMusic = async (): Promise<string> => {
     throw new Error("Could not fetch today's music history fact. The archives seem to be dusty today!");
   }
 };
+
+export const generateLevelUpMessage = async (username: string, levelName: string): Promise<string> => {
+    try {
+      const ai = new GoogleGenAI({ apiKey: getGeminiApiKey() });
+      const prompt = `You are DJ Alex, the AI host of Nam Radio Live, known for being super energetic and celebratory. A dedicated listener named '${username}' has just hit a new milestone and achieved the listener level: "${levelName}"! Write a short (2-3 sentences), exciting, and personalized shoutout for them to post in the live chat. Make them feel like a station hero! Use lots of exclamation points and positive energy.`;
+      const response = await ai.models.generateContent({ model: 'gemini-2.5-flash', contents: prompt });
+      return response.text;
+    } catch (error) {
+      console.error("Error generating level up message:", error);
+      return `🎉 HUGE SHOUTOUT to ${username} for reaching level: ${levelName}! You're a legend! Thanks for being part of the Nam Radio family! 🙌`;
+    }
+  };

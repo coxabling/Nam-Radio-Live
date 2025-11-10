@@ -11,10 +11,10 @@ import UpcomingShows from './components/UpcomingShows';
 import ScrollToTopButton from './components/ScrollToTopButton';
 import About from './components/About';
 import { getLocalMusicEvents } from './services/geminiService';
-import { ApiScheduleItem, Song, SongRequestRecord, Vibe, VibeType, ListeningStats, Badge, DedicationRecord, MusicEvent, SongRating } from './types';
+import { ApiScheduleItem, Song, SongRequestRecord, Vibe, VibeType, ListeningStats, Badge, DedicationRecord, MusicEvent, SongRating, LevelUpMessage } from './types';
 import LiveChat from './components/LiveChat';
 import ContactPage from './components/ContactPage';
-import MyStation, { BADGES } from './components/MyStation';
+import MyStation, { BADGES, LISTENER_LEVELS } from './components/MyStation';
 import ContentHub from './components/ContentHub';
 import LoginModal from './components/LoginModal';
 import Toast from './components/Toast';
@@ -33,6 +33,11 @@ interface User {
 interface LiveNowPlaying {
     song: Song;
     show: ApiScheduleItem | null;
+}
+
+interface LevelUpInfo {
+    username: string;
+    levelName: string;
 }
 
 // A simple, non-secure "hash" for demonstration purposes. In a real app, use a library like bcrypt on the server.
@@ -101,6 +106,7 @@ const App: React.FC = () => {
   // Gamification UI State
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const earnedBadgesRef = useRef<Set<string>>(new Set());
+  const [latestLevelUp, setLatestLevelUp] = useState<LevelUpInfo | null>(null);
 
   // PWA Install state
   const [installPrompt, setInstallPrompt] = useState<any>(null);
@@ -379,6 +385,15 @@ const App: React.FC = () => {
             lastUpdated: now.toISOString(),
             points: (prevStats.points || 0) + pointsForInterval,
           };
+
+          // Level Up Check
+          const oldPoints = prevStats.points || 0;
+          const newPoints = newStats.points || 0;
+          const oldLevel = [...LISTENER_LEVELS].reverse().find(l => oldPoints >= l.minPoints);
+          const newLevel = [...LISTENER_LEVELS].reverse().find(l => newPoints >= l.minPoints);
+          if (newLevel && oldLevel && newLevel.name !== oldLevel.name) {
+            setLatestLevelUp({ username: currentUser.username, levelName: newLevel.name });
+          }
 
           if (liveNowPlaying.show?.name) {
             const showName = liveNowPlaying.show.name;
@@ -764,6 +779,7 @@ const App: React.FC = () => {
                 userFavoriteShows={userFavoriteShows}
                 songRequests={songRequests}
                 listeningStats={listeningStats}
+                latestLevelUp={latestLevelUp}
               />
               <ContentHub 
                 events={events}

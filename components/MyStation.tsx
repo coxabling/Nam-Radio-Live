@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Dj, ApiScheduleItem, SongRequestRecord, ListeningStats, Badge } from '../types';
+import { Dj, ApiScheduleItem, SongRequestRecord, ListeningStats, Badge, ListenerLevel } from '../types';
 import { getShowRecommendations, generateDailyRewind } from '../services/geminiService';
 import { DJS } from '../constants';
 import DailyRewindModal from './DailyRewindModal';
@@ -83,6 +83,15 @@ export const BADGES: Badge[] = [
     isEarned: (stats) => (stats.showListeningTime['Sunrise Beats'] || 0) > 3600,
   }
 ];
+
+export const LISTENER_LEVELS: ListenerLevel[] = [
+    { name: 'New Listener', minPoints: 0, color: 'ring-slate-500' },
+    { name: 'Tune-In Titan', minPoints: 1000, color: 'ring-cyan-400' },
+    { name: 'Regular Groover', minPoints: 2500, color: 'ring-blue-400' },
+    { name: 'Station Staple', minPoints: 5000, color: 'ring-green-400' },
+    { name: 'Vibe Veteran', minPoints: 10000, color: 'ring-purple-400' },
+    { name: 'Radio Royalty', minPoints: 20000, color: 'ring-amber-400' },
+  ];
 
 interface MyStationProps {
   favoriteShows: ApiScheduleItem[];
@@ -187,6 +196,24 @@ const MyStation: React.FC<MyStationProps> = ({ favoriteShows, favoriteDjs, allSh
   const sortedSongRequests = useMemo(() => {
     return [...songRequests].sort((a, b) => new Date(b.requestedAt).getTime() - new Date(a.requestedAt).getTime());
   }, [songRequests]);
+
+  const currentLevel = useMemo(() => 
+    [...LISTENER_LEVELS].reverse().find(l => listeningStats.points >= l.minPoints) || LISTENER_LEVELS[0],
+    [listeningStats.points]
+  );
+
+  const nextLevel = useMemo(() => 
+    LISTENER_LEVELS.find(l => l.minPoints > listeningStats.points),
+    [listeningStats.points]
+  );
+
+  const progressPercentage = useMemo(() => {
+      if (!nextLevel) return 100;
+      if (currentLevel.minPoints === nextLevel.minPoints) return 100;
+      const levelPointRange = nextLevel.minPoints - currentLevel.minPoints;
+      const pointsIntoLevel = listeningStats.points - currentLevel.minPoints;
+      return (pointsIntoLevel / levelPointRange) * 100;
+  }, [listeningStats.points, currentLevel, nextLevel]);
 
   const userStats = useMemo(() => {
     const hours = (listeningStats.monthlyListeningTime / 3600).toFixed(1);
@@ -380,8 +407,7 @@ const MyStation: React.FC<MyStationProps> = ({ favoriteShows, favoriteDjs, allSh
                     ) : (
                       <div className="space-y-6">
                         <div className="flex items-center gap-4">
-                          <div className="w-20 h-20 rounded-full bg-slate-800/50 flex-shrink-0 relative">
-                             <div className="absolute inset-0 rounded-full ring-2 ring-amber-400 ring-offset-4 ring-offset-slate-800 animate-pulse"></div>
+                           <div className={`w-20 h-20 rounded-full bg-slate-800/50 flex-shrink-0 relative ring-4 ${currentLevel.color} ring-offset-4 ring-offset-slate-800`}>
                              {profileData.avatarUrl && !avatarError ? 
                                 <img src={profileData.avatarUrl} alt="User avatar" className="relative w-full h-full object-cover rounded-full" onError={() => setAvatarError(true)} /> 
                                 : 
@@ -390,7 +416,21 @@ const MyStation: React.FC<MyStationProps> = ({ favoriteShows, favoriteDjs, allSh
                           </div>
                           <div className="overflow-hidden">
                             <h3 className="text-2xl font-bold text-white truncate">{profileData.username}</h3>
+                            <p className="text-sm font-semibold text-amber-300">{currentLevel.name}</p>
                           </div>
+                        </div>
+                        <div className="mt-4">
+                            <div className="flex justify-between items-center text-sm mb-1">
+                                <span className="font-bold text-slate-300">Level Progress</span>
+                                {nextLevel && <span className="text-slate-400">{Math.floor(listeningStats.points).toLocaleString()} / {nextLevel.minPoints.toLocaleString()} PTS</span>}
+                            </div>
+                            <div className="w-full bg-slate-700 rounded-full h-2.5">
+                                <div className="bg-amber-400 h-2.5 rounded-full transition-all duration-500" style={{ width: `${progressPercentage}%` }}></div>
+                            </div>
+                            {nextLevel ? 
+                                <p className="text-xs text-slate-500 mt-1">Next level: {nextLevel.name}</p> :
+                                <p className="text-xs text-amber-300 mt-1">You've reached the highest level!</p>
+                            }
                         </div>
                         {saveSuccess && (
                             <div className="flex items-center gap-3 p-3 text-sm bg-green-500/10 text-green-300 rounded-lg animate-fade-in border border-green-500/20">

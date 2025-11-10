@@ -66,10 +66,15 @@ const StationChart: React.FC<StationChartProps> = ({ onSongRating, likedSongs, i
         fetchChart();
     }, []);
 
-    const handleGetCommentary = async () => {
+    const handleToggleCommentary = async () => {
+        // If commentary already exists, hide it.
+        if (commentary) {
+            setCommentary(null);
+            return;
+        }
+        
         if (topSongs.length === 0) return;
         setIsCommentaryLoading(true);
-        setCommentary(null);
         try {
             const chartForAI = topSongs.map(s => ({ 
                 song: `${s.song.title} by ${s.song.artist}`, 
@@ -139,8 +144,8 @@ const StationChart: React.FC<StationChartProps> = ({ onSongRating, likedSongs, i
                     );
                 })}
                 <div className="pt-4 text-center">
-                    <button onClick={handleGetCommentary} disabled={isCommentaryLoading} className="px-4 py-2 bg-slate-700/50 text-slate-300 hover:bg-slate-700 hover:text-white font-semibold rounded-lg transition-all duration-200 disabled:opacity-50">
-                        {isCommentaryLoading ? 'Thinking...' : 'Ask DJ Alex for Commentary'}
+                    <button onClick={handleToggleCommentary} disabled={isCommentaryLoading} className="px-4 py-2 bg-slate-700/50 text-slate-300 hover:bg-slate-700 hover:text-white font-semibold rounded-lg transition-all duration-200 disabled:opacity-50">
+                        {isCommentaryLoading ? 'Thinking...' : (commentary ? 'Hide Commentary' : 'Ask DJ Alex for Commentary')}
                     </button>
                 </div>
                  {commentary && (
