@@ -70,6 +70,7 @@ const initialListeningStats: ListeningStats = {
   points: 0,
   likedSongs: [],
   dislikedSongs: [],
+  listeningTimeByHour: {},
 };
 
 const DEFAULT_BG_URL = 'https://picsum.photos/1920/1080?grayscale&blur=5';
@@ -188,6 +189,7 @@ const App: React.FC = () => {
             if (!loadedStats.points) loadedStats.points = 0;
             if (!loadedStats.likedSongs) loadedStats.likedSongs = [];
             if (!loadedStats.dislikedSongs) loadedStats.dislikedSongs = [];
+            if (!loadedStats.listeningTimeByHour) loadedStats.listeningTimeByHour = {};
 
 
             setListeningStats(loadedStats);
@@ -385,6 +387,11 @@ const App: React.FC = () => {
             lastUpdated: now.toISOString(),
             points: (prevStats.points || 0) + pointsForInterval,
           };
+
+          const newTimeByHour = { ...prevStats.listeningTimeByHour };
+          const secondsToAdd = trackingInterval / 1000;
+          newTimeByHour[currentHour] = (newTimeByHour[currentHour] || 0) + secondsToAdd;
+          newStats.listeningTimeByHour = newTimeByHour;
 
           // Level Up Check
           const oldPoints = prevStats.points || 0;

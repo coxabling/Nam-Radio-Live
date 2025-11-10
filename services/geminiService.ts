@@ -507,3 +507,35 @@ export const generateLevelUpMessage = async (username: string, levelName: string
       return `🎉 HUGE SHOUTOUT to ${username} for reaching level: ${levelName}! You're a legend! Thanks for being part of the Nam Radio family! 🙌`;
     }
   };
+
+export const getTopGenres = async (artists: string[]): Promise<string[]> => {
+  if (artists.length === 0) {
+    return [];
+  }
+  try {
+    const ai = new GoogleGenAI({ apiKey: getGeminiApiKey() });
+    const prompt = `Analyze this list of artists a user has liked or requested: ${artists.join(', ')}. Based on these artists, what are their top 3 favorite music genres? Return ONLY a JSON array of strings. For example: ["Indie Rock", "Global Pop", "Lo-fi Beats"]`;
+    
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: prompt,
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.ARRAY,
+          items: {
+            type: Type.STRING,
+          },
+        },
+      },
+    });
+
+    const jsonText = response.text.trim();
+    const genres = JSON.parse(jsonText);
+    return genres as string[];
+  } catch (error) {
+    console.error("Error analyzing top genres:", error);
+    // Fallback in case of error
+    return ["Eclectic Mix"];
+  }
+};

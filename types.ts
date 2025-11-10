@@ -164,6 +164,7 @@ export interface ListeningStats {
   points: number;
   likedSongs: SongRating[];
   dislikedSongs: SongRating[];
+  listeningTimeByHour: Record<number, number>;
 }
 
 export interface Badge {

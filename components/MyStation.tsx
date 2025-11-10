@@ -3,6 +3,7 @@ import { Dj, ApiScheduleItem, SongRequestRecord, ListeningStats, Badge, Listener
 import { getShowRecommendations, generateDailyRewind } from '../services/geminiService';
 import { DJS } from '../constants';
 import DailyRewindModal from './DailyRewindModal';
+import ListeningDNA from './Contact';
 
 
 interface User {
@@ -214,23 +215,6 @@ const MyStation: React.FC<MyStationProps> = ({ favoriteShows, favoriteDjs, allSh
       const pointsIntoLevel = listeningStats.points - currentLevel.minPoints;
       return (pointsIntoLevel / levelPointRange) * 100;
   }, [listeningStats.points, currentLevel, nextLevel]);
-
-  const userStats = useMemo(() => {
-    const hours = (listeningStats.monthlyListeningTime / 3600).toFixed(1);
-    
-    let topShowName: string | null = null;
-    if (Object.keys(listeningStats.showListeningTime).length > 0) {
-        topShowName = Object.entries(listeningStats.showListeningTime).sort((a,b) => Number(b[1]) - Number(a[1]))[0][0];
-    }
-    
-    const djForTopShow = DJS.find(dj => dj.show === topShowName);
-
-    return {
-        listeningHours: hours,
-        topDj: djForTopShow?.name || 'The Airwaves',
-        points: Math.floor(listeningStats.points || 0),
-    };
-  }, [listeningStats]);
   
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
@@ -443,37 +427,25 @@ const MyStation: React.FC<MyStationProps> = ({ favoriteShows, favoriteDjs, allSh
                     )}
                 </section>
 
-                 <section className="bg-slate-900/50 backdrop-blur-xl rounded-2xl p-6 md:p-8 shadow-lg border border-slate-700/50">
-                    <h2 className="text-2xl font-bold mb-6 tracking-wide text-white">Your Stats & Badges</h2>
-                    <div className="space-y-4 mb-6">
-                      <div className="flex items-center justify-between p-3 bg-slate-800/50 rounded-lg">
-                        <span className="text-slate-300">Listening Time (Month)</span>
-                        <span className="font-bold text-white text-lg">{userStats.listeningHours} hours</span>
-                      </div>
-                      <div className="flex items-center justify-between p-3 bg-slate-800/50 rounded-lg">
-                        <span className="text-slate-300">Your Top DJ</span>
-                        <span className="font-bold text-white text-lg">{userStats.topDj}</span>
-                      </div>
-                      <div className="flex items-center justify-between p-3 bg-slate-800/50 rounded-lg">
-                        <span className="text-slate-300">Station Points</span>
-                        <span className="font-bold text-white text-lg">{userStats.points.toLocaleString()} pts</span>
-                      </div>
-                    </div>
-                    <div>
-                      <h3 className="font-semibold text-slate-300 mb-3">Achievements</h3>
-                      <div className="grid grid-cols-3 gap-4">
-                        {BADGES.map(badge => {
-                          const earned = badge.isEarned(listeningStats, songRequests);
-                          return (
-                            <div key={badge.id} className={`text-center p-3 rounded-lg transition-all ${earned ? 'bg-amber-500/10' : 'bg-slate-800/50'}`} title={badge.description}>
-                              <div className={`mx-auto mb-2 ${earned ? 'text-amber-400' : 'text-slate-500 grayscale'}`}>
-                                <badge.icon />
-                              </div>
-                              <p className={`text-xs font-semibold ${earned ? 'text-white' : 'text-slate-400'}`}>{badge.name}</p>
+                <ListeningDNA 
+                    listeningStats={listeningStats}
+                    songRequests={songRequests}
+                />
+
+                <section className="bg-slate-900/50 backdrop-blur-xl rounded-2xl p-6 md:p-8 shadow-lg border border-slate-700/50">
+                    <h2 className="text-2xl font-bold mb-6 tracking-wide text-white">Achievements</h2>
+                    <div className="grid grid-cols-3 gap-4">
+                    {BADGES.map(badge => {
+                        const earned = badge.isEarned(listeningStats, songRequests);
+                        return (
+                        <div key={badge.id} className={`text-center p-3 rounded-lg transition-all ${earned ? 'bg-amber-500/10' : 'bg-slate-800/50'}`} title={badge.description}>
+                            <div className={`mx-auto mb-2 ${earned ? 'text-amber-400' : 'text-slate-500 grayscale'}`}>
+                            <badge.icon />
                             </div>
-                          );
-                        })}
-                      </div>
+                            <p className={`text-xs font-semibold ${earned ? 'text-white' : 'text-slate-400'}`}>{badge.name}</p>
+                        </div>
+                        );
+                    })}
                     </div>
                 </section>
 
