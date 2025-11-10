@@ -60,6 +60,17 @@ export interface GameMessage {
   isDj: boolean;
 }
 
+export interface TriviaMessage {
+  id: number;
+  type: 'trivia';
+  author: string;
+  question: string;
+  answer: string;
+  winner: string | null;
+  isDj: boolean;
+}
+
+
 export interface TakeoverSong {
   title: string;
   artist: string;
@@ -113,7 +124,7 @@ export interface SoundboardMessage {
 }
 
 
-export type Message = TextMessage | PollMessage | GameMessage | TakeoverMessage | PersonalizedMessage | OnThisDayMessage | LevelUpMessage | SoundboardMessage;
+export type Message = TextMessage | PollMessage | GameMessage | TakeoverMessage | PersonalizedMessage | OnThisDayMessage | LevelUpMessage | SoundboardMessage | TriviaMessage;
 
 export interface LiveNowPlaying {
     song: Song;

@@ -1,6 +1,7 @@
 
 
 
+
 import { GoogleGenAI, Type, Modality } from "@google/genai";
 // FIX: Import DedicationRecord for the new feature.
 // FIX: Import SongRating to resolve type errors.
@@ -198,6 +199,49 @@ export const generateSongClue = async (song: Song): Promise<string> => {
         console.error("Error generating song clue:", error);
         return `This one's a classic from ${song.artist}. Can you name it?`;
     }
+};
+
+export const generateTriviaQuestion = async (song?: Song): Promise<{ question: string; answer: string }> => {
+  try {
+    const ai = new GoogleGenAI({ apiKey: getGeminiApiKey() });
+    let topic = "general popular music history, artists, or fun facts from the 1970s to today";
+    if (song) {
+        topic = `the song "${song.title}" by ${song.artist}`;
+    }
+    
+    const prompt = `You are a radio DJ hosting a "Song Sleuth" trivia game. Create a clever, interesting, and verifiable trivia question about ${topic}. The answer should be relatively short (a name, a year, a place, etc.). Return ONLY a JSON object with two keys: "question" and "answer". Do not include any other text or markdown formatting.`;
+    
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: prompt,
+      config: {
+        tools: [{googleSearch: {}}],
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            question: { type: Type.STRING, description: "The trivia question." },
+            answer: { type: Type.STRING, description: "The answer to the question." },
+          },
+          required: ["question", "answer"],
+        },
+      },
+    });
+
+    const jsonText = response.text.trim();
+    const data = JSON.parse(jsonText);
+    if (!data.question || !data.answer) {
+        throw new Error("AI response did not contain question and answer.");
+    }
+    return data;
+  } catch (error) {
+    console.error("Error generating trivia question:", error);
+    // Fallback trivia in case of API error
+    return {
+        question: "Which British band sparked an 'invasion' of the US charts in the 1960s?",
+        answer: "The Beatles"
+    };
+  }
 };
 
 export const generateVibeCommentary = async (dominantVibeLabel: string): Promise<string> => {
@@ -543,7 +587,7 @@ export const getTopGenres = async (artists: string[]): Promise<string[]> => {
 
 export const generateSoundDropAudio = async (text: string, voice: 'Kore' | 'Puck' | 'Zephyr' | 'Charon' | 'Fenrir'): Promise<string> => {
   try {
-    const ai = new GoogleGenAI({ apiKey: getGeminiApiKey() });
+    const ai = new GoogleGenAI({});
     const response = await ai.models.generateContent({
       model: "gemini-2.5-flash-preview-tts",
       contents: [{ parts: [{ text: text }] }],

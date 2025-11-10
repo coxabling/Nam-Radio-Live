@@ -630,6 +630,11 @@ const App: React.FC = () => {
     setListeningStats(prev => ({...prev, votesCast: (prev.votesCast || 0) + 1, points: (prev.points || 0) + 10 }));
   }, [currentUser]);
 
+  const handleGameWon = useCallback((points: number) => {
+    if (!currentUser) return;
+    setListeningStats(prev => ({...prev, points: (prev.points || 0) + points }));
+  }, [currentUser]);
+
   const handleSoundTriggered = useCallback((cost: number) => {
     if (!currentUser) return;
     setListeningStats(prev => ({...prev, points: Math.max(0, (prev.points || 0) - cost)}));
@@ -782,6 +787,7 @@ const App: React.FC = () => {
                 onChatMessageSent={handleChatMessageSent} 
                 onVoteCast={handleVoteCast} 
                 onSoundTriggered={handleSoundTriggered}
+                onGameWon={handleGameWon}
                 latestDedication={latestDedication} 
                 events={events}
                 schedule={schedule}
