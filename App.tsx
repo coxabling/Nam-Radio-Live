@@ -733,7 +733,11 @@ const App: React.FC = () => {
               />
               <UpcomingShows shows={upcomingShowsToday} loading={scheduleLoading} error={scheduleError} favoriteShows={favoriteShows} onToggleFavorite={toggleFavoriteShow} />
               <CommunityCountdown likedSongs={listeningStats.likedSongs} />
-              <StationChart />
+              <StationChart 
+                onSongRating={handleSongRating}
+                likedSongs={listeningStats.likedSongs}
+                isLoggedIn={!!currentUser}
+              />
               <About />
               <Schedule 
                 schedule={schedule} 
