@@ -22,6 +22,7 @@ import Toast from './components/Toast';
 import AdminDashboard from './components/AdminDashboard';
 import InstallPwaButton from './components/InstallPwaButton';
 import CommunityCountdown from './components/CommunityCountdown';
+import StationChart from './components/StationChart';
 
 interface User {
   username: string;
@@ -735,6 +736,7 @@ const App: React.FC = () => {
               />
               <UpcomingShows shows={upcomingShowsToday} loading={scheduleLoading} error={scheduleError} favoriteShows={favoriteShows} onToggleFavorite={toggleFavoriteShow} />
               <CommunityCountdown likedSongs={listeningStats.likedSongs} />
+              <StationChart />
               <About />
               <Schedule 
                 schedule={schedule} 

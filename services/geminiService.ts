@@ -1,3 +1,4 @@
+
 import { GoogleGenAI, Type } from "@google/genai";
 // FIX: Import DedicationRecord for the new feature.
 // FIX: Import SongRating to resolve type errors.
@@ -465,3 +466,18 @@ export const generateCountdownCommentary = async (topSongs: { song: string; like
     return `What a chart this week! You all have some amazing taste. That number one spot was well-deserved!`;
   }
 };
+
+export const generateStationChartCommentary = async (topSongs: { song: string; plays: number }[]): Promise<string> => {
+    if (topSongs.length === 0) return "No songs to comment on!";
+    const chartString = topSongs.map((s, i) => `${i + 1}. ${s.song} (${s.plays} plays)`).join('\n');
+    
+    try {
+      const ai = new GoogleGenAI({ apiKey: getGeminiApiKey() });
+      const prompt = `You are DJ Alex, the AI host of Nam Radio Live. Here is our Official Station Chart, based on the most-played songs this week:\n\n${chartString}\n\nGive some short, exciting, and fun commentary about this week's chart. You could highlight the #1 song, mention a track that's a station favorite, or point out a new popular hit. Keep it conversational and energetic, like you're on air!`;
+      const response = await ai.models.generateContent({ model: 'gemini-2.5-flash', contents: prompt });
+      return response.text;
+    } catch (error) {
+      console.error("Error generating station chart commentary:", error);
+      return `What a week for music! You've been keeping the airwaves hot. That number one spot was a real banger!`;
+    }
+  };

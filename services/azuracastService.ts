@@ -1,3 +1,4 @@
+
 import { AZURACAST_BASE_URL, AZURACAST_STATION_ID, WEEKLY_SCHEDULE } from '../constants';
 import { ApiScheduleItem, Song, RequestableSong, AzuraListeners, AzuraListenersReport, AzuraPerformanceReportItem, AzuraHistoryItem } from '../types';
 
@@ -157,8 +158,8 @@ export const getPerformanceReport = async (): Promise<AzuraPerformanceReportItem
         const response = await fetch(`${AZURACAST_BASE_URL}/api/station/${AZURACAST_STATION_ID}/performance`);
         if (!response.ok) throw new Error(`Network response was not ok`);
         const data: AzuraPerformanceReportItem[] = await response.json();
-        // Return top 5 by play count
-        return data.sort((a,b) => b.play_count - a.play_count).slice(0, 5);
+        // Return top 10 by play count
+        return data.sort((a,b) => b.play_count - a.play_count).slice(0, 10);
     } catch (error) {
         console.error("Failed to fetch performance report.", error);
         throw error;

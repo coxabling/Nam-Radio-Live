@@ -1,3 +1,4 @@
+
 const CACHE_NAME = 'nam-radio-live-v1';
 const urlsToCache = [
   '/',
@@ -31,6 +32,7 @@ const urlsToCache = [
   '/components/AdminDashboard.tsx',
   '/components/InstallPwaButton.tsx',
   '/components/CommunityCountdown.tsx',
+  '/components/StationChart.tsx',
   '/logo192.svg',
   '/logo512.svg'
 ];
