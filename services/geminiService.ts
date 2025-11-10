@@ -1,4 +1,5 @@
 
+
 import { GoogleGenAI, Type } from "@google/genai";
 // FIX: Import DedicationRecord for the new feature.
 // FIX: Import SongRating to resolve type errors.
@@ -481,3 +482,16 @@ export const generateStationChartCommentary = async (topSongs: { song: string; p
       return `What a week for music! You've been keeping the airwaves hot. That number one spot was a real banger!`;
     }
   };
+  
+export const getOnThisDayInMusic = async (): Promise<string> => {
+  try {
+    const ai = new GoogleGenAI({ apiKey: getGeminiApiKey() });
+    const today = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric' });
+    const prompt = `You are a music historian DJ for a vibrant online radio station, "Nam Radio Live". What is one significant, fun, or interesting event in music history that happened on this day, ${today}? Keep it concise (2-3 sentences) and engaging for a live chat.`;
+    const response = await ai.models.generateContent({ model: 'gemini-2.5-flash', contents: prompt });
+    return response.text;
+  } catch (error) {
+    console.error("Error generating 'On This Day' fact:", error);
+    throw new Error("Could not fetch today's music history fact. The archives seem to be dusty today!");
+  }
+};

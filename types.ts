@@ -86,8 +86,16 @@ export interface PersonalizedMessage {
   recipient: string; // username
 }
 
+export interface OnThisDayMessage {
+  id: number;
+  type: 'on_this_day';
+  author: string;
+  text: string;
+  isDj: boolean;
+}
 
-export type Message = TextMessage | PollMessage | GameMessage | TakeoverMessage | PersonalizedMessage;
+
+export type Message = TextMessage | PollMessage | GameMessage | TakeoverMessage | PersonalizedMessage | OnThisDayMessage;
 
 export interface Song {
   title: string;

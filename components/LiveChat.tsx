@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { Message, PollMessage, Song, TakeoverMessage, GameMessage, Vibe, DedicationRecord, MusicEvent, ApiScheduleItem, SongRequestRecord, ListeningStats, PersonalizedMessage } from '../types';
-import { getAiChatResponse, generateTakeoverAnnouncement, generateTakeoverWinnerShoutout, generateSongClue, generateDjChitchat, generateVibeCommentary, generateDedicationShoutout, getRankedShowRecommendations, generateShowScoutAlert, generateLocalSpotlightPromo, generateEventShoutout } from '../services/geminiService';
+import { Message, PollMessage, Song, TakeoverMessage, GameMessage, Vibe, DedicationRecord, MusicEvent, ApiScheduleItem, SongRequestRecord, ListeningStats, PersonalizedMessage, OnThisDayMessage } from '../types';
+import { getAiChatResponse, generateTakeoverAnnouncement, generateTakeoverWinnerShoutout, generateSongClue, generateDjChitchat, generateVibeCommentary, generateDedicationShoutout, getRankedShowRecommendations, generateShowScoutAlert, generateLocalSpotlightPromo, generateEventShoutout, getOnThisDayInMusic } from '../services/geminiService';
 import { TAKEOVER_SONGS } from '../constants';
 
 const djPolls: Omit<PollMessage, 'id' | 'author' | 'isDj' | 'type'>[] = [
@@ -11,6 +11,8 @@ const djPolls: Omit<PollMessage, 'id' | 'author' | 'isDj' | 'type'>[] = [
 const TypingIndicator: React.FC<{ author: string }> = ({ author }) => (
   <div className="flex items-start"><div className="rounded-lg px-3 py-2 max-w-[80%] bg-amber-900/70"><span className="text-xs font-bold block text-amber-200">{author}</span><div className="flex items-center space-x-1 p-1"><span className="h-2 w-2 bg-amber-300 rounded-full animate-bounce [animation-delay:-0.3s]"></span><span className="h-2 w-2 bg-amber-300 rounded-full animate-bounce [animation-delay:-0.15s]"></span><span className="h-2 w-2 bg-amber-300 rounded-full animate-bounce"></span></div></div></div>
 );
+
+const CalendarIcon = () => (<svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>);
 
 interface User {
   username: string;
@@ -51,6 +53,52 @@ const LiveChat: React.FC<LiveChatProps> = ({ liveNowPlaying, recentlyPlayed, cur
   });
   const dedicationAnnouncedRef = useRef(false);
   const scoutedShowIds = useRef<Set<number>>(new Set());
+
+  // "On This Day" feature logic
+  useEffect(() => {
+    const postOnThisDayFact = async () => {
+      const ON_THIS_DAY_KEY = 'nam-radio-on-this-day-posted-date';
+      const todayStr = new Date().toISOString().split('T')[0];
+
+      try {
+        const lastPostedDate = localStorage.getItem(ON_THIS_DAY_KEY);
+        if (lastPostedDate === todayStr) {
+          return; // Already posted today
+        }
+      } catch (e) { console.error("Could not read from localStorage", e); }
+      
+      const { count } = getGeminiCallCount();
+      if (count >= GEMINI_CALL_LIMIT) {
+          return; // Daily limit reached
+      }
+      incrementGeminiCallCount();
+
+      try {
+        setIsDjTyping(true);
+        const fact = await getOnThisDayInMusic();
+        setIsDjTyping(false);
+        
+        const factMessage: OnThisDayMessage = {
+          id: Date.now(),
+          type: 'on_this_day',
+          author: 'DJ Alex',
+          text: fact,
+          isDj: true,
+        };
+        setMessages(prev => [...prev, factMessage]);
+        
+        try {
+            localStorage.setItem(ON_THIS_DAY_KEY, todayStr);
+        } catch (e) { console.error("Could not write to localStorage", e); }
+
+      } catch (error) {
+        console.error(error);
+        setIsDjTyping(false); // Make sure to turn this off on error
+      }
+    };
+
+    postOnThisDayFact();
+  }, []); // Run only once on component mount
 
   // AI Show Scout Logic
   useEffect(() => {
@@ -163,6 +211,7 @@ const LiveChat: React.FC<LiveChatProps> = ({ liveNowPlaying, recentlyPlayed, cur
           return msg.recipient === userHandle;
       }
       if (msg.author === userHandle) return true;
+      if (msg.type === 'on_this_day') return true; // Always show this
       if (msg.type === 'poll') return filters.polls;
       if (msg.type === 'game') return filters.games;
       if (msg.type === 'takeover') return filters.takeovers;
@@ -406,6 +455,19 @@ const LiveChat: React.FC<LiveChatProps> = ({ liveNowPlaying, recentlyPlayed, cur
                       <p className="text-sm text-white break-words mt-1">"{msg.text}"</p>
                   </div>
               )
+          }
+          if (msg.type === 'on_this_day') {
+            return (
+                <div key={msg.id} className="p-4 bg-gradient-to-br from-teal-900 to-cyan-900 rounded-lg border-l-4 border-cyan-400 animate-fade-in flex items-start gap-3">
+                    <div className="flex-shrink-0 text-cyan-300 pt-1">
+                        <CalendarIcon />
+                    </div>
+                    <div>
+                        <span className="text-xs font-bold block text-cyan-200">On This Day in Music...</span>
+                        <p className="text-sm text-white break-words mt-1">{msg.text}</p>
+                    </div>
+                </div>
+            )
           }
           if (msg.type === 'game') {
               return (
