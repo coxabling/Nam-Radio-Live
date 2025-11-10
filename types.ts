@@ -104,8 +104,16 @@ export interface LevelUpMessage {
   levelName: string;
 }
 
+export interface SoundboardMessage {
+  id: number;
+  type: 'soundboard';
+  author: string;
+  soundEmoji: string;
+  soundText: string;
+}
 
-export type Message = TextMessage | PollMessage | GameMessage | TakeoverMessage | PersonalizedMessage | OnThisDayMessage | LevelUpMessage;
+
+export type Message = TextMessage | PollMessage | GameMessage | TakeoverMessage | PersonalizedMessage | OnThisDayMessage | LevelUpMessage | SoundboardMessage;
 
 export interface LiveNowPlaying {
     song: Song;
@@ -235,4 +243,12 @@ export interface AzuraPerformanceReportItem {
 export interface AzuraHistoryItem {
     played_at: number;
     song: Song;
+}
+
+export interface SoundboardItem {
+  id: string;
+  text: string;
+  emoji: string;
+  voice: 'Kore' | 'Puck' | 'Zephyr' | 'Charon' | 'Fenrir';
+  cost: number;
 }

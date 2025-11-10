@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { Message, PollMessage, Song, TakeoverMessage, GameMessage, Vibe, DedicationRecord, MusicEvent, ApiScheduleItem, SongRequestRecord, ListeningStats, PersonalizedMessage, OnThisDayMessage, LevelUpMessage } from '../types';
+import { Message, PollMessage, Song, TakeoverMessage, GameMessage, Vibe, DedicationRecord, MusicEvent, ApiScheduleItem, SongRequestRecord, ListeningStats, PersonalizedMessage, OnThisDayMessage, LevelUpMessage, SoundboardMessage, SoundboardItem } from '../types';
 import { getAiChatResponse, generateTakeoverAnnouncement, generateTakeoverWinnerShoutout, generateSongClue, generateDjChitchat, generateVibeCommentary, generateDedicationShoutout, getRankedShowRecommendations, generateShowScoutAlert, generateLocalSpotlightPromo, generateEventShoutout, getOnThisDayInMusic, generateLevelUpMessage } from '../services/geminiService';
-import { TAKEOVER_SONGS } from '../constants';
+import { TAKEOVER_SONGS, SOUNDBOARD_ITEMS } from '../constants';
+import SoundboardModal from './SoundboardModal';
 
 const djPolls: Omit<PollMessage, 'id' | 'author' | 'isDj' | 'type'>[] = [
   { question: "What genre should we play next?", options: [{ text: "Classic Rock", votes: 0 }, { text: "Indie Hits", votes: 0 }, { text: "90s Pop", votes: 0 }] },
@@ -13,6 +14,8 @@ const TypingIndicator: React.FC<{ author: string }> = ({ author }) => (
 );
 
 const CalendarIcon = () => (<svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>);
+const SoundboardIcon = () => (<svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M18 3a1 1 0 00-1.196-.98l-10 2A1 1 0 006 5v6.334A4 4 0 108 15V7.237l8-1.6v5.152A4 4 0 1018 14V3z" /></svg>);
+
 
 interface User {
   username: string;
@@ -25,6 +28,7 @@ interface LiveChatProps {
   dominantVibe: Vibe | null;
   onChatMessageSent: () => void;
   onVoteCast: () => void;
+  onSoundTriggered: (cost: number) => void;
   latestDedication: DedicationRecord | null;
   events: MusicEvent[];
   schedule: ApiScheduleItem[];
@@ -39,7 +43,30 @@ type FilterType = 'dj' | 'polls' | 'games' | 'takeovers';
 const GEMINI_CALL_LIMIT = 100;
 const GEMINI_LIMIT_KEY = 'nam-radio-gemini-limit';
 
-const LiveChat: React.FC<LiveChatProps> = ({ liveNowPlaying, recentlyPlayed, currentUser, dominantVibe, onChatMessageSent, onVoteCast, latestDedication, events, schedule, userFavoriteShows, songRequests, listeningStats, latestLevelUp }) => {
+function decode(base64: string) {
+  const binaryString = atob(base64);
+  const len = binaryString.length;
+  const bytes = new Uint8Array(len);
+  for (let i = 0; i < len; i++) {
+    bytes[i] = binaryString.charCodeAt(i);
+  }
+  return bytes;
+}
+
+async function decodeAudioData(data: Uint8Array, ctx: AudioContext): Promise<AudioBuffer> {
+  const dataInt16 = new Int16Array(data.buffer);
+  const frameCount = dataInt16.length / 1; // Mono channel for TTS
+  const buffer = ctx.createBuffer(1, frameCount, 24000); // TTS sample rate is 24000
+
+  const channelData = buffer.getChannelData(0);
+  for (let i = 0; i < frameCount; i++) {
+    channelData[i] = dataInt16[i] / 32768.0;
+  }
+  return buffer;
+}
+
+
+const LiveChat: React.FC<LiveChatProps> = ({ liveNowPlaying, recentlyPlayed, currentUser, dominantVibe, onChatMessageSent, onVoteCast, onSoundTriggered, latestDedication, events, schedule, userFavoriteShows, songRequests, listeningStats, latestLevelUp }) => {
   const [messages, setMessages] = useState<Message[]>([{ id: 1, type: 'text', author: 'DJ Alex', text: 'Welcome to the live chat! Drop a message and say hi!', isDj: true }]);
   const [newMessage, setNewMessage] = useState('');
   const [userVotes, setUserVotes] = useState<Record<number, number>>({});
@@ -55,6 +82,38 @@ const LiveChat: React.FC<LiveChatProps> = ({ liveNowPlaying, recentlyPlayed, cur
   const dedicationAnnouncedRef = useRef(false);
   const levelUpAnnouncedRef = useRef(false);
   const scoutedShowIds = useRef<Set<number>>(new Set());
+  const [isSoundboardOpen, setIsSoundboardOpen] = useState(false);
+  const audioContextRef = useRef<AudioContext | null>(null);
+
+  const cheapestSoundCost = useMemo(() => Math.min(...SOUNDBOARD_ITEMS.map(item => item.cost)), []);
+
+  useEffect(() => {
+    if (!audioContextRef.current) {
+        audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
+    }
+    const cleanup = () => {
+        audioContextRef.current?.close();
+    }
+    return cleanup;
+  }, []);
+
+  const playAudio = async (base64Audio: string) => {
+    const audioCtx = audioContextRef.current;
+    if (!audioCtx) return;
+    if (audioCtx.state === 'suspended') {
+      await audioCtx.resume();
+    }
+    try {
+      const decodedBytes = decode(base64Audio);
+      const audioBuffer = await decodeAudioData(decodedBytes, audioCtx);
+      const source = audioCtx.createBufferSource();
+      source.buffer = audioBuffer;
+      source.connect(audioCtx.destination);
+      source.start();
+    } catch (error) {
+      console.error("Failed to play audio:", error);
+    }
+  };
 
   // "On This Day" feature logic
   useEffect(() => {
@@ -244,6 +303,7 @@ const LiveChat: React.FC<LiveChatProps> = ({ liveNowPlaying, recentlyPlayed, cur
       }
       if (msg.author === userHandle) return true;
       if (msg.type === 'on_this_day') return true; // Always show this
+      if (msg.type === 'soundboard') return true; // Always show soundboard messages
       if (msg.type === 'poll') return filters.polls;
       if (msg.type === 'game') return filters.games;
       if (msg.type === 'takeover') return filters.takeovers;
@@ -449,6 +509,23 @@ const LiveChat: React.FC<LiveChatProps> = ({ liveNowPlaying, recentlyPlayed, cur
     onVoteCast();
   }
   
+  const handleTriggerSound = (sound: SoundboardItem, audioData: string) => {
+    if (!currentUser) return;
+
+    playAudio(audioData);
+    onSoundTriggered(sound.cost);
+
+    const soundMessage: SoundboardMessage = {
+      id: Date.now(),
+      type: 'soundboard',
+      author: currentUser.username,
+      soundEmoji: sound.emoji,
+      soundText: sound.text,
+    };
+    setMessages(prev => [...prev, soundMessage]);
+    setIsSoundboardOpen(false);
+  };
+
   const FilterButton: React.FC<{ filter: FilterType; label: string }> = ({ filter, label }) => (
     <button onClick={() => toggleFilter(filter)} className={`px-2.5 py-1 text-xs font-semibold rounded-full transition-colors ${filters[filter] ? 'bg-amber-500 text-white' : 'bg-slate-700/50 text-slate-300 hover:bg-slate-600/50'}`}>
       {label}
@@ -456,6 +533,7 @@ const LiveChat: React.FC<LiveChatProps> = ({ liveNowPlaying, recentlyPlayed, cur
   );
 
   return (
+    <>
     <section className="bg-slate-900/50 backdrop-blur-xl rounded-2xl p-6 shadow-lg border border-slate-700/50 flex flex-col h-[40rem]">
       <div className="flex justify-between items-center mb-2">
         <h2 className="text-2xl font-bold tracking-wide text-amber-300">Live Shoutbox</h2>
@@ -468,6 +546,7 @@ const LiveChat: React.FC<LiveChatProps> = ({ liveNowPlaying, recentlyPlayed, cur
       </div>
       <div className="mb-3 p-2 bg-slate-800/50 rounded-lg flex items-center justify-between">
          <span className="text-sm text-slate-400 truncate">Chatting as: <span className="font-bold text-amber-300">{userHandle}</span></span>
+         {currentUser && <span className="text-xs font-semibold text-amber-300 bg-amber-500/10 px-2 py-1 rounded-md">{Math.floor(listeningStats.points)} pts</span>}
       </div>
       
       <div className="mb-3 p-2 bg-slate-800/50 rounded-lg flex items-center gap-2 flex-wrap">
@@ -480,6 +559,15 @@ const LiveChat: React.FC<LiveChatProps> = ({ liveNowPlaying, recentlyPlayed, cur
 
       <div className="flex-grow bg-slate-800/50 rounded-lg p-4 overflow-y-auto mb-4 space-y-4 shadow-inner-lg">
         {filteredMessages.map(msg => {
+          if (msg.type === 'soundboard') {
+            return (
+                <div key={msg.id} className="text-center py-2 animate-fade-in">
+                    <p className="text-sm text-amber-300 bg-amber-500/10 px-3 py-1 rounded-full inline-block">
+                        <span className="font-bold">{msg.author}</span> played {msg.soundEmoji} <span className="italic">"{msg.soundText}"</span>
+                    </p>
+                </div>
+            );
+          }
           if (msg.type === 'level_up') {
             return (
                 <div key={msg.id} className="p-4 bg-gradient-to-br from-purple-800 to-indigo-900 rounded-lg border-2 border-purple-500 shadow-lg animate-fade-in text-center">
@@ -592,9 +680,29 @@ const LiveChat: React.FC<LiveChatProps> = ({ liveNowPlaying, recentlyPlayed, cur
       </div>
       <form onSubmit={handleSendMessage} className="flex gap-2">
         <input type="text" value={newMessage} onChange={(e) => setNewMessage(e.target.value)} placeholder="Say something... or try !ask / !guess" className="flex-grow bg-slate-800 border border-slate-600 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-amber-400" aria-label="Your message"/>
+        {currentUser && (
+            <button 
+                type="button" 
+                onClick={() => setIsSoundboardOpen(true)}
+                disabled={listeningStats.points < cheapestSoundCost}
+                className="p-2 bg-slate-700 hover:bg-slate-600 text-amber-400 font-bold rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-amber-400 disabled:bg-slate-800 disabled:text-slate-600 disabled:cursor-not-allowed" 
+                aria-label="Open soundboard"
+            >
+                <SoundboardIcon />
+            </button>
+        )}
         <button type="submit" className="bg-amber-500 hover:bg-amber-600 text-white font-bold py-2 px-4 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-amber-400" aria-label="Send message">Send</button>
       </form>
     </section>
+    {isSoundboardOpen && currentUser && (
+        <SoundboardModal 
+            isOpen={isSoundboardOpen}
+            onClose={() => setIsSoundboardOpen(false)}
+            userPoints={listeningStats.points}
+            onTriggerSound={handleTriggerSound}
+        />
+    )}
+    </>
   );
 };
 

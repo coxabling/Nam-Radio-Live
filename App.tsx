@@ -630,6 +630,11 @@ const App: React.FC = () => {
     setListeningStats(prev => ({...prev, votesCast: (prev.votesCast || 0) + 1, points: (prev.points || 0) + 10 }));
   }, [currentUser]);
 
+  const handleSoundTriggered = useCallback((cost: number) => {
+    if (!currentUser) return;
+    setListeningStats(prev => ({...prev, points: Math.max(0, (prev.points || 0) - cost)}));
+  }, [currentUser]);
+
   const handleSongRating = useCallback((song: Song, rating: 'like' | 'dislike') => {
     if (!currentUser) return;
 
@@ -776,6 +781,7 @@ const App: React.FC = () => {
                 dominantVibe={dominantVibe} 
                 onChatMessageSent={handleChatMessageSent} 
                 onVoteCast={handleVoteCast} 
+                onSoundTriggered={handleSoundTriggered}
                 latestDedication={latestDedication} 
                 events={events}
                 schedule={schedule}

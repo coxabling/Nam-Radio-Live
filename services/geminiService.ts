@@ -1,6 +1,7 @@
 
 
-import { GoogleGenAI, Type } from "@google/genai";
+
+import { GoogleGenAI, Type, Modality } from "@google/genai";
 // FIX: Import DedicationRecord for the new feature.
 // FIX: Import SongRating to resolve type errors.
 import { Song, SongRequestRecord, DedicationRecord, MusicEvent, ApiScheduleItem, SongOfTheWeek, ListeningStats, SongRating } from '../types';
@@ -537,5 +538,31 @@ export const getTopGenres = async (artists: string[]): Promise<string[]> => {
     console.error("Error analyzing top genres:", error);
     // Fallback in case of error
     return ["Eclectic Mix"];
+  }
+};
+
+export const generateSoundDropAudio = async (text: string, voice: 'Kore' | 'Puck' | 'Zephyr' | 'Charon' | 'Fenrir'): Promise<string> => {
+  try {
+    const ai = new GoogleGenAI({ apiKey: getGeminiApiKey() });
+    const response = await ai.models.generateContent({
+      model: "gemini-2.5-flash-preview-tts",
+      contents: [{ parts: [{ text: text }] }],
+      config: {
+        responseModalities: [Modality.AUDIO],
+        speechConfig: {
+          voiceConfig: {
+            prebuiltVoiceConfig: { voiceName: voice },
+          },
+        },
+      },
+    });
+    const base64Audio = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
+    if (!base64Audio) {
+      throw new Error("No audio data returned from API.");
+    }
+    return base64Audio;
+  } catch (error) {
+    console.error("Error generating sound drop audio:", error);
+    throw new Error("Could not generate the sound drop. The AI might be on a coffee break.");
   }
 };
