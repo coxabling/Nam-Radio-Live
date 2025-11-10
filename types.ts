@@ -9,7 +9,7 @@ export interface Dj {
 }
 
 export interface Article {
-  id: string;
+  id:string;
   title: string;
   source: string;
   url: string;
@@ -106,6 +106,11 @@ export interface LevelUpMessage {
 
 
 export type Message = TextMessage | PollMessage | GameMessage | TakeoverMessage | PersonalizedMessage | OnThisDayMessage | LevelUpMessage;
+
+export interface LiveNowPlaying {
+    song: Song;
+    show: ApiScheduleItem | null;
+}
 
 export interface Song {
   title: string;

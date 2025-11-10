@@ -60,7 +60,8 @@ const ListeningDNA: React.FC<ListeningDNAProps> = ({ listeningStats, songRequest
             return { segments: [], peakTime: "Anytime" };
         }
 
-        const totalTimes = Object.values(listeningTimeByHour);
+        // FIX: Cast Object.values to number[] to satisfy Math.max with strict type checking.
+        const totalTimes = Object.values(listeningTimeByHour) as number[];
         const maxTime = Math.max(...totalTimes);
 
         const segments = Array.from({ length: 24 }, (_, i) => ({

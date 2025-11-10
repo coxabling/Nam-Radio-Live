@@ -11,7 +11,7 @@ import UpcomingShows from './components/UpcomingShows';
 import ScrollToTopButton from './components/ScrollToTopButton';
 import About from './components/About';
 import { getLocalMusicEvents } from './services/geminiService';
-import { ApiScheduleItem, Song, SongRequestRecord, Vibe, VibeType, ListeningStats, Badge, DedicationRecord, MusicEvent, SongRating, LevelUpMessage } from './types';
+import { ApiScheduleItem, Song, SongRequestRecord, Vibe, VibeType, ListeningStats, Badge, DedicationRecord, MusicEvent, SongRating, LevelUpMessage, LiveNowPlaying } from './types';
 import LiveChat from './components/LiveChat';
 import ContactPage from './components/ContactPage';
 import MyStation, { BADGES, LISTENER_LEVELS } from './components/MyStation';
@@ -28,11 +28,6 @@ interface User {
   passwordHash: string;
   avatarUrl?: string;
   bio?: string;
-}
-
-interface LiveNowPlaying {
-    song: Song;
-    show: ApiScheduleItem | null;
 }
 
 interface LevelUpInfo {
@@ -735,6 +730,7 @@ const App: React.FC = () => {
             songRequests={songRequests}
             listeningStats={listeningStats}
             dailyShowsListened={dailyShowsListened}
+            liveNowPlaying={liveNowPlaying}
           />
         ) : null;
       default:

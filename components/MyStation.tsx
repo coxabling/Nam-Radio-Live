@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Dj, ApiScheduleItem, SongRequestRecord, ListeningStats, Badge, ListenerLevel } from '../types';
+import { Dj, ApiScheduleItem, SongRequestRecord, ListeningStats, Badge, ListenerLevel, LiveNowPlaying } from '../types';
 import { getShowRecommendations, generateDailyRewind } from '../services/geminiService';
 import { DJS } from '../constants';
 import DailyRewindModal from './DailyRewindModal';
@@ -29,7 +29,7 @@ const NightOwlIcon = ({ className = "h-8 w-8" }: {className?: string}) => <svg x
 const TastemakerIcon = ({ className = "h-8 w-8" }: {className?: string}) => <svg xmlns="http://www.w3.org/2000/svg" className={className} viewBox="0 0 20 20" fill="currentColor"><path d="M18 3a1 1 0 00-1.196-.98l-10 2A1 1 0 006 5v9.114A4.369 4.369 0 005 14c-1.657 0-3 1.343-3 3s1.343 3 3 3 3-1.343 3-3V7.82l8-1.6v5.894A4.37 4.37 0 0015 12c-1.657 0-3 1.343-3 3s1.343 3 3 3 3-1.343 3-3V3z" /></svg>;
 const ChatterboxIcon = ({ className = "h-8 w-8" }: { className?: string }) => <svg xmlns="http://www.w3.org/2000/svg" className={className} viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M18 5v8a2 2 0 01-2 2h-5l-5 4v-4H4a2 2 0 01-2-2V5a2 2 0 012-2h12a2 2 0 012 2zM7 8H5v2h2V8zm2 0h2v2H9V8zm6 0h-2v2h2V8z" clipRule="evenodd" /></svg>;
 const EngagedIcon = ({ className = "h-8 w-8" }: { className?: string }) => <svg xmlns="http://www.w3.org/2000/svg" className={className} viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v2H7a1 1 0 100 2h2v2a1 1 0 102 0v-2h2a1 1 0 100-2h-2V7z" clipRule="evenodd" /></svg>;
-const EarlyBirdIcon = ({ className = "h-8 w-8" }: { className?: string }) => <svg xmlns="http://www.w3.org/2000/svg" className={className} viewBox="0 0 20 20" fill="currentColor"><path d="M10 2a1 1 0 00-1 1v1a1 1 0 002 0V3a1 1 0 00-1-1zM4 10a1 1 0 011-1h1a1 1 0 110 2H5a1 1 0 01-1-1zm15 0a1 1 0 01-1 1h-1a1 1 0 110-2h1a1 1 0 011 1zM10 18a1 1 0 011-1v-1a1 1 0 11-2 0v1a1 1 0 011 1zM5.636 5.636a1 1 0 011.414 0l.707.707a1 1 0 01-1.414 1.414l-.707-.707a1 1 0 010-1.414zm12.728 0a1 1 0 010 1.414l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 0zM5.636 14.364a1 1 0 010-1.414l.707-.707a1 1 0 011.414 1.414l-.707.707a1 1 0 01-1.414 0zm12.728 0a1 1 0 01-1.414 0l-.707-.707a1 1 0 011.414-1.414l.707.707a1 1 0 010 1.414z" /></svg>;
+const EarlyBirdIcon = ({ className = "h-8 w-8" }: {className?: string}) => <svg xmlns="http://www.w3.org/2000/svg" className={className} viewBox="0 0 20 20" fill="currentColor"><path d="M10 2a1 1 0 00-1 1v1a1 1 0 002 0V3a1 1 0 00-1-1zM4 10a1 1 0 011-1h1a1 1 0 110 2H5a1 1 0 01-1-1zm15 0a1 1 0 01-1 1h-1a1 1 0 110-2h1a1 1 0 011 1zM10 18a1 1 0 011-1v-1a1 1 0 11-2 0v1a1 1 0 011 1zM5.636 5.636a1 1 0 011.414 0l.707.707a1 1 0 01-1.414 1.414l-.707-.707a1 1 0 010-1.414zm12.728 0a1 1 0 010 1.414l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 0zM5.636 14.364a1 1 0 010-1.414l.707-.707a1 1 0 011.414 1.414l-.707.707a1 1 0 01-1.414 0zm12.728 0a1 1 0 01-1.414 0l-.707-.707a1 1 0 011.414-1.414l.707.707a1 1 0 010 1.414z" /></svg>;
 const CriticIcon = ({ className = "h-8 w-8" }: { className?: string }) => <svg xmlns="http://www.w3.org/2000/svg" className={className} viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM4.332 8.027a6.012 6.012 0 011.912-2.706C6.512 5.73 6.974 6 7.5 6A1.5 1.5 0 019 7.5V8a2 2 0 004 0 2 2 0 011.527-1.973 6.012 6.012 0 011.912 2.706C16.27 8.57 16 9.225 16 10c0 .775.27 1.43.668 1.973a6.012 6.012 0 01-1.912 2.706C13.488 14.27 13.026 14 12.5 14a1.5 1.5 0 01-1.5-1.5v-.5a2 2 0 00-4 0v.5A1.5 1.5 0 015.5 14c-.526 0-.988.27-1.262.707a6.012 6.012 0 01-1.912-2.706C3.73 11.43 4 10.775 4 10c0-.775-.27-1.43-.668-1.973z" clipRule="evenodd" /></svg>;
 
 
@@ -106,9 +106,25 @@ interface MyStationProps {
   songRequests: SongRequestRecord[];
   listeningStats: ListeningStats;
   dailyShowsListened: string[];
+  liveNowPlaying: LiveNowPlaying;
 }
 
-const MyStation: React.FC<MyStationProps> = ({ favoriteShows, favoriteDjs, allShows, onToggleFavorite, onToggleFavoriteDj, currentShowName, currentUser, onUpdateUserProfile, songRequests, listeningStats, dailyShowsListened }) => {
+const Marquee: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+    return (
+        <div className="relative flex overflow-x-hidden bg-slate-800/50 border-y border-amber-500/30 py-3 mb-12 group">
+            <div className="flex animate-marquee whitespace-nowrap text-amber-300 font-semibold group-hover:[animation-play-state:paused]">
+                <span className="mx-8">{children}</span>
+                <span className="mx-8">{children}</span>
+            </div>
+            <div className="absolute top-3 flex animate-marquee2 whitespace-nowrap text-amber-300 font-semibold group-hover:[animation-play-state:paused]">
+                <span className="mx-8">{children}</span>
+                <span className="mx-8">{children}</span>
+            </div>
+        </div>
+    );
+};
+
+const MyStation: React.FC<MyStationProps> = ({ favoriteShows, favoriteDjs, allShows, onToggleFavorite, onToggleFavoriteDj, currentShowName, currentUser, onUpdateUserProfile, songRequests, listeningStats, dailyShowsListened, liveNowPlaying }) => {
   const [recommendations, setRecommendations] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -252,6 +268,10 @@ const MyStation: React.FC<MyStationProps> = ({ favoriteShows, favoriteDjs, allSh
             <p className="text-slate-400 mt-2 max-w-2xl">Your personalized hub for favorites, requests, and discovering new shows.</p>
         </header>
       
+      <Marquee>
+          <span className="font-normal text-slate-400">Now Playing:</span> {liveNowPlaying.song.title} - {liveNowPlaying.song.artist}
+      </Marquee>
+
       <div className="space-y-12">
         {isFavoriteOnAir && (
             <div className="bg-amber-500/10 border-l-4 border-amber-400 rounded-r-lg p-4 flex items-center gap-4 animate-fade-in ring-2 ring-amber-500/50 animate-pulse">
@@ -286,200 +306,172 @@ const MyStation: React.FC<MyStationProps> = ({ favoriteShows, favoriteDjs, allSh
                                     <p className="text-xs text-slate-400">{new Date(show.start).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</p>
                                 </div>
                               </div>
-                               {isOnAir && (
-                                  <span className="flex-shrink-0 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-black bg-amber-300 rounded-full">
-                                      On Air
-                                  </span>
+                              {isOnAir && (
+                                <span className="px-2 py-1 text-xs font-bold uppercase tracking-wider text-black bg-amber-300 rounded-full flex-shrink-0">On Air</span>
                               )}
                             </li>
                           );
                         })}
                       </ul>
                     ) : (
-                      <div className="flex-grow flex items-center justify-center text-center p-4 border-2 border-dashed border-slate-700 rounded-lg">
-                        <div>
-                          <p className="text-slate-400">No favorite shows yet.</p>
-                          <p className="text-slate-500 text-sm mt-1">Star a show on the schedule!</p>
-                        </div>
+                      <div className="flex-grow flex flex-col items-center justify-center text-center p-8 bg-slate-800/50 rounded-lg border-2 border-dashed border-slate-700">
+                        <div className="text-amber-400 mb-3"><MusicIcon /></div>
+                        <h4 className="font-semibold text-white">No Favorite Shows Yet</h4>
+                        <p className="text-sm text-slate-400 mt-1">Star a show from the schedule to see it here!</p>
                       </div>
                     )}
                 </section>
-
-                <section className="bg-slate-900/50 backdrop-blur-xl rounded-2xl p-6 md:p-8 shadow-lg border border-slate-700/50 flex flex-col">
-                    <h2 className="text-2xl font-bold mb-6 tracking-wide text-white">Favorite DJs</h2>
-                    {favoriteDjs.length > 0 ? (
-                      <ul className="space-y-3 flex-grow">
-                        {favoriteDjs.map(dj => {
-                          const isOnAir = dj.show === currentShowName;
-                          return (
-                            <li key={dj.id} className={`p-3 rounded-lg flex gap-3 items-center justify-between transition-all duration-300 ${isOnAir ? 'bg-amber-500/10 ring-2 ring-amber-400' : 'bg-slate-800/50'}`}>
-                              <div className="flex items-center gap-3 overflow-hidden">
-                                <button onClick={() => onToggleFavoriteDj(dj.id)} className="p-1 text-amber-400 flex-shrink-0" aria-label="Remove DJ from favorites"><StarIcon filled={true} /></button>
-                                <img src={dj.imageUrl} alt={dj.name} className="w-10 h-10 rounded-full object-cover flex-shrink-0"/>
-                                <div className="overflow-hidden">
-                                    <h4 className="font-semibold text-white truncate">{dj.name}</h4>
-                                    <p className="text-xs text-slate-400 truncate">{dj.show}</p>
+                
+                <section>
+                    <h2 className="text-2xl font-bold mb-6 tracking-wide text-white">Show Recommendations</h2>
+                    <div className="bg-slate-800/50 p-6 rounded-lg">
+                        {isLoading && <div className="flex justify-center items-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-amber-300"></div></div>}
+                        {error && <p className="text-red-400">{error}</p>}
+                        {recommendations ? (
+                            <div className="prose prose-invert max-w-none text-slate-300" dangerouslySetInnerHTML={{ __html: recommendations.replace(/\n/g, '<br />').replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') }} />
+                        ) : (
+                            !isLoading && (
+                                <div className="text-center">
+                                    <p className="text-slate-400 mb-4">Get personalized show recommendations from our AI DJ, Alex!</p>
+                                    <button onClick={handleGetRecommendations} className="px-4 py-2 bg-amber-500 text-white font-semibold rounded-lg shadow-md hover:bg-amber-600 transition-all duration-200">
+                                        Ask DJ Alex
+                                    </button>
                                 </div>
-                              </div>
-                               {isOnAir && (
-                                  <span className="flex-shrink-0 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-black bg-amber-300 rounded-full">
-                                      On Air
-                                  </span>
-                              )}
-                            </li>
-                          );
-                        })}
-                      </ul>
+                            )
+                        )}
+                    </div>
+                </section>
+
+                <section>
+                    <h2 className="text-2xl font-bold mb-6 tracking-wide text-white">Your Recent Requests</h2>
+                     {sortedSongRequests.length > 0 ? (
+                        <ul className="space-y-2">
+                            {sortedSongRequests.map(req => (
+                                <li key={req.requestedAt} className="p-3 bg-slate-800/50 rounded-lg flex justify-between items-center">
+                                    <div>
+                                        <p className="font-semibold text-white">{req.title}</p>
+                                        <p className="text-sm text-slate-400">{req.artist}</p>
+                                    </div>
+                                    <p className="text-xs text-slate-500">{formatDate(req.requestedAt)} at {formatTime(req.requestedAt)}</p>
+                                </li>
+                            ))}
+                        </ul>
                     ) : (
-                      <div className="flex-grow flex items-center justify-center text-center p-4 border-2 border-dashed border-slate-700 rounded-lg">
-                        <div>
-                          <p className="text-slate-400">No favorite DJs yet.</p>
-                          <p className="text-slate-500 text-sm mt-1">Star a DJ from the home page!</p>
-                        </div>
-                      </div>
+                        <p className="text-slate-400 bg-slate-800/50 p-4 rounded-lg">You haven't requested any songs yet.</p>
                     )}
-                </section>
-
-                <section className="bg-slate-900/50 backdrop-blur-xl rounded-2xl p-6 md:p-8 shadow-lg border border-slate-700/50">
-                    <h2 className="text-2xl font-bold mb-4 tracking-wide text-white">Discover New Shows</h2>
-                    <p className="text-slate-400 mb-6">Let DJ Alex, our AI curator, find your next obsession based on your favorites and requests!</p>
-                    <div className="text-center">
-                        <button onClick={handleGetRecommendations} disabled={isLoading} className="px-6 py-3 bg-amber-500 text-white font-semibold rounded-lg shadow-md hover:bg-amber-600 transition-all duration-200 disabled:bg-slate-600 disabled:cursor-not-allowed">{isLoading ? 'Thinking...' : 'Ask DJ Alex for Recommendations'}</button>
-                    </div>
-                    {isLoading && (<div className="flex justify-center items-center h-32"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-amber-300"></div></div>)}
-                    {error && <p className="mt-6 text-center text-red-400 bg-red-500/10 p-3 rounded-lg">{error}</p>}
-                    {recommendations && (
-                    <div className="mt-6 p-4 bg-amber-500/10 border-l-4 border-amber-400 rounded-r-lg">
-                         <div className="prose prose-invert max-w-none text-slate-300">
-                            <p className="italic"><span className="font-bold text-amber-300 not-italic">DJ Alex says:</span></p>
-                            <div dangerouslySetInnerHTML={{ __html: recommendations.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\n/g, '<br />') }}/>
-                        </div>
-                    </div>
-                    )}
-                </section>
-
-                <section className="bg-slate-900/50 backdrop-blur-xl rounded-2xl p-6 md:p-8 shadow-lg border border-slate-700/50">
-                    <h2 className="text-2xl font-bold mb-4 tracking-wide text-white">AI-Generated Daily Rewind</h2>
-                    <p className="text-slate-400 mb-6">Get a personalized shoutout from DJ Alex recapping your listening day!</p>
-                    <div className="text-center">
-                        <button onClick={handleGetRewind} disabled={isRewindLoading} className="px-6 py-3 bg-indigo-500 text-white font-semibold rounded-lg shadow-md hover:bg-indigo-600 transition-all duration-200 disabled:bg-slate-600 disabled:cursor-not-allowed">{isRewindLoading ? 'Generating...' : 'Get My Daily Rewind'}</button>
-                    </div>
                 </section>
             </div>
-
             {/* Sidebar Column */}
             <div className="space-y-12">
-                 <section className="bg-slate-900/50 backdrop-blur-xl rounded-2xl p-6 md:p-8 shadow-lg border border-slate-700/50">
-                    <div className="flex justify-between items-center mb-6">
-                      <h2 className="text-2xl font-bold tracking-wide text-white">Your Profile</h2>
-                      {!isEditing ? (
-                        <button onClick={() => setIsEditing(true)} className="flex items-center gap-2 px-3 py-1.5 text-sm bg-slate-700/50 text-slate-300 hover:bg-slate-700 hover:text-white rounded-md transition-colors" aria-label="Edit profile"><PencilIcon /> Edit</button>
-                      ) : (
-                        <div className="flex items-center gap-2">
-                            <button onClick={handleCancelEdit} className="p-2 text-slate-400 hover:text-white hover:bg-slate-700/50 rounded-full transition-colors" aria-label="Cancel edit"><CancelIcon /></button>
-                            <button form="profile-form" type="submit" className="p-2 text-amber-400 hover:text-white hover:bg-amber-500/50 rounded-full transition-colors" aria-label="Save profile"><SaveIcon /></button>
+                <section className="bg-slate-900/50 backdrop-blur-xl rounded-2xl p-6 md:p-8 shadow-lg border border-slate-700/50">
+                    <div className="flex justify-between items-start">
+                        <div>
+                           <h2 className="text-2xl font-bold tracking-wide text-white">Your Profile</h2>
+                           {saveSuccess && <p className="text-xs text-green-400 mt-1 flex items-center gap-1"><CheckCircleIcon /> Profile updated!</p>}
                         </div>
-                      )}
+                        {isEditing ? (
+                            <div className="flex gap-2">
+                                <button onClick={handleSaveProfile} className="p-2 text-green-400 hover:bg-green-500/10 rounded-full" aria-label="Save changes"><SaveIcon /></button>
+                                <button onClick={handleCancelEdit} className="p-2 text-red-400 hover:bg-red-500/10 rounded-full" aria-label="Cancel editing"><CancelIcon /></button>
+                            </div>
+                        ) : (
+                            <button onClick={() => setIsEditing(true)} className="p-2 text-slate-400 hover:text-white hover:bg-slate-700/50 rounded-full" aria-label="Edit profile"><PencilIcon /></button>
+                        )}
                     </div>
+                    <div className="mt-6 text-center">
+                        <div className="relative w-24 h-24 mx-auto mb-4">
+                            {avatarError || !profileData.avatarUrl ? (
+                                <div className="w-full h-full rounded-full bg-slate-700 text-slate-500 flex items-center justify-center ring-4 ring-slate-600"><UserIcon /></div>
+                            ) : (
+                                <img src={profileData.avatarUrl} alt="User avatar" className="w-full h-full rounded-full object-cover ring-4 ring-slate-600" onError={() => setAvatarError(true)} />
+                            )}
+                            <div className={`absolute bottom-1 right-1 p-1 rounded-full text-white text-xs font-bold ${currentLevel.color.replace('ring-', 'bg-')}`}>{currentLevel.name}</div>
+                        </div>
 
-                    {isEditing ? (
-                      <form id="profile-form" onSubmit={handleSaveProfile} className="space-y-4 animate-fade-in">
-                          <div><label htmlFor="username" className="block text-sm font-medium text-slate-300 mb-1">Username</label><input type="text" id="username" value={profileData.username} onChange={e => setProfileData({...profileData, username: e.target.value})} className="w-full bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-amber-400/50 focus:border-amber-400 transition-shadow focus:shadow-lg focus:shadow-amber-500/20" maxLength={20} required /></div>
-                          <div><label htmlFor="avatarUrl" className="block text-sm font-medium text-slate-300 mb-1">Avatar URL</label><input type="url" id="avatarUrl" value={profileData.avatarUrl} onChange={e => setProfileData({...profileData, avatarUrl: e.target.value})} className="w-full bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-amber-400/50 focus:border-amber-400 transition-shadow focus:shadow-lg focus:shadow-amber-500/20" placeholder="https://..." /></div>
-                          <div><label htmlFor="bio" className="block text-sm font-medium text-slate-300 mb-1">Short Bio</label><textarea id="bio" value={profileData.bio} onChange={e => setProfileData({...profileData, bio: e.target.value})} rows={3} className="w-full bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-amber-400/50 focus:border-amber-400 transition-shadow focus:shadow-lg focus:shadow-amber-500/20" maxLength={120} placeholder="Tell us a bit about yourself..."></textarea></div>
-                      </form>
-                    ) : (
-                      <div className="space-y-6">
-                        <div className="flex items-center gap-4">
-                           <div className={`w-20 h-20 rounded-full bg-slate-800/50 flex-shrink-0 relative ring-4 ${currentLevel.color} ring-offset-4 ring-offset-slate-800`}>
-                             {profileData.avatarUrl && !avatarError ? 
-                                <img src={profileData.avatarUrl} alt="User avatar" className="relative w-full h-full object-cover rounded-full" onError={() => setAvatarError(true)} /> 
-                                : 
-                                <div className="p-4 text-slate-500"><UserIcon /></div>
-                             }
-                          </div>
-                          <div className="overflow-hidden">
-                            <h3 className="text-2xl font-bold text-white truncate">{profileData.username}</h3>
-                            <p className="text-sm font-semibold text-amber-300">{currentLevel.name}</p>
-                          </div>
-                        </div>
-                        <div className="mt-4">
-                            <div className="flex justify-between items-center text-sm mb-1">
-                                <span className="font-bold text-slate-300">Level Progress</span>
-                                {nextLevel && <span className="text-slate-400">{Math.floor(listeningStats.points).toLocaleString()} / {nextLevel.minPoints.toLocaleString()} PTS</span>}
-                            </div>
-                            <div className="w-full bg-slate-700 rounded-full h-2.5">
-                                <div className="bg-amber-400 h-2.5 rounded-full transition-all duration-500" style={{ width: `${progressPercentage}%` }}></div>
-                            </div>
-                            {nextLevel ? 
-                                <p className="text-xs text-slate-500 mt-1">Next level: {nextLevel.name}</p> :
-                                <p className="text-xs text-amber-300 mt-1">You've reached the highest level!</p>
-                            }
-                        </div>
-                        {saveSuccess && (
-                            <div className="flex items-center gap-3 p-3 text-sm bg-green-500/10 text-green-300 rounded-lg animate-fade-in border border-green-500/20">
-                                <CheckCircleIcon />
-                                <strong>Profile saved successfully!</strong>
+                        {isEditing ? (
+                            <form onSubmit={handleSaveProfile} className="space-y-4 text-left">
+                                <div><label htmlFor="username" className="text-xs text-slate-400">Username</label><input type="text" id="username" value={profileData.username} onChange={e => setProfileData({...profileData, username: e.target.value})} className="w-full bg-slate-800 border border-slate-600 rounded-lg px-3 py-1 text-white text-sm" /></div>
+                                <div><label htmlFor="avatarUrl" className="text-xs text-slate-400">Avatar URL</label><input type="text" id="avatarUrl" value={profileData.avatarUrl} onChange={e => { setProfileData({...profileData, avatarUrl: e.target.value}); setAvatarError(false); }} className="w-full bg-slate-800 border border-slate-600 rounded-lg px-3 py-1 text-white text-sm" /></div>
+                                <div><label htmlFor="bio" className="text-xs text-slate-400">Bio</label><textarea id="bio" value={profileData.bio} onChange={e => setProfileData({...profileData, bio: e.target.value})} rows={2} className="w-full bg-slate-800 border border-slate-600 rounded-lg px-3 py-1 text-white text-sm"></textarea></div>
+                            </form>
+                        ) : (
+                            <div>
+                                <h3 className="text-xl font-bold text-white">{currentUser.username}</h3>
+                                <p className="text-sm text-slate-400 mt-1 max-w-xs mx-auto">{currentUser.bio || 'No bio yet. Click the pencil to add one!'}</p>
                             </div>
                         )}
-                        {profileData.bio && <p className="text-slate-300 bg-slate-800/50 p-3 rounded-lg text-sm italic">"{profileData.bio}"</p>}
-                      </div>
-                    )}
-                </section>
-
-                <ListeningDNA 
-                    listeningStats={listeningStats}
-                    songRequests={songRequests}
-                />
-
-                <section className="bg-slate-900/50 backdrop-blur-xl rounded-2xl p-6 md:p-8 shadow-lg border border-slate-700/50">
-                    <h2 className="text-2xl font-bold mb-6 tracking-wide text-white">Achievements</h2>
-                    <div className="grid grid-cols-3 gap-4">
-                    {BADGES.map(badge => {
-                        const earned = badge.isEarned(listeningStats, songRequests);
-                        return (
-                        <div key={badge.id} className={`text-center p-3 rounded-lg transition-all ${earned ? 'bg-amber-500/10' : 'bg-slate-800/50'}`} title={badge.description}>
-                            <div className={`mx-auto mb-2 ${earned ? 'text-amber-400' : 'text-slate-500 grayscale'}`}>
-                            <badge.icon />
-                            </div>
-                            <p className={`text-xs font-semibold ${earned ? 'text-white' : 'text-slate-400'}`}>{badge.name}</p>
-                        </div>
-                        );
-                    })}
                     </div>
                 </section>
 
-                <section className="bg-slate-900/50 backdrop-blur-xl rounded-2xl p-6 md:p-8 shadow-lg border border-slate-700/50 flex flex-col">
-                    <h2 className="text-2xl font-bold mb-6 tracking-wide text-white">Request History</h2>
-                    {sortedSongRequests.length > 0 ? (
-                      <ul className="space-y-3 flex-grow overflow-y-auto max-h-64 pr-2">
-                          {sortedSongRequests.map(req => (
-                              <li key={req.requestedAt} className="p-3 bg-slate-800/50 rounded-lg flex gap-3 items-center">
-                                  <div className="flex-shrink-0 p-1 text-slate-400"><MusicIcon /></div>
-                                  <div className="flex-grow overflow-hidden">
-                                      <h4 className="font-semibold text-white truncate">{req.title}</h4>
-                                      <p className="text-xs text-slate-400 truncate">{req.artist}</p>
-                                  </div>
-                                  <div className="flex-shrink-0 text-right">
-                                      <p className="text-xs font-semibold text-slate-400">{formatDate(req.requestedAt)}</p>
-                                      <p className="text-xs text-slate-500">{formatTime(req.requestedAt)}</p>
-                                  </div>
-                              </li>
-                          ))}
-                      </ul>
-                    ) : (
-                      <div className="flex-grow flex items-center justify-center text-center p-4 border-2 border-dashed border-slate-700 rounded-lg">
-                        <div>
-                          <p className="text-slate-400">No song requests yet.</p>
-                          <p className="text-slate-500 text-sm mt-1">Request a song from the home page!</p>
+                <section>
+                     <h2 className="text-2xl font-bold mb-6 tracking-wide text-white">Listener Stats</h2>
+                     <div className="bg-slate-800/50 p-6 rounded-lg">
+                        <div className="mb-4">
+                            <div className="flex justify-between items-center text-sm mb-1">
+                                <span className="font-semibold text-slate-300">Level: {currentLevel.name}</span>
+                                {nextLevel && <span className="text-xs text-slate-400">Next: {nextLevel.name}</span>}
+                            </div>
+                            <div className="w-full bg-slate-700 rounded-full h-2.5">
+                                <div className={`bg-amber-500 h-2.5 rounded-full`} style={{ width: `${progressPercentage}%` }}></div>
+                            </div>
+                            <p className="text-xs text-right text-slate-400 mt-1">{Math.floor(listeningStats.points)} / {nextLevel ? nextLevel.minPoints : currentLevel.minPoints} points</p>
                         </div>
-                      </div>
+                        <button onClick={handleGetRewind} className="w-full text-center py-2 px-4 bg-amber-500/20 text-amber-300 font-semibold rounded-lg hover:bg-amber-500/30 transition-colors">
+                            Get Your Daily Rewind
+                        </button>
+                    </div>
+                </section>
+                
+                <ListeningDNA listeningStats={listeningStats} songRequests={songRequests} />
+
+                <section>
+                    <h2 className="text-2xl font-bold mb-6 tracking-wide text-white">Badges Earned</h2>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                        {BADGES.map(badge => {
+                            const isEarned = badge.isEarned(listeningStats, songRequests);
+                            return (
+                                <div key={badge.id} className={`p-4 rounded-lg text-center transition-all duration-300 ${isEarned ? 'bg-amber-500/10' : 'bg-slate-800/50'}`}>
+                                    <div className={`mx-auto mb-2 ${isEarned ? 'text-amber-400' : 'text-slate-600'}`}>
+                                        <badge.icon />
+                                    </div>
+                                    <h4 className={`font-bold text-sm ${isEarned ? 'text-white' : 'text-slate-500'}`}>{badge.name}</h4>
+                                    <p className={`text-xs mt-1 ${isEarned ? 'text-slate-400' : 'text-slate-600'}`}>{badge.description}</p>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </section>
+
+                <section>
+                    <h2 className="text-2xl font-bold mb-6 tracking-wide text-white">Favorite DJs</h2>
+                     {favoriteDjs.length > 0 ? (
+                        <ul className="space-y-3">
+                            {favoriteDjs.map(dj => {
+                                const isOnAir = dj.show === currentShowName;
+                                return (
+                                    <li key={dj.id} className={`p-3 rounded-lg flex items-center gap-3 ${isOnAir ? 'bg-amber-500/10' : 'bg-slate-800/50'}`}>
+                                        <img src={dj.imageUrl} alt={dj.name} className="w-10 h-10 rounded-full object-cover"/>
+                                        <div>
+                                            <h4 className="font-semibold text-white">{dj.name}</h4>
+                                            <p className="text-xs text-amber-400">{dj.show}</p>
+                                        </div>
+                                        <button onClick={() => onToggleFavoriteDj(dj.id)} className="p-1 text-amber-400 ml-auto" aria-label="Remove from favorites"><StarIcon filled={true} /></button>
+                                    </li>
+                                );
+                            })}
+                        </ul>
+                    ) : (
+                       <div className="text-center p-8 bg-slate-800/50 rounded-lg border-2 border-dashed border-slate-700">
+                           <div className="text-amber-400 mb-3"><UserGroupIcon /></div>
+                           <h4 className="font-semibold text-white">No Favorite DJs Yet</h4>
+                           <p className="text-sm text-slate-400 mt-1">Star a DJ from the homepage to see them here!</p>
+                       </div>
                     )}
                 </section>
             </div>
         </div>
       </div>
-      {isRewindModalOpen && (
+       {isRewindModalOpen && (
         <DailyRewindModal 
           isLoading={isRewindLoading}
           rewindContent={rewindContent}
@@ -490,5 +482,4 @@ const MyStation: React.FC<MyStationProps> = ({ favoriteShows, favoriteDjs, allSh
     </div>
   );
 };
-
 export default MyStation;
