@@ -272,7 +272,7 @@ const MyStation: React.FC<MyStationProps> = ({ favoriteShows, favoriteDjs, allSh
           <span className="font-normal text-slate-400">Now Playing:</span> {liveNowPlaying.song.title} - {liveNowPlaying.song.artist}
       </Marquee>
 
-      <div className="space-y-12">
+      <div className="mt-12 space-y-12">
         {isFavoriteOnAir && (
             <div className="bg-amber-500/10 border-l-4 border-amber-400 rounded-r-lg p-4 flex items-center gap-4 animate-fade-in ring-2 ring-amber-500/50 animate-pulse">
                 <div className="flex-shrink-0">
@@ -287,83 +287,10 @@ const MyStation: React.FC<MyStationProps> = ({ favoriteShows, favoriteDjs, allSh
                 </div>
             </div>
         )}
-        
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
-            {/* Main Column */}
-            <div className="lg:col-span-2 space-y-12">
-                <section className="bg-slate-900/50 backdrop-blur-xl rounded-2xl p-6 md:p-8 shadow-lg border border-slate-700/50 flex flex-col h-full">
-                    <h2 className="text-2xl font-bold mb-6 tracking-wide text-white">Favorite Shows</h2>
-                    {favoriteShows.length > 0 ? (
-                      <ul className="space-y-3 flex-grow">
-                        {favoriteShows.map(show => {
-                          const isOnAir = show.name === currentShowName;
-                          return (
-                            <li key={show.id} className={`p-3 rounded-lg flex gap-3 items-center justify-between transition-all duration-300 ${isOnAir ? 'bg-amber-500/10 ring-2 ring-amber-400' : 'bg-slate-800/50'}`}>
-                              <div className="flex items-center gap-3 overflow-hidden">
-                                <button onClick={() => onToggleFavorite(show.id)} className="p-1 text-amber-400 flex-shrink-0" aria-label="Remove from favorites"><StarIcon filled={true} /></button>
-                                <div className="overflow-hidden">
-                                    <h4 className="font-semibold text-white truncate">{show.name}</h4>
-                                    <p className="text-xs text-slate-400">{new Date(show.start).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</p>
-                                </div>
-                              </div>
-                              {isOnAir && (
-                                <span className="px-2 py-1 text-xs font-bold uppercase tracking-wider text-black bg-amber-300 rounded-full flex-shrink-0">On Air</span>
-                              )}
-                            </li>
-                          );
-                        })}
-                      </ul>
-                    ) : (
-                      <div className="flex-grow flex flex-col items-center justify-center text-center p-8 bg-slate-800/50 rounded-lg border-2 border-dashed border-slate-700">
-                        <div className="text-amber-400 mb-3"><MusicIcon /></div>
-                        <h4 className="font-semibold text-white">No Favorite Shows Yet</h4>
-                        <p className="text-sm text-slate-400 mt-1">Star a show from the schedule to see it here!</p>
-                      </div>
-                    )}
-                </section>
-                
-                <section>
-                    <h2 className="text-2xl font-bold mb-6 tracking-wide text-white">Show Recommendations</h2>
-                    <div className="bg-slate-800/50 p-6 rounded-lg">
-                        {isLoading && <div className="flex justify-center items-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-amber-300"></div></div>}
-                        {error && <p className="text-red-400">{error}</p>}
-                        {recommendations ? (
-                            <div className="prose prose-invert max-w-none text-slate-300" dangerouslySetInnerHTML={{ __html: recommendations.replace(/\n/g, '<br />').replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') }} />
-                        ) : (
-                            !isLoading && (
-                                <div className="text-center">
-                                    <p className="text-slate-400 mb-4">Get personalized show recommendations from our AI DJ, Alex!</p>
-                                    <button onClick={handleGetRecommendations} className="px-4 py-2 bg-amber-500 text-white font-semibold rounded-lg shadow-md hover:bg-amber-600 transition-all duration-200">
-                                        Ask DJ Alex
-                                    </button>
-                                </div>
-                            )
-                        )}
-                    </div>
-                </section>
 
-                <section>
-                    <h2 className="text-2xl font-bold mb-6 tracking-wide text-white">Your Recent Requests</h2>
-                     {sortedSongRequests.length > 0 ? (
-                        <ul className="space-y-2">
-                            {sortedSongRequests.map(req => (
-                                <li key={req.requestedAt} className="p-3 bg-slate-800/50 rounded-lg flex justify-between items-center">
-                                    <div>
-                                        <p className="font-semibold text-white">{req.title}</p>
-                                        <p className="text-sm text-slate-400">{req.artist}</p>
-                                    </div>
-                                    <p className="text-xs text-slate-500">{formatDate(req.requestedAt)} at {formatTime(req.requestedAt)}</p>
-                                </li>
-                            ))}
-                        </ul>
-                    ) : (
-                        <p className="text-slate-400 bg-slate-800/50 p-4 rounded-lg">You haven't requested any songs yet.</p>
-                    )}
-                </section>
-            </div>
-            {/* Sidebar Column */}
-            <div className="space-y-12">
-                <section className="bg-slate-900/50 backdrop-blur-xl rounded-2xl p-6 md:p-8 shadow-lg border border-slate-700/50">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
+            <div className="lg:col-span-1">
+                 <section className="bg-slate-900/50 backdrop-blur-xl rounded-2xl p-6 md:p-8 shadow-lg border border-slate-700/50">
                     <div className="flex justify-between items-start">
                         <div>
                            <h2 className="text-2xl font-bold tracking-wide text-white">Your Profile</h2>
@@ -402,7 +329,8 @@ const MyStation: React.FC<MyStationProps> = ({ favoriteShows, favoriteDjs, allSh
                         )}
                     </div>
                 </section>
-
+            </div>
+            <div className="lg:col-span-2">
                 <section>
                      <h2 className="text-2xl font-bold mb-6 tracking-wide text-white">Listener Stats</h2>
                      <div className="bg-slate-800/50 p-6 rounded-lg">
@@ -421,55 +349,127 @@ const MyStation: React.FC<MyStationProps> = ({ favoriteShows, favoriteDjs, allSh
                         </button>
                     </div>
                 </section>
-                
-                <ListeningDNA listeningStats={listeningStats} songRequests={songRequests} />
-
-                <section>
-                    <h2 className="text-2xl font-bold mb-6 tracking-wide text-white">Badges Earned</h2>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                        {BADGES.map(badge => {
-                            const isEarned = badge.isEarned(listeningStats, songRequests);
-                            return (
-                                <div key={badge.id} className={`p-4 rounded-lg text-center transition-all duration-300 ${isEarned ? 'bg-amber-500/10' : 'bg-slate-800/50'}`}>
-                                    <div className={`mx-auto mb-2 ${isEarned ? 'text-amber-400' : 'text-slate-600'}`}>
-                                        <badge.icon />
-                                    </div>
-                                    <h4 className={`font-bold text-sm ${isEarned ? 'text-white' : 'text-slate-500'}`}>{badge.name}</h4>
-                                    <p className={`text-xs mt-1 ${isEarned ? 'text-slate-400' : 'text-slate-600'}`}>{badge.description}</p>
-                                </div>
-                            );
-                        })}
-                    </div>
-                </section>
-
-                <section>
-                    <h2 className="text-2xl font-bold mb-6 tracking-wide text-white">Favorite DJs</h2>
-                     {favoriteDjs.length > 0 ? (
-                        <ul className="space-y-3">
-                            {favoriteDjs.map(dj => {
-                                const isOnAir = dj.show === currentShowName;
-                                return (
-                                    <li key={dj.id} className={`p-3 rounded-lg flex items-center gap-3 ${isOnAir ? 'bg-amber-500/10' : 'bg-slate-800/50'}`}>
-                                        <img src={dj.imageUrl} alt={dj.name} className="w-10 h-10 rounded-full object-cover"/>
-                                        <div>
-                                            <h4 className="font-semibold text-white">{dj.name}</h4>
-                                            <p className="text-xs text-amber-400">{dj.show}</p>
-                                        </div>
-                                        <button onClick={() => onToggleFavoriteDj(dj.id)} className="p-1 text-amber-400 ml-auto" aria-label="Remove from favorites"><StarIcon filled={true} /></button>
-                                    </li>
-                                );
-                            })}
-                        </ul>
-                    ) : (
-                       <div className="text-center p-8 bg-slate-800/50 rounded-lg border-2 border-dashed border-slate-700">
-                           <div className="text-amber-400 mb-3"><UserGroupIcon /></div>
-                           <h4 className="font-semibold text-white">No Favorite DJs Yet</h4>
-                           <p className="text-sm text-slate-400 mt-1">Star a DJ from the homepage to see them here!</p>
-                       </div>
-                    )}
-                </section>
             </div>
         </div>
+
+        <ListeningDNA listeningStats={listeningStats} songRequests={songRequests} />
+
+        <section>
+            <h2 className="text-2xl font-bold mb-6 tracking-wide text-white">Badges Earned</h2>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                {BADGES.map(badge => {
+                    const isEarned = badge.isEarned(listeningStats, songRequests);
+                    return (
+                        <div key={badge.id} className={`p-4 rounded-lg text-center transition-all duration-300 ${isEarned ? 'bg-amber-500/10' : 'bg-slate-800/50'}`}>
+                            <div className={`mx-auto mb-2 ${isEarned ? 'text-amber-400' : 'text-slate-600'}`}>
+                                <badge.icon />
+                            </div>
+                            <h4 className={`font-bold text-sm ${isEarned ? 'text-white' : 'text-slate-500'}`}>{badge.name}</h4>
+                            <p className={`text-xs mt-1 ${isEarned ? 'text-slate-400' : 'text-slate-600'}`}>{badge.description}</p>
+                        </div>
+                    );
+                })}
+            </div>
+        </section>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
+            <section className="bg-slate-900/50 backdrop-blur-xl rounded-2xl p-6 md:p-8 shadow-lg border border-slate-700/50 flex flex-col h-full">
+                <h2 className="text-2xl font-bold mb-6 tracking-wide text-white">Favorite Shows</h2>
+                {favoriteShows.length > 0 ? (
+                  <ul className="space-y-3 flex-grow">
+                    {favoriteShows.map(show => {
+                      const isOnAir = show.name === currentShowName;
+                      return (
+                        <li key={show.id} className={`p-3 rounded-lg flex gap-3 items-center justify-between transition-all duration-300 ${isOnAir ? 'bg-amber-500/10 ring-2 ring-amber-400' : 'bg-slate-800/50'}`}>
+                          <div className="flex items-center gap-3 overflow-hidden">
+                            <button onClick={() => onToggleFavorite(show.id)} className="p-1 text-amber-400 flex-shrink-0" aria-label="Remove from favorites"><StarIcon filled={true} /></button>
+                            <div className="overflow-hidden">
+                                <h4 className="font-semibold text-white truncate">{show.name}</h4>
+                                <p className="text-xs text-slate-400">{new Date(show.start).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</p>
+                            </div>
+                          </div>
+                          {isOnAir && (
+                            <span className="px-2 py-1 text-xs font-bold uppercase tracking-wider text-black bg-amber-300 rounded-full flex-shrink-0">On Air</span>
+                          )}
+                        </li>
+                      );
+                    })}
+                  </ul>
+                ) : (
+                  <div className="flex-grow flex flex-col items-center justify-center text-center p-8 bg-slate-800/50 rounded-lg border-2 border-dashed border-slate-700">
+                    <div className="text-amber-400 mb-3"><MusicIcon /></div>
+                    <h4 className="font-semibold text-white">No Favorite Shows Yet</h4>
+                    <p className="text-sm text-slate-400 mt-1">Star a show from the schedule to see it here!</p>
+                  </div>
+                )}
+            </section>
+            
+             <section>
+                <h2 className="text-2xl font-bold mb-6 tracking-wide text-white">Favorite DJs</h2>
+                 {favoriteDjs.length > 0 ? (
+                    <ul className="space-y-3">
+                        {favoriteDjs.map(dj => {
+                            const isOnAir = dj.show === currentShowName;
+                            return (
+                                <li key={dj.id} className={`p-3 rounded-lg flex items-center gap-3 ${isOnAir ? 'bg-amber-500/10' : 'bg-slate-800/50'}`}>
+                                    <img src={dj.imageUrl} alt={dj.name} className="w-10 h-10 rounded-full object-cover"/>
+                                    <div>
+                                        <h4 className="font-semibold text-white">{dj.name}</h4>
+                                        <p className="text-xs text-amber-400">{dj.show}</p>
+                                    </div>
+                                    <button onClick={() => onToggleFavoriteDj(dj.id)} className="p-1 text-amber-400 ml-auto" aria-label="Remove from favorites"><StarIcon filled={true} /></button>
+                                </li>
+                            );
+                        })}
+                    </ul>
+                ) : (
+                   <div className="text-center p-8 bg-slate-800/50 rounded-lg border-2 border-dashed border-slate-700">
+                       <div className="text-amber-400 mb-3"><UserGroupIcon /></div>
+                       <h4 className="font-semibold text-white">No Favorite DJs Yet</h4>
+                       <p className="text-sm text-slate-400 mt-1">Star a DJ from the homepage to see them here!</p>
+                   </div>
+                )}
+            </section>
+        </div>
+
+        <section>
+            <h2 className="text-2xl font-bold mb-6 tracking-wide text-white">Show Recommendations</h2>
+            <div className="bg-slate-800/50 p-6 rounded-lg">
+                {isLoading && <div className="flex justify-center items-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-amber-300"></div></div>}
+                {error && <p className="text-red-400">{error}</p>}
+                {recommendations ? (
+                    <div className="prose prose-invert max-w-none text-slate-300" dangerouslySetInnerHTML={{ __html: recommendations.replace(/\n/g, '<br />').replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') }} />
+                ) : (
+                    !isLoading && (
+                        <div className="text-center">
+                            <p className="text-slate-400 mb-4">Get personalized show recommendations from our AI DJ, Alex!</p>
+                            <button onClick={handleGetRecommendations} className="px-4 py-2 bg-amber-500 text-white font-semibold rounded-lg shadow-md hover:bg-amber-600 transition-all duration-200">
+                                Ask DJ Alex
+                            </button>
+                        </div>
+                    )
+                )}
+            </div>
+        </section>
+
+        <section>
+            <h2 className="text-2xl font-bold mb-6 tracking-wide text-white">Your Recent Requests</h2>
+             {sortedSongRequests.length > 0 ? (
+                <ul className="space-y-2">
+                    {sortedSongRequests.map(req => (
+                        <li key={req.requestedAt} className="p-3 bg-slate-800/50 rounded-lg flex justify-between items-center">
+                            <div>
+                                <p className="font-semibold text-white">{req.title}</p>
+                                <p className="text-sm text-slate-400">{req.artist}</p>
+                            </div>
+                            <p className="text-xs text-slate-500">{formatDate(req.requestedAt)} at {formatTime(req.requestedAt)}</p>
+                        </li>
+                    ))}
+                </ul>
+            ) : (
+                <p className="text-slate-400 bg-slate-800/50 p-4 rounded-lg">You haven't requested any songs yet.</p>
+            )}
+        </section>
       </div>
        {isRewindModalOpen && (
         <DailyRewindModal 
