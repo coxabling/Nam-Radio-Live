@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import Header from './components/Header';
 import NowPlaying from './components/NowPlaying';
@@ -112,7 +111,7 @@ const App: React.FC = () => {
 
   // Live broadcast state
   const [liveNowPlaying, setLiveNowPlaying] = useState<LiveNowPlaying>({
-    song: { title: 'Loading...', artist: 'Connecting to server...' },
+    song: { title: 'Loading...', artist: 'Connecting to server...', artUrl: '' },
     show: null
   });
   const [nowPlayingError, setNowPlayingError] = useState<string | null>(null);
@@ -314,22 +313,20 @@ const App: React.FC = () => {
   
   // Effect for smooth background transitions
   useEffect(() => {
-    const newUrl = liveNowPlaying.show?.imageUrl || DEFAULT_BG_URL;
+    const newUrl = liveNowPlaying.song.artUrl || liveNowPlaying.show?.imageUrl || DEFAULT_BG_URL;
     const currentUrl = bgUrls[activeBgIndex];
 
     if (newUrl !== currentUrl) {
         const nextIndex = (activeBgIndex + 1) % 2;
         
         setBgUrls(prevUrls => {
-            // FIX: Explicitly cast the spread array to a tuple `[string, string]` to fix a TypeScript type error.
-            // Spreading a tuple results in a general array type, which is not assignable back to a specific tuple type.
             const newUrls = [...prevUrls] as [string, string];
             newUrls[nextIndex] = newUrl;
             return newUrls;
         });
         setActiveBgIndex(nextIndex);
     }
-  }, [liveNowPlaying.show, activeBgIndex, bgUrls]);
+  }, [liveNowPlaying.song.artUrl, liveNowPlaying.show, activeBgIndex, bgUrls]);
 
 
   // Vibe feature logic

@@ -73,6 +73,14 @@ const NowPlaying: React.FC<NowPlayingProps> = ({ liveNowPlaying, recentlyPlayed,
   const isCurrentLiked = likedSongs.some(s => s.id === currentSongId);
   const isCurrentDisliked = dislikedSongs.some(s => s.id === currentSongId);
 
+  const MusicArtPlaceholder = () => (
+    <div className="w-24 h-24 bg-slate-700/50 flex items-center justify-center rounded-lg flex-shrink-0">
+        <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2z" />
+        </svg>
+    </div>
+  );
+
   return (
     <section className="bg-slate-900/50 backdrop-blur-xl rounded-2xl p-6 md:p-8 shadow-lg border border-slate-700/50 space-y-8">
       <div>
@@ -108,7 +116,12 @@ const NowPlaying: React.FC<NowPlayingProps> = ({ liveNowPlaying, recentlyPlayed,
        <div className="border-t border-slate-700/50 pt-6">
         <h2 className="text-2xl font-bold mb-4 tracking-wide text-amber-300">More About The Music</h2>
         <div className="space-y-6">
-            <div className="bg-slate-800/50 rounded-lg p-4 flex flex-col sm:flex-row items-start justify-between gap-4">
+            <div className="bg-slate-800/50 rounded-lg p-4 flex flex-col sm:flex-row items-center sm:items-start gap-4">
+              {liveNowPlaying.song.artUrl ? (
+                <img src={liveNowPlaying.song.artUrl} alt={`Album art for ${liveNowPlaying.song.title}`} className="w-24 h-24 rounded-lg object-cover shadow-lg flex-shrink-0" />
+              ) : (
+                <MusicArtPlaceholder />
+              )}
               <div className="text-center sm:text-left flex-grow">
                 <p className="text-sm text-slate-400">Now Playing</p>
                 <p className="font-bold text-lg text-white">{liveNowPlaying.song.title}</p>
@@ -148,7 +161,7 @@ const NowPlaying: React.FC<NowPlayingProps> = ({ liveNowPlaying, recentlyPlayed,
               <button 
                 onClick={handleGetFunFact}
                 disabled={isLoadingFact}
-                className="w-full sm:w-auto px-4 py-2 bg-amber-500 text-white font-semibold rounded-lg shadow-md hover:bg-amber-600 transition-all duration-200 disabled:bg-slate-600 disabled:cursor-not-allowed flex-shrink-0"
+                className="w-full mt-4 sm:mt-0 sm:w-auto px-4 py-2 bg-amber-500 text-white font-semibold rounded-lg shadow-md hover:bg-amber-600 transition-all duration-200 disabled:bg-slate-600 disabled:cursor-not-allowed flex-shrink-0"
               >
                 {isLoadingFact ? 'Discovering...' : 'Discover a Fun Fact'}
               </button>
@@ -189,10 +202,16 @@ const NowPlaying: React.FC<NowPlayingProps> = ({ liveNowPlaying, recentlyPlayed,
 
                         return (
                             <li key={`${song.title}-${index}`} className="flex items-center gap-3 p-2 hover:bg-slate-700/50 rounded-md transition-colors">
-                                <div className="text-slate-400 text-sm font-mono">{String(index + 1).padStart(2, '0')}</div>
-                                <div className="flex-grow">
-                                    <p className="font-semibold text-white">{song.title}</p>
-                                    <p className="text-sm text-slate-400">{song.artist}</p>
+                                {song.artUrl ? (
+                                    <img src={song.artUrl} alt={song.title} className="w-10 h-10 rounded-md object-cover flex-shrink-0" />
+                                ) : (
+                                    <div className="w-10 h-10 bg-slate-700/50 flex items-center justify-center rounded-md flex-shrink-0">
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2z" /></svg>
+                                    </div>
+                                )}
+                                <div className="flex-grow overflow-hidden">
+                                    <p className="font-semibold text-white truncate">{song.title}</p>
+                                    <p className="text-sm text-slate-400 truncate">{song.artist}</p>
                                 </div>
                                 {isLoggedIn && (
                                     <div className="flex items-center gap-2">

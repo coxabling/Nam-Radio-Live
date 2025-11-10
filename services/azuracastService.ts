@@ -1,4 +1,3 @@
-
 import { AZURACAST_BASE_URL, AZURACAST_STATION_ID, WEEKLY_SCHEDULE } from '../constants';
 import { ApiScheduleItem, Song, RequestableSong, AzuraListeners, AzuraListenersReport, AzuraPerformanceReportItem, AzuraHistoryItem } from '../types';
 
@@ -6,6 +5,7 @@ import { ApiScheduleItem, Song, RequestableSong, AzuraListeners, AzuraListenersR
 interface AzuraNowPlayingSong {
   title: string;
   artist: string;
+  art: string;
 }
 
 interface AzuraNowPlaying {
@@ -77,10 +77,12 @@ export const getNowPlaying = async (): Promise<{ currentSong: Song, history: Son
         const currentSong: Song = {
             title: data.now_playing.song.title,
             artist: data.now_playing.song.artist,
+            artUrl: data.now_playing.song.art,
         };
         const history: Song[] = data.song_history.map(item => ({
             title: item.song.title,
-            artist: item.song.artist
+            artist: item.song.artist,
+            artUrl: item.song.art,
         }));
         
         return { currentSong, history, showName: data.now_playing.playlist || null };

@@ -4,7 +4,7 @@ import { AzuraPerformanceReportItem } from '../types';
 import { getPerformanceReport } from '../services/azuracastService';
 import { generateStationChartCommentary } from '../services/geminiService';
 
-const CrownIcon = () => (<svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" /></svg>);
+const CrownIcon = () => (<svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8-2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" /></svg>);
 
 const StationChart: React.FC = () => {
     const [topSongs, setTopSongs] = useState<AzuraPerformanceReportItem[]>([]);
@@ -15,11 +15,36 @@ const StationChart: React.FC = () => {
 
     useEffect(() => {
         const fetchChart = async () => {
+            const CACHE_KEY = 'nam-radio-station-chart-cache';
+            const CACHE_DURATION = 1 * 60 * 60 * 1000; // 1 hour
+
+            // Try to load from cache first
+            try {
+                const cachedItem = sessionStorage.getItem(CACHE_KEY);
+                if (cachedItem) {
+                    const { data, timestamp } = JSON.parse(cachedItem);
+                    if (Date.now() - timestamp < CACHE_DURATION) {
+                        setTopSongs(data);
+                        setIsLoading(false);
+                        return; // Exit if cached data is fresh
+                    }
+                }
+            } catch (e) {
+                console.error("Failed to read station chart from cache", e);
+            }
+            
+            // If cache is not available or stale, fetch from API
             setIsLoading(true);
             setError(null);
             try {
                 const songs = await getPerformanceReport();
                 setTopSongs(songs);
+                // Save to cache on successful fetch
+                try {
+                    sessionStorage.setItem(CACHE_KEY, JSON.stringify({ data: songs, timestamp: Date.now() }));
+                } catch (e) {
+                    console.error("Failed to write station chart to cache", e);
+                }
             } catch (err) {
                 setError("Could not load the official station chart. The server might be busy.");
             } finally {

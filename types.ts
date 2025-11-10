@@ -93,6 +93,7 @@ export interface Song {
   title: string;
   artist: string;
   origin?: string;
+  artUrl?: string;
 }
 
 export interface SongRequestRecord {
