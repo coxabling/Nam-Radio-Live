@@ -4,6 +4,7 @@ import { getShowRecommendations, generateDailyRewind } from '../services/geminiS
 import { DJS } from '../constants';
 import DailyRewindModal from './DailyRewindModal';
 import ListeningDNA from './Contact';
+import ListenerStoryModal from './ListenerStoryModal';
 
 
 interface User {
@@ -142,6 +143,8 @@ const MyStation: React.FC<MyStationProps> = ({ favoriteShows, favoriteDjs, allSh
   const [rewindContent, setRewindContent] = useState<string | null>(null);
   const [isRewindLoading, setIsRewindLoading] = useState(false);
   const [rewindError, setRewindError] = useState<string | null>(null);
+  
+  const [isStoryModalOpen, setIsStoryModalOpen] = useState(false);
 
   useEffect(() => {
     if (!isEditing) {
@@ -273,6 +276,21 @@ const MyStation: React.FC<MyStationProps> = ({ favoriteShows, favoriteDjs, allSh
       </Marquee>
 
       <div className="mt-12 space-y-12">
+        <div 
+            onClick={() => setIsStoryModalOpen(true)}
+            className="cursor-pointer group relative bg-gradient-to-br from-purple-600 to-amber-500 rounded-2xl p-6 md:p-8 shadow-lg border border-purple-400/50 text-white text-center flex flex-col items-center justify-center overflow-hidden"
+        >
+            <div className="absolute inset-0 bg-black/30 group-hover:bg-black/10 transition-colors"></div>
+            <div className="absolute -bottom-10 -right-10 w-40 h-40 text-white/10 group-hover:scale-110 transition-transform duration-500">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" /></svg>
+            </div>
+            <div className="relative">
+                <h2 className="text-2xl font-bold tracking-wide">Your Listener Story</h2>
+                <p className="mt-2 text-purple-200">See your monthly listening recap, powered by DJ Alex!</p>
+                <span className="mt-4 inline-block px-4 py-2 bg-white/90 text-purple-700 font-semibold rounded-lg shadow-md group-hover:bg-white transition-colors">View Your Story</span>
+            </div>
+        </div>
+
         {isFavoriteOnAir && (
             <div className="bg-amber-500/10 border-l-4 border-amber-400 rounded-r-lg p-4 flex items-center gap-4 animate-fade-in ring-2 ring-amber-500/50 animate-pulse">
                 <div className="flex-shrink-0">
@@ -477,6 +495,15 @@ const MyStation: React.FC<MyStationProps> = ({ favoriteShows, favoriteDjs, allSh
           rewindContent={rewindContent}
           error={rewindError}
           onClose={() => setIsRewindModalOpen(false)}
+        />
+      )}
+      {isStoryModalOpen && (
+        <ListenerStoryModal
+          currentUser={currentUser}
+          listeningStats={listeningStats}
+          favoriteShows={favoriteShows}
+          songRequests={songRequests}
+          onClose={() => setIsStoryModalOpen(false)}
         />
       )}
     </div>

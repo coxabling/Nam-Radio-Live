@@ -63,3 +63,13 @@ body {
 .animate-marquee2 {
   animation: marquee2 40s linear infinite;
 }
+
+/* Listener Story Styles */
+@keyframes story-progress {
+  from { width: 0%; }
+  to { width: 100%; }
+}
+
+.story-progress-bar-active {
+  animation: story-progress 5s linear forwards;
+}

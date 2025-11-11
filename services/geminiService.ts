@@ -1,9 +1,10 @@
 
 
+
 import { GoogleGenAI, Type } from "@google/genai";
 // FIX: Import DedicationRecord for the new feature.
 // FIX: Import SongRating to resolve type errors.
-import { Song, SongRequestRecord, DedicationRecord, MusicEvent, ApiScheduleItem, SongOfTheWeek, ListeningStats, SongRating } from '../types';
+import { Song, SongRequestRecord, DedicationRecord, MusicEvent, ApiScheduleItem, SongOfTheWeek, ListeningStats, SongRating, StorySlideType, StorySlideData } from '../types';
 
 const getGeminiApiKey = (): string => {
   const apiKey = process.env.API_KEY;
@@ -577,4 +578,49 @@ export const getTopGenres = async (artists: string[]): Promise<string[]> => {
     // Fallback in case of error
     return ["Eclectic Mix"];
   }
+};
+
+export const generateListenerStoryCaption = async (
+    slideType: StorySlideType,
+    data: StorySlideData,
+    username: string
+): Promise<string> => {
+    const ai = new GoogleGenAI({ apiKey: getGeminiApiKey() });
+    let prompt = `You are DJ Alex, the AI host of Nam Radio Live. You are generating a fun, witty, one-sentence caption for a personalized "Listener Story" for a user named '${username}'. The caption should be celebratory and cool. Here's the data for the slide:\n`;
+
+    switch (slideType) {
+        case 'welcome':
+            prompt += `This is the welcome slide. Write a caption that says hello and gets them excited for their story.`;
+            break;
+        case 'top_show':
+            prompt += `This slide shows their TOP SHOW. Their favorite show was "${data.showName}". Write a caption congratulating them on their great taste.`;
+            break;
+        case 'peak_time':
+            prompt += `This slide shows their PEAK LISTENING TIME. Their peak time is "${data.peakTime}". Write a caption that gives their listening habit a cool name, like "Morning Crew" or "Night Owl".`;
+            break;
+        case 'top_genres':
+            prompt += `This slide shows their TOP GENRES. Their top genres are: ${data.genres.join(', ')}. Write a caption that comments on their diverse or specific taste.`;
+            break;
+        case 'badges':
+            prompt += `This slide shows the BADGES they've earned. They earned ${data.badgeCount} badges. Write a caption that calls them a "collector" or "achiever".`;
+            break;
+        case 'summary':
+            prompt += `This is the final SUMMARY slide. Write a caption that thanks them for listening and encourages them to share their story.`;
+            break;
+        default:
+            return "Thanks for being a listener!";
+    }
+
+    try {
+        const response = await ai.models.generateContent({ model: 'gemini-2.5-flash', contents: prompt });
+        return response.text.trim();
+    } catch (error) {
+        console.error(`Error generating caption for ${slideType}:`, error);
+        // Fallback captions
+        switch (slideType) {
+            case 'top_show': return `You've got great taste! "${data.showName}" is a fantastic choice.`;
+            case 'peak_time': return `You're officially part of the ${data.peakTime} crew!`;
+            default: return "Thanks for an amazing month of listening!";
+        }
+    }
 };

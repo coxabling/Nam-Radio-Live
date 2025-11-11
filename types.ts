@@ -246,3 +246,16 @@ export interface AzuraHistoryItem {
     played_at: number;
     song: Song;
 }
+
+// Listener DNA Story Types
+export type StorySlideType = 'welcome' | 'top_show' | 'peak_time' | 'top_genres' | 'badges' | 'summary';
+
+export interface StorySlideData {
+    [key: string]: any; // Allows for flexible data per slide type
+}
+
+export interface StorySlide {
+    type: StorySlideType;
+    data: StorySlideData;
+    caption: string;
+}
