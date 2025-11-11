@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, memo } from 'react';
 import { Dj, ApiScheduleItem, SongRequestRecord, ListeningStats, Badge, ListenerLevel, LiveNowPlaying } from '../types';
 import { getShowRecommendations, generateDailyRewind } from '../services/geminiService';
 import DailyRewindModal from './DailyRewindModal';
-import ListeningDNA from './Contact';
+import ListeningDNA from './ListeningDNA';
 
 
 interface User {
