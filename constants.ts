@@ -1,4 +1,4 @@
-import { Dj, ApiScheduleItem, Article, Song, SoundboardItem } from './types';
+import { Dj, ApiScheduleItem, Article, Song } from './types';
 
 export const AZURACAST_BASE_URL = 'https://music-station.live';
 export const AZURACAST_STATION_ID = 'namradio';
@@ -91,6 +91,7 @@ export const RECENTLY_PLAYED: Song[] = [
     { title: 'Good 4 U', artist: 'Olivia Rodrigo' },
 ];
 
+// FIX: Corrected a typo in the constant name from `TAKEOver_SONGS` to `TAKEOVER_SONGS` to match the import in LiveChat.tsx.
 export const TAKEOVER_SONGS: Song[] = [
     { artist: "Queen", title: "Bohemian Rhapsody" },
     { artist: "Nirvana", title: "Smells Like Teen Spirit" },
@@ -112,12 +113,4 @@ export const TAKEOVER_SONGS: Song[] = [
     { artist: "Coldplay", title: "Viva La Vida" },
     { artist: "Foster The People", title: "Pumped Up Kicks" },
     { artist: "Gotye", title: "Somebody That I Used to Know" },
-];
-
-export const SOUNDBOARD_ITEMS: SoundboardItem[] = [
-  { id: 'nam_radio', text: 'Nam Radio Live!', emoji: '📻', voice: 'Kore', cost: 100 },
-  { id: 'banger', text: 'That is an absolute banger!', emoji: '🔥', voice: 'Puck', cost: 150 },
-  { id: 'vibes', text: 'The vibes are immaculate!', emoji: '✨', voice: 'Zephyr', cost: 100 },
-  { id: 'rewind', text: 'Someone tell the DJ to rewind that track!', emoji: '⏪', voice: 'Fenrir', cost: 200 },
-  { id: 'shoutout', text: 'Big shoutout to everyone locked in!', emoji: '🙌', voice: 'Charon', cost: 125 },
 ];

@@ -23,8 +23,7 @@ const urlsToCache = [
   '/components/LiveChat.tsx',
   '/components/UpcomingShows.tsx',
   '/components/About.tsx',
-  '/components/Contact.tsx',
-  '/components/ListeningDNA.tsx',
+  '/components/ContactPage.tsx',
   '/components/ScrollToTopButton.tsx',
   '/components/LoginModal.tsx',
   '/components/ShareModal.tsx',
@@ -35,8 +34,7 @@ const urlsToCache = [
   '/components/InstallPwaButton.tsx',
   '/components/CommunityCountdown.tsx',
   '/components/StationChart.tsx',
-  '/components/SoundboardModal.tsx',
-  '/components/LocalSceneMap.tsx',
+  '/components/Contact.tsx',
   '/logo192.svg',
   '/logo512.svg'
 ];

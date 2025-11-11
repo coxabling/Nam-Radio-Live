@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ApiScheduleItem, SongOfTheWeek, SongRequestRecord, ListeningStats } from '../types';
 import ShareModal from './ShareModal';
-import { getSongOfTheWeek, generateShowPromoScript, generateTtsAudio } from '../services/geminiService';
+import { getSongOfTheWeek } from '../services/geminiService';
 
 interface ScheduleProps {
   schedule: ApiScheduleItem[];
@@ -12,29 +12,6 @@ interface ScheduleProps {
   songRequests: SongRequestRecord[];
   listeningStats: ListeningStats;
 }
-
-// Audio decoding helpers
-function decode(base64: string) {
-  const binaryString = atob(base64);
-  const len = binaryString.length;
-  const bytes = new Uint8Array(len);
-  for (let i = 0; i < len; i++) {
-    bytes[i] = binaryString.charCodeAt(i);
-  }
-  return bytes;
-}
-
-async function decodeAudioData(data: Uint8Array, ctx: AudioContext): Promise<AudioBuffer> {
-  const dataInt16 = new Int16Array(data.buffer);
-  const frameCount = dataInt16.length; // Mono channel for TTS
-  const buffer = ctx.createBuffer(1, frameCount, 24000); // TTS sample rate is 24000
-  const channelData = buffer.getChannelData(0);
-  for (let i = 0; i < frameCount; i++) {
-    channelData[i] = dataInt16[i] / 32768.0;
-  }
-  return buffer;
-}
-
 
 const StarIcon = ({ filled }: { filled: boolean }) => (
   <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5} fill={filled ? "currentColor" : "none"}>
@@ -48,12 +25,6 @@ const ShareIcon = () => (
     </svg>
 );
 
-const SoundIcon = () => (
-    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" viewBox="0 0 20 20" fill="currentColor">
-        <path fillRule="evenodd" d="M9.383 3.076A1 1 0 0110 4v12a1 1 0 01-1.707.707L4.586 13H2a1 1 0 01-1-1V8a1 1 0 011-1h2.586l3.707-3.707a1 1 0 011.09-.217zM14.657 2.929a1 1 0 011.414 0A9.972 9.972 0 0119 10a9.972 9.972 0 01-2.929 7.071 1 1 0 01-1.414-1.414A7.971 7.971 0 0017 10c0-2.21-.894-4.208-2.343-5.657a1 1 0 010-1.414zm-2.829 2.828a1 1 0 011.415 0A5.983 5.983 0 0115 10a5.984 5.984 0 01-1.757 4.243 1 1 0 01-1.415-1.415A3.984 3.984 0 0013 10a3.983 3.983 0 00-1.172-2.828 1 1 0 010-1.415z" clipRule="evenodd" />
-    </svg>
-);
-
 
 const Schedule: React.FC<ScheduleProps> = ({ schedule, loading, error, favoriteShows, onToggleFavorite, songRequests, listeningStats }) => {
   const [showToShare, setShowToShare] = useState<ApiScheduleItem | null>(null);
@@ -61,53 +32,6 @@ const Schedule: React.FC<ScheduleProps> = ({ schedule, loading, error, favoriteS
   const [isSotwLoading, setIsSotwLoading] = useState(true);
   const [sotwError, setSotwError] = useState<string | null>(null);
   const [showOnlySotw, setShowOnlySotw] = useState(false);
-  const audioContextRef = useRef<AudioContext | null>(null);
-  const [promoCache, setPromoCache] = useState<Record<number, string>>({});
-  const [loadingPromoId, setLoadingPromoId] = useState<number | null>(null);
-  const [playingPromoId, setPlayingPromoId] = useState<number | null>(null);
-
-  useEffect(() => {
-    if (!audioContextRef.current) {
-        audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
-    }
-  }, []);
-
-  const handlePlayPromo = async (show: ApiScheduleItem) => {
-    const audioCtx = audioContextRef.current;
-    if (!audioCtx) return;
-
-    if (promoCache[show.id]) {
-      const decodedBytes = decode(promoCache[show.id]);
-      const audioBuffer = await decodeAudioData(decodedBytes, audioCtx);
-      const source = audioCtx.createBufferSource();
-      source.buffer = audioBuffer;
-      source.connect(audioCtx.destination);
-      source.start();
-      setPlayingPromoId(show.id);
-      source.onended = () => setPlayingPromoId(null);
-      return;
-    }
-
-    setLoadingPromoId(show.id);
-    try {
-        const script = await generateShowPromoScript(show.name, show.description);
-        const audioData = await generateTtsAudio(script);
-        setPromoCache(prev => ({...prev, [show.id]: audioData}));
-        const decodedBytes = decode(audioData);
-        const audioBuffer = await decodeAudioData(decodedBytes, audioCtx);
-        const source = audioCtx.createBufferSource();
-        source.buffer = audioBuffer;
-        source.connect(audioCtx.destination);
-        source.start();
-        setPlayingPromoId(show.id);
-        source.onended = () => setPlayingPromoId(null);
-    } catch (err) {
-        console.error("Failed to play promo", err);
-    } finally {
-        setLoadingPromoId(null);
-    }
-  };
-
 
   useEffect(() => {
     const fetchSotw = async () => {
@@ -215,14 +139,6 @@ const Schedule: React.FC<ScheduleProps> = ({ schedule, loading, error, favoriteS
                           On Air
                         </span>
                       )}
-                      <button
-                        onClick={() => handlePlayPromo(show)}
-                        disabled={loadingPromoId === show.id}
-                        className="p-2 rounded-full transition-colors text-slate-500 hover:text-amber-400 hover:bg-slate-700/50 disabled:cursor-wait"
-                        aria-label="Hear AI promo"
-                      >
-                         {loadingPromoId === show.id ? <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-amber-300"></div> : <SoundIcon />}
-                      </button>
                       <button
                         onClick={() => setShowToShare(show)}
                         className="p-2 rounded-full transition-colors text-slate-500 hover:text-amber-400 hover:bg-slate-700/50"

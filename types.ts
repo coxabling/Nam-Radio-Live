@@ -60,17 +60,6 @@ export interface GameMessage {
   isDj: boolean;
 }
 
-export interface TriviaMessage {
-  id: number;
-  type: 'trivia';
-  author: string;
-  question: string;
-  answer: string;
-  winner: string | null;
-  isDj: boolean;
-}
-
-
 export interface TakeoverSong {
   title: string;
   artist: string;
@@ -115,28 +104,8 @@ export interface LevelUpMessage {
   levelName: string;
 }
 
-export interface SoundboardMessage {
-  id: number;
-  type: 'soundboard';
-  author: string;
-  soundEmoji: string;
-  soundText: string;
-}
 
-export interface AudioDedicationMessage {
-  id: number;
-  type: 'audio_dedication';
-  author: string; // DJ Alex
-  isDj: true;
-  to: string;
-  from: string;
-  message: string;
-  songTitle: string;
-  audioBase64: string;
-}
-
-
-export type Message = TextMessage | PollMessage | GameMessage | TakeoverMessage | PersonalizedMessage | OnThisDayMessage | LevelUpMessage | SoundboardMessage | TriviaMessage | AudioDedicationMessage;
+export type Message = TextMessage | PollMessage | GameMessage | TakeoverMessage | PersonalizedMessage | OnThisDayMessage | LevelUpMessage;
 
 export interface LiveNowPlaying {
     song: Song;
@@ -226,14 +195,6 @@ export interface MusicEvent {
   imageUrl?: string;
 }
 
-export interface MusicHotspot {
-  name: string;
-  type: 'Venue' | 'Studio' | 'Store' | 'Other';
-  description: string;
-  latitude: number;
-  longitude: number;
-}
-
 export interface SongOfTheWeek {
   title: string;
   artist: string;
@@ -274,12 +235,4 @@ export interface AzuraPerformanceReportItem {
 export interface AzuraHistoryItem {
     played_at: number;
     song: Song;
-}
-
-export interface SoundboardItem {
-  id: string;
-  text: string;
-  emoji: string;
-  voice: 'Kore' | 'Puck' | 'Zephyr' | 'Charon' | 'Fenrir';
-  cost: number;
 }
