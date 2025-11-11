@@ -45,6 +45,7 @@ const FAVORITE_DJS_KEY = 'nam-radio-live-favorite-djs';
 const REQUESTS_KEY = 'nam-radio-live-song-requests';
 const VIBE_KEY = 'nam-radio-live-user-vibe';
 const LISTENING_STATS_KEY = 'nam-radio-live-listening-stats';
+const LAST_MONTH_STATS_KEY = 'nam-radio-live-last-month-stats';
 const DAILY_REWIND_DATA_KEY = 'nam-radio-daily-rewind-data';
 
 const initialVibes: Vibe[] = [
@@ -97,6 +98,7 @@ const App: React.FC = () => {
 
   // Stats State
   const [listeningStats, setListeningStats] = useState<ListeningStats>(initialListeningStats);
+  const [lastMonthListeningStats, setLastMonthListeningStats] = useState<ListeningStats | null>(null);
   const [dailyShowsListened, setDailyShowsListened] = useState<string[]>([]);
   
   // Gamification UI State
@@ -168,28 +170,52 @@ const App: React.FC = () => {
     } catch (e) { console.error("Failed to parse song requests from localStorage", e); }
     
     try {
+        const storedLastMonthStats = localStorage.getItem(LAST_MONTH_STATS_KEY);
+        if (storedLastMonthStats) {
+            setLastMonthListeningStats(JSON.parse(storedLastMonthStats));
+        }
+    } catch (e) { console.error("Failed to parse last month listening stats from localStorage", e); }
+
+    try {
         const storedStats = localStorage.getItem(LISTENING_STATS_KEY);
         if (storedStats) {
             const loadedStats: ListeningStats = JSON.parse(storedStats);
-            // Check for monthly reset
             const lastUpdatedDate = new Date(loadedStats.lastUpdated);
             const today = new Date();
+
+            // Check for monthly reset
             if (lastUpdatedDate.getMonth() !== today.getMonth() || lastUpdatedDate.getFullYear() !== today.getFullYear()) {
-                loadedStats.monthlyListeningTime = 0;
-                loadedStats.lastUpdated = today.toISOString();
+                // The month has rolled over. The current stats become last month's story.
+                const storyStats: ListeningStats = { ...loadedStats };
+                setLastMonthListeningStats(storyStats);
+                localStorage.setItem(LAST_MONTH_STATS_KEY, JSON.stringify(storyStats));
+                
+                // Reset the current stats for the new month.
+                // We keep cumulative stats like total time and points.
+                const newCurrentStats: ListeningStats = {
+                    ...initialListeningStats,
+                    totalListeningTime: loadedStats.totalListeningTime,
+                    points: loadedStats.points,
+                    likedSongs: loadedStats.likedSongs, // Keep liked/disliked songs across months
+                    dislikedSongs: loadedStats.dislikedSongs,
+                    lastUpdated: today.toISOString(),
+                };
+                setListeningStats(newCurrentStats);
+                // The new stats will be saved to localStorage by the periodic saver effect.
+            } else {
+                // Business as usual, just load the stats for the current month.
+                // Ensure new stats properties exist for backward compatibility.
+                if (!loadedStats.chatMessagesSent) loadedStats.chatMessagesSent = 0;
+                if (!loadedStats.votesCast) loadedStats.votesCast = 0;
+                if (!loadedStats.points) loadedStats.points = 0;
+                if (!loadedStats.likedSongs) loadedStats.likedSongs = [];
+                if (!loadedStats.dislikedSongs) loadedStats.dislikedSongs = [];
+                if (!loadedStats.listeningTimeByHour) loadedStats.listeningTimeByHour = {};
+                setListeningStats(loadedStats);
             }
-            // Ensure new stats properties exist
-            if (!loadedStats.chatMessagesSent) loadedStats.chatMessagesSent = 0;
-            if (!loadedStats.votesCast) loadedStats.votesCast = 0;
-            if (!loadedStats.points) loadedStats.points = 0;
-            if (!loadedStats.likedSongs) loadedStats.likedSongs = [];
-            if (!loadedStats.dislikedSongs) loadedStats.dislikedSongs = [];
-            if (!loadedStats.listeningTimeByHour) loadedStats.listeningTimeByHour = {};
-
-
-            setListeningStats(loadedStats);
         }
     } catch (e) { console.error("Failed to parse listening stats from localStorage", e); }
+
 
     try {
       const storedRewindData = localStorage.getItem(DAILY_REWIND_DATA_KEY);
@@ -734,6 +760,7 @@ const App: React.FC = () => {
             onUpdateUserProfile={handleUpdateUserProfile}
             songRequests={songRequests}
             listeningStats={listeningStats}
+            lastMonthListeningStats={lastMonthListeningStats}
             dailyShowsListened={dailyShowsListened}
             liveNowPlaying={liveNowPlaying}
           />
