@@ -39,6 +39,7 @@ export interface TextMessage {
   author: string;
   text: string;
   isDj: boolean;
+  song?: Song;
 }
 
 export interface PollMessage {
@@ -55,7 +56,7 @@ export interface GameMessage {
   type: 'game';
   author: string;
   clue: string;
-  answer: string; // Stored as "Song Title"
+  song: Song;
   winner: string | null;
   isDj: boolean;
 }

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { Message, PollMessage, Song, TakeoverMessage, GameMessage, Vibe, DedicationRecord, MusicEvent, ApiScheduleItem, SongRequestRecord, ListeningStats, PersonalizedMessage, OnThisDayMessage, LevelUpMessage, TriviaMessage, GoldenHourMessage } from '../types';
+import { Message, PollMessage, Song, TakeoverMessage, GameMessage, Vibe, DedicationRecord, MusicEvent, ApiScheduleItem, SongRequestRecord, ListeningStats, PersonalizedMessage, OnThisDayMessage, LevelUpMessage, TriviaMessage, GoldenHourMessage, TextMessage } from '../types';
 import { getAiChatResponse, generateTakeoverAnnouncement, generateTakeoverWinnerShoutout, generateSongClue, generateDjChitchat, generateVibeCommentary, generateDedicationShoutout, getRankedShowRecommendations, generateShowScoutAlert, generateLocalSpotlightPromo, generateEventShoutout, getOnThisDayInMusic, generateLevelUpMessage, generateTriviaQuestion, generateGoldenHourAnnouncement } from '../services/geminiService';
 import { TAKEOVER_SONGS } from '../constants';
 
@@ -282,7 +282,7 @@ const LiveChat: React.FC<LiveChatProps> = ({ liveNowPlaying, recentlyPlayed, cur
                     setIsDjTyping(true);
                     const shoutout = await generateTakeoverWinnerShoutout(winningSong);
                     setIsDjTyping(false);
-                    setMessages(prev => [...prev, { id: Date.now() + 1, type: 'text', author: 'DJ Alex', text: shoutout, isDj: true }]);
+                    setMessages(prev => [...prev, { id: Date.now() + 1, type: 'text', author: 'DJ Alex', text: shoutout, isDj: true, song: winningSong }]);
                 }
             }
         };
@@ -376,7 +376,7 @@ const LiveChat: React.FC<LiveChatProps> = ({ liveNowPlaying, recentlyPlayed, cur
                 type: 'game',
                 author: 'DJ Alex',
                 clue: `Alright team, time for GUESS THE SONG! 🧐 Here's your clue: "${clue}" \nType !guess followed by your answer!`,
-                answer: songToGuess.title,
+                song: songToGuess,
                 winner: null,
                 isDj: true,
             };
@@ -397,7 +397,7 @@ const LiveChat: React.FC<LiveChatProps> = ({ liveNowPlaying, recentlyPlayed, cur
                     text = await generateDjChitchat(recentlyPlayed);
                 }
                 setIsDjTyping(false);
-                setMessages(prev => [...prev, { id: Date.now(), type: 'text', author: 'DJ Alex', text, isDj: true }]);
+                setMessages(prev => [...prev, { id: Date.now(), type: 'text', author: 'DJ Alex', text, isDj: true, song: lastPlayedSong }]);
             }
         } else if (chance < 0.85 && dominantVibe) { // 15% chance for vibe commentary
              if (getGeminiCallCount().count >= GEMINI_CALL_LIMIT) { return; }
@@ -429,7 +429,23 @@ const LiveChat: React.FC<LiveChatProps> = ({ liveNowPlaying, recentlyPlayed, cur
     const trimmedMessage = newMessage.trim();
     if (!trimmedMessage) return;
 
-    const userMessage: Message = { id: Date.now(), type: 'text', author: userHandle, text: trimmedMessage, isDj: false };
+    const userMessage: TextMessage = { id: Date.now(), type: 'text', author: userHandle, text: trimmedMessage, isDj: false };
+    
+    // Check if message mentions a song
+    const potentialSongs = [liveNowPlaying.song, ...recentlyPlayed];
+    let mentionedSong: Song | undefined = undefined;
+
+    for (const song of potentialSongs) {
+        if (song.title && trimmedMessage.toLowerCase().includes(song.title.toLowerCase())) {
+            mentionedSong = song;
+            break; // Found a match, stop looking
+        }
+    }
+
+    if (mentionedSong) {
+        userMessage.song = mentionedSong;
+    }
+
     setMessages(prev => [...prev, userMessage]);
     onChatMessageSent();
     setNewMessage('');
@@ -462,8 +478,8 @@ const LiveChat: React.FC<LiveChatProps> = ({ liveNowPlaying, recentlyPlayed, cur
       
       if (lastGameIndex !== -1) {
           const game = messages[lastGameIndex] as GameMessage | TriviaMessage;
-  
-          if (guess.toLowerCase() === game.answer.toLowerCase()) {
+          
+          if (game.type === 'game' && guess.toLowerCase() === game.song.title.toLowerCase()) {
               // Correct answer!
               setMessages(prev => 
                   prev.map((msg, index) => 
@@ -473,6 +489,25 @@ const LiveChat: React.FC<LiveChatProps> = ({ liveNowPlaying, recentlyPlayed, cur
                   ) as Message[] // Cast to Message[] to satisfy TS
               );
   
+              const shoutout = `🎉 We have a winner! Congrats ${userHandle} for guessing "${game.song.title}"! You've won 100 points!`;
+              const winnerMessage: TextMessage = { 
+                id: Date.now() + 1, 
+                type: 'text', 
+                author: 'DJ Alex', 
+                text: shoutout, 
+                isDj: true,
+                song: game.song,
+              };
+              setMessages(prev => [...prev, winnerMessage]);
+              onGameWon();
+          } else if (game.type === 'trivia' && guess.toLowerCase() === game.answer.toLowerCase()) {
+              setMessages(prev => 
+                  prev.map((msg, index) => 
+                      index === lastGameIndex 
+                      ? { ...msg, winner: userHandle } 
+                      : msg
+                  ) as Message[]
+              );
               const shoutout = `🎉 We have a winner! Congrats ${userHandle} for correctly answering with "${game.answer}"! You've won 100 points!`;
               const winnerMessage: Message = { id: Date.now() + 1, type: 'text', author: 'DJ Alex', text: shoutout, isDj: true };
               setMessages(prev => [...prev, winnerMessage]);
@@ -594,7 +629,7 @@ const LiveChat: React.FC<LiveChatProps> = ({ liveNowPlaying, recentlyPlayed, cur
                         <div className="mt-3 p-3 bg-amber-500/20 rounded-lg">
                             <p className="text-sm text-amber-200">The winner is...</p>
                             <p className="font-bold text-xl text-white">{msg.winner}!</p>
-                            <p className="text-amber-300">The song was "{msg.answer}"</p>
+                            <p className="text-amber-300">The song was "{msg.song.title}"</p>
                         </div>
                     )}
                 </div>
@@ -653,14 +688,26 @@ const LiveChat: React.FC<LiveChatProps> = ({ liveNowPlaying, recentlyPlayed, cur
               </div>
             );
           }
-          return (
-            <div key={msg.id} className={`flex flex-col ${msg.author === userHandle ? 'items-end' : 'items-start'}`}>
-              <div className={`rounded-lg px-3 py-2 max-w-[80%] ${msg.isDj ? 'bg-amber-900/70' : 'bg-slate-700'}`}>
-                <span className={`text-xs font-bold block ${msg.isDj ? 'text-amber-200' : 'text-slate-200'}`}>{msg.author}</span>
-                <p className="text-sm text-white break-words">{msg.text}</p>
-              </div>
-            </div>
-          );
+          if (msg.type === 'text') {
+            return (
+                <div key={msg.id} className={`flex flex-col ${msg.author === userHandle ? 'items-end' : 'items-start'}`}>
+                <div className={`rounded-lg px-3 py-2 max-w-[80%] ${msg.isDj ? 'bg-amber-900/70' : 'bg-slate-700'}`}>
+                    <span className={`text-xs font-bold block ${msg.isDj ? 'text-amber-200' : 'text-slate-200'}`}>{msg.author}</span>
+                    {msg.song && msg.song.artUrl && (
+                        <div className="flex items-center gap-3 my-2 bg-black/20 p-2 rounded-md">
+                            <img src={msg.song.artUrl} alt={msg.song.title} className="w-10 h-10 rounded-md object-cover" />
+                            <div className="overflow-hidden">
+                                <p className="font-semibold text-white truncate text-sm">{msg.song.title}</p>
+                                <p className="text-xs text-slate-300 truncate">{msg.song.artist}</p>
+                            </div>
+                        </div>
+                    )}
+                    <p className="text-sm text-white break-words">{msg.text}</p>
+                </div>
+                </div>
+            );
+          }
+          return null;
         })}
         {isDjTyping && <TypingIndicator author="DJ Alex" />}
         <div ref={chatEndRef} />
