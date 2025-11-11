@@ -1,10 +1,11 @@
 
 
 
+
 import { GoogleGenAI, Type } from "@google/genai";
 // FIX: Import DedicationRecord for the new feature.
 // FIX: Import SongRating to resolve type errors.
-import { Song, SongRequestRecord, DedicationRecord, MusicEvent, ApiScheduleItem, SongOfTheWeek, ListeningStats, SongRating, StorySlideType, StorySlideData } from '../types';
+import { Song, SongRequestRecord, DedicationRecord, MusicEvent, ApiScheduleItem, SongOfTheWeek, ListeningStats, SongRating, StorySlideType, StorySlideData, Quest } from '../types';
 
 const getGeminiApiKey = (): string => {
   const apiKey = process.env.API_KEY;
@@ -578,6 +579,40 @@ export const getTopGenres = async (artists: string[]): Promise<string[]> => {
     // Fallback in case of error
     return ["Eclectic Mix"];
   }
+};
+
+export const generateListenerQuests = async (): Promise<Omit<Quest, 'progress' | 'status'>[]> => {
+    const ai = new GoogleGenAI({ apiKey: getGeminiApiKey() });
+    const prompt = `You are an AI game designer for "Nam Radio Live". Create a list of 3 engaging daily quests for a listener. The quests should encourage them to explore the app and interact with the station. 
+    Available quest types are: 'listen_time' (target in minutes), 'send_chat_messages', 'cast_votes', 'request_song', 'rate_song'.
+    Make the descriptions fun, short, and encouraging. Keep targets reasonable for a daily goal (e.g., listen for 30-60 mins, send 3-5 messages, cast 2-3 votes). Rewards should be between 50 and 200 points.
+    
+    Return the response as a JSON array of objects, where each object has "id", "description", "type", "target", and "reward". The id should be a unique string like "quest_1", "quest_2", etc.`;
+
+    const response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: prompt,
+        config: {
+            responseMimeType: "application/json",
+            responseSchema: {
+                type: Type.ARRAY,
+                items: {
+                    type: Type.OBJECT,
+                    properties: {
+                        id: { type: Type.STRING },
+                        description: { type: Type.STRING },
+                        type: { type: Type.STRING },
+                        target: { type: Type.INTEGER },
+                        reward: { type: Type.INTEGER },
+                    },
+                    required: ["id", "description", "type", "target", "reward"],
+                },
+            },
+        },
+    });
+
+    const jsonText = response.text.trim();
+    return JSON.parse(jsonText);
 };
 
 export const generateListenerStoryCaption = async (

@@ -259,3 +259,24 @@ export interface StorySlide {
     data: StorySlideData;
     caption: string;
 }
+
+// AI Listener Quests
+export type QuestType =
+  | 'listen_time' // Listen for X minutes
+  | 'send_chat_messages' // Send X chat messages
+  | 'cast_votes' // Vote in X polls/takeovers
+  | 'request_song' // Request a song
+  | 'rate_song'; // Like or dislike X songs
+
+export type QuestStatus = 'in_progress' | 'completed';
+
+export interface Quest {
+  id: string;
+  description: string;
+  type: QuestType;
+  target: number;
+  progress: number;
+  reward: number; // points
+  status: QuestStatus;
+  meta?: Record<string, any>; // For extra data, e.g., { genre: '90s' }
+}

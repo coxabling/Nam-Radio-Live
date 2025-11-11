@@ -10,8 +10,8 @@ import { getSchedule, getNowPlaying } from './services/azuracastService';
 import UpcomingShows from './components/UpcomingShows';
 import ScrollToTopButton from './components/ScrollToTopButton';
 import About from './components/About';
-import { getLocalMusicEvents } from './services/geminiService';
-import { ApiScheduleItem, Song, SongRequestRecord, Vibe, VibeType, ListeningStats, Badge, DedicationRecord, MusicEvent, SongRating, LevelUpMessage, LiveNowPlaying } from './types';
+import { getLocalMusicEvents, generateListenerQuests } from './services/geminiService';
+import { ApiScheduleItem, Song, SongRequestRecord, Vibe, VibeType, ListeningStats, Badge, DedicationRecord, MusicEvent, SongRating, LevelUpMessage, LiveNowPlaying, Quest, QuestType, QuestStatus } from './types';
 import LiveChat from './components/LiveChat';
 import ContactPage from './components/ContactPage';
 import MyStation, { BADGES, LISTENER_LEVELS } from './components/MyStation';
@@ -47,6 +47,7 @@ const VIBE_KEY = 'nam-radio-live-user-vibe';
 const LISTENING_STATS_KEY = 'nam-radio-live-listening-stats';
 const LAST_MONTH_STATS_KEY = 'nam-radio-live-last-month-stats';
 const DAILY_REWIND_DATA_KEY = 'nam-radio-daily-rewind-data';
+const QUESTS_KEY = 'nam-radio-live-quests';
 
 const initialVibes: Vibe[] = [
     { type: 'hype', emoji: '🔥', label: 'Hype', count: 25 },
@@ -105,6 +106,7 @@ const App: React.FC = () => {
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const earnedBadgesRef = useRef<Set<string>>(new Set());
   const [latestLevelUp, setLatestLevelUp] = useState<LevelUpInfo | null>(null);
+  const [quests, setQuests] = useState<Quest[]>([]);
 
   // PWA Install state
   const [installPrompt, setInstallPrompt] = useState<any>(null);
@@ -248,6 +250,44 @@ const App: React.FC = () => {
     };
     loadEvents();
   }, []);
+
+  // Effect to load or generate quests when user logs in
+  useEffect(() => {
+    const loadOrGenerateQuests = async () => {
+        if (!currentUser) {
+            setQuests([]); // Clear quests on logout
+            return;
+        }
+
+        const todayStr = new Date().toISOString().split('T')[0];
+        try {
+            const storedQuestsData = localStorage.getItem(QUESTS_KEY);
+            if (storedQuestsData) {
+                const { date, quests: storedQuests } = JSON.parse(storedQuestsData);
+                if (date === todayStr) {
+                    setQuests(storedQuests);
+                    return; // Quests are up to date
+                }
+            }
+        } catch (e) { console.error("Failed to parse quests from localStorage", e); }
+        
+        // If we reach here, we need to generate new quests
+        try {
+            const newQuestTemplates = await generateListenerQuests();
+            const newQuests: Quest[] = newQuestTemplates.map(q => ({
+                ...q,
+                progress: 0,
+                status: 'in_progress',
+            }));
+            setQuests(newQuests);
+            localStorage.setItem(QUESTS_KEY, JSON.stringify({ date: todayStr, quests: newQuests }));
+        } catch (error) {
+            console.error("Failed to generate listener quests:", error);
+        }
+    };
+
+    loadOrGenerateQuests();
+  }, [currentUser]);
   
   const openLoginModal = useCallback((redirectPath?: string) => {
     if (redirectPath) setLoginRedirectPath(redirectPath);
@@ -387,12 +427,45 @@ const App: React.FC = () => {
 
     return () => clearInterval(vibeInterval);
   }, []);
+
+  const handleQuestProgress = useCallback((type: QuestType, value: number = 1) => {
+    if (!currentUser) return;
+
+    setQuests(prevQuests => {
+        if (!prevQuests || prevQuests.length === 0) return [];
+
+        const newQuests = prevQuests.map(quest => {
+            if (quest.type === type && quest.status === 'in_progress') {
+                const newProgress = Math.min(quest.target, quest.progress + value);
+                
+                if (newProgress >= quest.target && quest.status !== 'completed') {
+                    // Quest Completed!
+                    setListeningStats(prevStats => ({
+                        ...prevStats,
+                        points: (prevStats.points || 0) + quest.reward
+                    }));
+                    setToastMessage(`Quest Complete: ${quest.description} (+${quest.reward} points)`);
+                    return { ...quest, progress: newProgress, status: 'completed' as QuestStatus };
+                }
+                return { ...quest, progress: newProgress };
+            }
+            return quest;
+        });
+
+        // Save updated quests to localStorage
+        const todayStr = new Date().toISOString().split('T')[0];
+        localStorage.setItem(QUESTS_KEY, JSON.stringify({ date: todayStr, quests: newQuests }));
+        return newQuests;
+    });
+  }, [currentUser]);
   
-  // Listening Stats Tracking & Badge Checking
+  // Listening Stats Tracking & Badge/Quest Checking
   useEffect(() => {
     const trackingInterval = 5000; // 5 seconds
     const interval = setInterval(() => {
       if (!document.hidden && currentUser) { // Only track if the tab is visible and user is logged in
+        handleQuestProgress('listen_time', (trackingInterval / 1000) / 60); // value is in minutes
+
         setListeningStats(prevStats => {
           const now = new Date();
           const currentHour = now.getHours();
@@ -445,7 +518,7 @@ const App: React.FC = () => {
     }, trackingInterval);
 
     return () => clearInterval(interval);
-  }, [liveNowPlaying.show, currentUser]);
+  }, [liveNowPlaying.show, currentUser, handleQuestProgress]);
 
   // Check for new badges
   useEffect(() => {
@@ -623,7 +696,8 @@ const App: React.FC = () => {
     const updatedRequests = [request, ...songRequests].slice(0, 10);
     setSongRequests(updatedRequests);
     localStorage.setItem(REQUESTS_KEY, JSON.stringify(updatedRequests));
-  }, [songRequests]);
+    handleQuestProgress('request_song');
+  }, [songRequests, handleQuestProgress]);
 
   // FIX: Add a handler to receive dedication data from the SongRequest component.
   const handleAddDedication = useCallback((dedication: DedicationRecord) => {
@@ -649,12 +723,14 @@ const App: React.FC = () => {
   const handleChatMessageSent = useCallback(() => {
     if (!currentUser) return;
     setListeningStats(prev => ({...prev, chatMessagesSent: (prev.chatMessagesSent || 0) + 1, points: (prev.points || 0) + 5 }));
-  }, [currentUser]);
+    handleQuestProgress('send_chat_messages');
+  }, [currentUser, handleQuestProgress]);
 
   const handleVoteCast = useCallback(() => {
     if (!currentUser) return;
     setListeningStats(prev => ({...prev, votesCast: (prev.votesCast || 0) + 1, points: (prev.points || 0) + 10 }));
-  }, [currentUser]);
+    handleQuestProgress('cast_votes');
+  }, [currentUser, handleQuestProgress]);
 
   const handleGameWon = useCallback(() => {
     if (!currentUser) return;
@@ -696,11 +772,12 @@ const App: React.FC = () => {
         
         if (pointsAwarded) {
             newStats.points = (newStats.points || 0) + 15;
+            handleQuestProgress('rate_song');
         }
 
         return newStats;
     });
-  }, [currentUser]);
+  }, [currentUser, handleQuestProgress]);
 
   const handleInstallClick = () => {
     if (!installPrompt) {
@@ -763,6 +840,7 @@ const App: React.FC = () => {
             lastMonthListeningStats={lastMonthListeningStats}
             dailyShowsListened={dailyShowsListened}
             liveNowPlaying={liveNowPlaying}
+            quests={quests}
           />
         ) : null;
       default:
