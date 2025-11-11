@@ -1,7 +1,4 @@
 
-
-
-
 import { GoogleGenAI, Type } from "@google/genai";
 // FIX: Import DedicationRecord for the new feature.
 // FIX: Import SongRating to resolve type errors.
@@ -106,6 +103,53 @@ export const getShowRecommendations = async (
         return "Our recommendation engine is taking a quick nap. Please try again in a moment!";
     }
 };
+
+export const generateShowRecommendation = async (
+  favoritedShow: ApiScheduleItem,
+  candidateShows: ApiScheduleItem[]
+): Promise<{ recommendedShowName: string; reason: string }> => {
+  const ai = new GoogleGenAI({ apiKey: getGeminiApiKey() });
+
+  const candidateShowDescriptions = candidateShows
+    .map(s => `{"name": "${s.name}", "description": "${s.description.replace(/"/g, '\\"')}"}`)
+    .join(', ');
+
+  const prompt = `You are DJ Alex, a helpful and insightful AI music curator for Nam Radio Live. A listener just favorited the show "${favoritedShow.name}", which is described as: "${favoritedShow.description}".
+
+  From the following list of other shows, please pick the SINGLE BEST recommendation for this listener.
+  
+  Available shows: [${candidateShowDescriptions}]
+
+  Analyze the descriptions and choose the one that is the best fit. Then, provide a compelling, friendly, one-sentence reason why they would like your recommendation, based on their new favorite show.
+
+  Return your response as a single, clean JSON object with two keys: "recommendedShowName" and "reason". Do not add any extra text or formatting.`;
+  
+  const response = await ai.models.generateContent({
+    model: 'gemini-2.5-flash',
+    contents: prompt,
+    config: {
+      responseMimeType: 'application/json',
+      responseSchema: {
+        type: Type.OBJECT,
+        properties: {
+          recommendedShowName: { type: Type.STRING },
+          reason: { type: Type.STRING },
+        },
+        required: ['recommendedShowName', 'reason'],
+      },
+    },
+  });
+
+  const jsonText = response.text.trim();
+  const result = JSON.parse(jsonText);
+  
+  if (!candidateShows.some(s => s.name === result.recommendedShowName)) {
+      throw new Error("AI recommended a show that was not in the provided candidate list.");
+  }
+  
+  return result;
+};
+
 
 export const getArticleSummary = async (articleTitle: string, articleSource: string): Promise<string> => {
     try {

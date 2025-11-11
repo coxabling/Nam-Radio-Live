@@ -37,6 +37,7 @@ const urlsToCache = [
   '/components/Contact.tsx',
   '/components/ListenerStoryModal.tsx',
   '/components/ListenerQuests.tsx',
+  '/components/RecommendationModal.tsx',
   '/logo192.svg',
   '/logo512.svg'
 ];

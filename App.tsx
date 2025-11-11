@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import Header from './components/Header';
 import NowPlaying from './components/NowPlaying';
@@ -10,7 +11,7 @@ import { getSchedule, getNowPlaying } from './services/azuracastService';
 import UpcomingShows from './components/UpcomingShows';
 import ScrollToTopButton from './components/ScrollToTopButton';
 import About from './components/About';
-import { getLocalMusicEvents, generateListenerQuests } from './services/geminiService';
+import { getLocalMusicEvents, generateListenerQuests, generateShowRecommendation } from './services/geminiService';
 import { ApiScheduleItem, Song, SongRequestRecord, Vibe, VibeType, ListeningStats, Badge, DedicationRecord, MusicEvent, SongRating, LevelUpMessage, LiveNowPlaying, Quest, QuestType, QuestStatus } from './types';
 import LiveChat from './components/LiveChat';
 import ContactPage from './components/ContactPage';
@@ -22,6 +23,7 @@ import AdminDashboard from './components/AdminDashboard';
 import InstallPwaButton from './components/InstallPwaButton';
 import CommunityCountdown from './components/CommunityCountdown';
 import StationChart from './components/StationChart';
+import RecommendationModal from './components/RecommendationModal';
 
 interface User {
   username: string;
@@ -107,6 +109,7 @@ const App: React.FC = () => {
   const earnedBadgesRef = useRef<Set<string>>(new Set());
   const [latestLevelUp, setLatestLevelUp] = useState<LevelUpInfo | null>(null);
   const [quests, setQuests] = useState<Quest[]>([]);
+  const [showRecommendation, setShowRecommendation] = useState<{ show: ApiScheduleItem; reason: string } | null>(null);
 
   // PWA Install state
   const [installPrompt, setInstallPrompt] = useState<any>(null);
@@ -675,13 +678,33 @@ const App: React.FC = () => {
   };
 
 
-  const toggleFavoriteShow = useCallback((showId: number) => {
-    const newFavorites = favoriteShows.includes(showId)
-      ? favoriteShows.filter(id => id !== showId)
-      : [...favoriteShows, showId];
+  const toggleFavoriteShow = useCallback(async (showId: number) => {
+    const isAdding = !favoriteShows.includes(showId);
+
+    const newFavorites = isAdding
+      ? [...favoriteShows, showId]
+      : favoriteShows.filter(id => id !== showId);
     setFavoriteShows(newFavorites);
     localStorage.setItem(FAVORITES_KEY, JSON.stringify(newFavorites));
-  }, [favoriteShows]);
+
+    if (isAdding && currentUser) {
+      const favoritedShow = schedule.find(s => s.id === showId);
+      if (!favoritedShow) return;
+
+      const candidateShows = schedule.filter(s => !newFavorites.includes(s.id));
+      if (candidateShows.length === 0) return;
+
+      try {
+        const { recommendedShowName, reason } = await generateShowRecommendation(favoritedShow, candidateShows);
+        const recommendedShow = schedule.find(s => s.name === recommendedShowName);
+        if (recommendedShow) {
+          setShowRecommendation({ show: recommendedShow, reason });
+        }
+      } catch (error) {
+        console.error("Failed to generate show recommendation:", error);
+      }
+    }
+  }, [favoriteShows, schedule, currentUser]);
 
   const toggleFavoriteDj = useCallback((djId: number) => {
     const newFavorites = favoriteDjs.includes(djId)
@@ -953,6 +976,12 @@ const App: React.FC = () => {
           onClose={closeLoginModal}
           onLogin={handleLogin}
           onSignUp={handleSignUp}
+        />
+      )}
+      {showRecommendation && (
+        <RecommendationModal
+          recommendation={showRecommendation}
+          onClose={() => setShowRecommendation(null)}
         />
       )}
       <Toast message={toastMessage} onDismiss={() => setToastMessage(null)} />
