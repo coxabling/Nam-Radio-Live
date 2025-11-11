@@ -3,9 +3,10 @@ import { Dj, ApiScheduleItem, SongRequestRecord, ListeningStats, Badge, Listener
 import { getShowRecommendations, generateDailyRewind } from '../services/geminiService';
 import { DJS } from '../constants';
 import DailyRewindModal from './DailyRewindModal';
-import ListeningDNA from './Contact';
+import ListeningDNA from './ListeningDNA';
 import ListenerStoryModal from './ListenerStoryModal';
 import ListenerQuests from './ListenerQuests';
+import ShowLeaderboards from './ShowLeaderboards';
 
 
 interface User {
@@ -385,6 +386,8 @@ const MyStation: React.FC<MyStationProps> = ({ favoriteShows, favoriteDjs, allSh
         <ListenerQuests quests={quests} />
 
         <ListeningDNA listeningStats={listeningStats} songRequests={songRequests} />
+
+        <ShowLeaderboards showPoints={listeningStats.showPoints} allShows={allShows} />
 
         <section>
             <h2 className="text-2xl font-bold mb-6 tracking-wide text-white">Badges Earned</h2>

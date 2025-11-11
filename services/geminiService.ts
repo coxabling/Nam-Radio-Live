@@ -1,4 +1,5 @@
 
+
 import { GoogleGenAI, Type } from "@google/genai";
 // FIX: Import DedicationRecord for the new feature.
 // FIX: Import SongRating to resolve type errors.
@@ -592,6 +593,19 @@ export const generateLevelUpMessage = async (username: string, levelName: string
       return `🎉 HUGE SHOUTOUT to ${username} for reaching level: ${levelName}! You're a legend! Thanks for being part of the Nam Radio family! 🙌`;
     }
   };
+
+// FIX: Add generateGoldenHourAnnouncement function to resolve import error.
+export const generateGoldenHourAnnouncement = async (multiplier: number): Promise<string> => {
+    try {
+        const ai = new GoogleGenAI({ apiKey: getGeminiApiKey() });
+        const prompt = `You are an energetic radio DJ for "Nam Radio Live". Announce that a "Golden Hour" has just started! All points listeners earn for the next hour will be multiplied by ${multiplier}x. Make it sound exciting and urgent, encouraging listeners to chat, request songs, and participate to maximize their points.`;
+        const response = await ai.models.generateContent({ model: 'gemini-2.5-flash', contents: prompt });
+        return response.text;
+    } catch (error) {
+        console.error("Error generating Golden Hour announcement:", error);
+        return `🔥 GOLDEN HOUR IS LIVE! All points are worth ${multiplier}x for the next hour! Let's go! 🔥`;
+    }
+};
 
 export const getTopGenres = async (artists: string[]): Promise<string[]> => {
   if (artists.length === 0) {

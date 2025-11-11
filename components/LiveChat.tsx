@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { Message, PollMessage, Song, TakeoverMessage, GameMessage, Vibe, DedicationRecord, MusicEvent, ApiScheduleItem, SongRequestRecord, ListeningStats, PersonalizedMessage, OnThisDayMessage, LevelUpMessage, TriviaMessage } from '../types';
-import { getAiChatResponse, generateTakeoverAnnouncement, generateTakeoverWinnerShoutout, generateSongClue, generateDjChitchat, generateVibeCommentary, generateDedicationShoutout, getRankedShowRecommendations, generateShowScoutAlert, generateLocalSpotlightPromo, generateEventShoutout, getOnThisDayInMusic, generateLevelUpMessage, generateTriviaQuestion } from '../services/geminiService';
+import { Message, PollMessage, Song, TakeoverMessage, GameMessage, Vibe, DedicationRecord, MusicEvent, ApiScheduleItem, SongRequestRecord, ListeningStats, PersonalizedMessage, OnThisDayMessage, LevelUpMessage, TriviaMessage, GoldenHourMessage } from '../types';
+import { getAiChatResponse, generateTakeoverAnnouncement, generateTakeoverWinnerShoutout, generateSongClue, generateDjChitchat, generateVibeCommentary, generateDedicationShoutout, getRankedShowRecommendations, generateShowScoutAlert, generateLocalSpotlightPromo, generateEventShoutout, getOnThisDayInMusic, generateLevelUpMessage, generateTriviaQuestion, generateGoldenHourAnnouncement } from '../services/geminiService';
 import { TAKEOVER_SONGS } from '../constants';
 
 const djPolls: Omit<PollMessage, 'id' | 'author' | 'isDj' | 'type'>[] = [
@@ -33,6 +33,7 @@ interface LiveChatProps {
   songRequests: SongRequestRecord[];
   listeningStats: ListeningStats;
   latestLevelUp: { username: string; levelName: string } | null;
+  onStartGoldenHour: (multiplier: number) => void;
 }
 
 type FilterType = 'dj' | 'polls' | 'games' | 'takeovers';
@@ -40,7 +41,7 @@ type FilterType = 'dj' | 'polls' | 'games' | 'takeovers';
 const GEMINI_CALL_LIMIT = 100;
 const GEMINI_LIMIT_KEY = 'nam-radio-gemini-limit';
 
-const LiveChat: React.FC<LiveChatProps> = ({ liveNowPlaying, recentlyPlayed, currentUser, dominantVibe, onChatMessageSent, onVoteCast, onGameWon, latestDedication, events, schedule, userFavoriteShows, songRequests, listeningStats, latestLevelUp }) => {
+const LiveChat: React.FC<LiveChatProps> = ({ liveNowPlaying, recentlyPlayed, currentUser, dominantVibe, onChatMessageSent, onVoteCast, onGameWon, latestDedication, events, schedule, userFavoriteShows, songRequests, listeningStats, latestLevelUp, onStartGoldenHour }) => {
   const [messages, setMessages] = useState<Message[]>([{ id: 1, type: 'text', author: 'DJ Alex', text: 'Welcome to the live chat! Drop a message and say hi!', isDj: true }]);
   const [newMessage, setNewMessage] = useState('');
   const [userVotes, setUserVotes] = useState<Record<number, number>>({});
@@ -240,8 +241,8 @@ const LiveChat: React.FC<LiveChatProps> = ({ liveNowPlaying, recentlyPlayed, cur
     if (Object.values(filters).every(v => v)) return messages;
     
     return messages.filter(msg => {
-      if (msg.type === 'personalized' || msg.type === 'level_up') {
-          return msg.recipient === userHandle;
+      if (msg.type === 'personalized' || msg.type === 'level_up' || msg.type === 'golden_hour') {
+          return true; // Always show these special announcements
       }
       if (msg.author === userHandle) return true;
       if (msg.type === 'on_this_day') return true; // Always show this
@@ -288,7 +289,26 @@ const LiveChat: React.FC<LiveChatProps> = ({ liveNowPlaying, recentlyPlayed, cur
 
         const chance = Math.random();
 
-        if (chance < 0.10) { // 10% chance for Listener Takeover
+        if (chance < 0.05) { // 5% chance for Golden Hour
+            if (getGeminiCallCount().count >= GEMINI_CALL_LIMIT) return;
+            incrementGeminiCallCount();
+            setIsDjTyping(true);
+            const multiplier = Math.random() > 0.7 ? 3 : 2; // 30% chance for 3x, 70% for 2x
+            const announcement = await generateGoldenHourAnnouncement(multiplier);
+            setIsDjTyping(false);
+
+            const goldenHourMessage: GoldenHourMessage = {
+                id: Date.now(),
+                type: 'golden_hour',
+                author: 'DJ Alex',
+                text: announcement,
+                isDj: true,
+                multiplier: multiplier,
+            };
+            setMessages(prev => [...prev, goldenHourMessage]);
+            onStartGoldenHour(multiplier);
+        
+        } else if (chance < 0.15) { // 10% chance for Listener Takeover
             incrementGeminiCallCount();
             setIsDjTyping(true);
             const songA = TAKEOVER_SONGS[Math.floor(Math.random() * TAKEOVER_SONGS.length)];
@@ -303,7 +323,7 @@ const LiveChat: React.FC<LiveChatProps> = ({ liveNowPlaying, recentlyPlayed, cur
 
             setTimeout(() => endTakeoverEvent(takeoverMessage.id), 30000);
 
-        } else if (chance < 0.20) { // 10% chance for a poll
+        } else if (chance < 0.25) { // 10% chance for a poll
             setMessages(prev => {
                 const randomPollTemplate = djPolls[Math.floor(Math.random() * djPolls.length)];
                 // Create a fresh poll object with votes reset to 0
@@ -318,7 +338,7 @@ const LiveChat: React.FC<LiveChatProps> = ({ liveNowPlaying, recentlyPlayed, cur
                 return [...prev, newPoll];
             });
 
-        } else if (chance < 0.35) { // 15% chance for "Song Sleuth" Trivia
+        } else if (chance < 0.40) { // 15% chance for "Song Sleuth" Trivia
             if (getGeminiCallCount().count >= GEMINI_CALL_LIMIT) return;
             incrementGeminiCallCount();
             setIsDjTyping(true);
@@ -343,7 +363,7 @@ const LiveChat: React.FC<LiveChatProps> = ({ liveNowPlaying, recentlyPlayed, cur
                 setIsDjTyping(false);
             }
 
-        } else if (chance < 0.45) { // 10% chance for Guess the Song
+        } else if (chance < 0.50) { // 10% chance for Guess the Song
             incrementGeminiCallCount();
             setIsDjTyping(true);
             const allSongs = [...recentlyPlayed, ...TAKEOVER_SONGS];
@@ -361,7 +381,7 @@ const LiveChat: React.FC<LiveChatProps> = ({ liveNowPlaying, recentlyPlayed, cur
                 isDj: true,
             };
             setMessages(prev => [...prev, gameMessage]);
-        } else if (chance < 0.65) { // 20% chance for chit-chat or event shoutout
+        } else if (chance < 0.70) { // 20% chance for chit-chat or event shoutout
             if (recentlyPlayed.length > 0) {
                 if (getGeminiCallCount().count >= GEMINI_CALL_LIMIT) { return; }
                 const lastPlayedSong = recentlyPlayed[0];
@@ -379,14 +399,14 @@ const LiveChat: React.FC<LiveChatProps> = ({ liveNowPlaying, recentlyPlayed, cur
                 setIsDjTyping(false);
                 setMessages(prev => [...prev, { id: Date.now(), type: 'text', author: 'DJ Alex', text, isDj: true }]);
             }
-        } else if (chance < 0.80 && dominantVibe) { // 15% chance for vibe commentary
+        } else if (chance < 0.85 && dominantVibe) { // 15% chance for vibe commentary
              if (getGeminiCallCount().count >= GEMINI_CALL_LIMIT) { return; }
              incrementGeminiCallCount();
              setIsDjTyping(true);
              const vibeComment = await generateVibeCommentary(dominantVibe.label);
              setIsDjTyping(false);
              setMessages(prev => [...prev, { id: Date.now(), type: 'text', author: 'DJ Alex', text: vibeComment, isDj: true }]);
-        } else if (chance < 0.90) { // 10% chance for Local Spotlight promo
+        } else if (chance < 0.95) { // 10% chance for Local Spotlight promo
             if (getGeminiCallCount().count >= GEMINI_CALL_LIMIT) { return; }
             incrementGeminiCallCount();
             setIsDjTyping(true);
@@ -402,7 +422,7 @@ const LiveChat: React.FC<LiveChatProps> = ({ liveNowPlaying, recentlyPlayed, cur
 
     djMessageTimer.current = window.setTimeout(postDjEvent, 25000); 
     return () => { if (djMessageTimer.current) clearTimeout(djMessageTimer.current) };
-  }, [recentlyPlayed, dominantVibe, events]); 
+  }, [recentlyPlayed, dominantVibe, events, onStartGoldenHour]); 
   
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -510,6 +530,15 @@ const LiveChat: React.FC<LiveChatProps> = ({ liveNowPlaying, recentlyPlayed, cur
 
       <div className="flex-grow bg-slate-800/50 rounded-lg p-4 overflow-y-auto mb-4 space-y-4 shadow-inner-lg">
         {filteredMessages.map(msg => {
+          if (msg.type === 'golden_hour') {
+            return (
+              <div key={msg.id} className="p-4 bg-gradient-to-br from-amber-600 to-yellow-800 rounded-lg border-2 border-amber-400 shadow-lg animate-fade-in text-center animate-pulse-gold">
+                  <span className="text-xl font-bold block text-yellow-200">GOLDEN HOUR IS ACTIVE!</span>
+                  <p className="text-lg font-bold text-white my-2">All points are now worth {msg.multiplier}x!</p>
+                  <p className="text-sm text-yellow-200 italic">"{msg.text}"</p>
+              </div>
+            )
+          }
           if (msg.type === 'level_up') {
             return (
                 <div key={msg.id} className="p-4 bg-gradient-to-br from-purple-800 to-indigo-900 rounded-lg border-2 border-purple-500 shadow-lg animate-fade-in text-center">

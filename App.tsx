@@ -14,7 +14,7 @@ import About from './components/About';
 import { getLocalMusicEvents, generateListenerQuests, generateShowRecommendation } from './services/geminiService';
 import { ApiScheduleItem, Song, SongRequestRecord, Vibe, VibeType, ListeningStats, Badge, DedicationRecord, MusicEvent, SongRating, LevelUpMessage, LiveNowPlaying, Quest, QuestType, QuestStatus } from './types';
 import LiveChat from './components/LiveChat';
-import ContactPage from './components/ContactPage';
+import Contact from './components/Contact';
 import MyStation, { BADGES, LISTENER_LEVELS } from './components/MyStation';
 import ContentHub from './components/ContentHub';
 import LoginModal from './components/LoginModal';
@@ -24,6 +24,7 @@ import InstallPwaButton from './components/InstallPwaButton';
 import CommunityCountdown from './components/CommunityCountdown';
 import StationChart from './components/StationChart';
 import RecommendationModal from './components/RecommendationModal';
+import GoldenHourBanner from './components/GoldenHourBanner';
 
 interface User {
   username: string;
@@ -50,6 +51,8 @@ const LISTENING_STATS_KEY = 'nam-radio-live-listening-stats';
 const LAST_MONTH_STATS_KEY = 'nam-radio-live-last-month-stats';
 const DAILY_REWIND_DATA_KEY = 'nam-radio-daily-rewind-data';
 const QUESTS_KEY = 'nam-radio-live-quests';
+const WEEKLY_RESET_KEY = 'nam-radio-live-weekly-reset';
+
 
 const initialVibes: Vibe[] = [
     { type: 'hype', emoji: '🔥', label: 'Hype', count: 25 },
@@ -63,6 +66,7 @@ const initialListeningStats: ListeningStats = {
   monthlyListeningTime: 0,
   lastUpdated: new Date().toISOString(),
   showListeningTime: {},
+  showPoints: {},
   hasListenedPostMidnight: false,
   chatMessagesSent: 0,
   votesCast: 0,
@@ -110,6 +114,7 @@ const App: React.FC = () => {
   const [latestLevelUp, setLatestLevelUp] = useState<LevelUpInfo | null>(null);
   const [quests, setQuests] = useState<Quest[]>([]);
   const [showRecommendation, setShowRecommendation] = useState<{ show: ApiScheduleItem; reason: string } | null>(null);
+  const [goldenHour, setGoldenHour] = useState({ isActive: false, multiplier: 1, endTime: 0 });
 
   // PWA Install state
   const [installPrompt, setInstallPrompt] = useState<any>(null);
@@ -188,6 +193,19 @@ const App: React.FC = () => {
             const lastUpdatedDate = new Date(loadedStats.lastUpdated);
             const today = new Date();
 
+            // Check for weekly reset
+            const storedWeeklyReset = localStorage.getItem(WEEKLY_RESET_KEY);
+            if (storedWeeklyReset) {
+              const lastResetDate = new Date(storedWeeklyReset);
+              const oneWeek = 7 * 24 * 60 * 60 * 1000;
+              if (today.getTime() - lastResetDate.getTime() > oneWeek) {
+                loadedStats.showPoints = {};
+                localStorage.setItem(WEEKLY_RESET_KEY, today.toISOString());
+              }
+            } else {
+              localStorage.setItem(WEEKLY_RESET_KEY, today.toISOString());
+            }
+
             // Check for monthly reset
             if (lastUpdatedDate.getMonth() !== today.getMonth() || lastUpdatedDate.getFullYear() !== today.getFullYear()) {
                 // The month has rolled over. The current stats become last month's story.
@@ -216,6 +234,7 @@ const App: React.FC = () => {
                 if (!loadedStats.likedSongs) loadedStats.likedSongs = [];
                 if (!loadedStats.dislikedSongs) loadedStats.dislikedSongs = [];
                 if (!loadedStats.listeningTimeByHour) loadedStats.listeningTimeByHour = {};
+                if (!loadedStats.showPoints) loadedStats.showPoints = {};
                 setListeningStats(loadedStats);
             }
         }
@@ -430,6 +449,58 @@ const App: React.FC = () => {
 
     return () => clearInterval(vibeInterval);
   }, []);
+  
+  // Golden Hour check
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setGoldenHour(prev => {
+        if (prev.isActive && Date.now() > prev.endTime) {
+          return { isActive: false, multiplier: 1, endTime: 0 };
+        }
+        return prev;
+      });
+    }, 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const handleStartGoldenHour = useCallback((multiplier: number) => {
+    const endTime = Date.now() + 60 * 60 * 1000;
+    setGoldenHour({ isActive: true, multiplier, endTime });
+    sessionStorage.setItem('nam-radio-golden-hour', JSON.stringify({ isActive: true, multiplier, endTime }));
+  }, []);
+  
+  const awardPoints = useCallback((basePoints: number) => {
+    if (!currentUser) return;
+
+    const multiplier = goldenHour.isActive ? goldenHour.multiplier : 1;
+    const finalPoints = basePoints * multiplier;
+
+    setListeningStats(prevStats => {
+      const oldPoints = prevStats.points || 0;
+      const newPoints = oldPoints + finalPoints;
+
+      const newStats: ListeningStats = {
+        ...prevStats,
+        points: newPoints,
+      };
+
+      if (liveNowPlaying.show?.name) {
+        const showName = liveNowPlaying.show.name;
+        const newShowPoints = { ...(newStats.showPoints || {}) };
+        newShowPoints[showName] = (newShowPoints[showName] || 0) + finalPoints;
+        newStats.showPoints = newShowPoints;
+      }
+
+      // Level Up Check
+      const oldLevel = [...LISTENER_LEVELS].reverse().find(l => oldPoints >= l.minPoints);
+      const newLevel = [...LISTENER_LEVELS].reverse().find(l => newPoints >= l.minPoints);
+      if (newLevel && oldLevel && newLevel.name !== oldLevel.name) {
+        setLatestLevelUp({ username: currentUser.username, levelName: newLevel.name });
+      }
+
+      return newStats;
+    });
+  }, [goldenHour.isActive, goldenHour.multiplier, liveNowPlaying.show, currentUser]);
 
   const handleQuestProgress = useCallback((type: QuestType, value: number = 1) => {
     if (!currentUser) return;
@@ -442,11 +513,7 @@ const App: React.FC = () => {
                 const newProgress = Math.min(quest.target, quest.progress + value);
                 
                 if (newProgress >= quest.target && quest.status !== 'completed') {
-                    // Quest Completed!
-                    setListeningStats(prevStats => ({
-                        ...prevStats,
-                        points: (prevStats.points || 0) + quest.reward
-                    }));
+                    awardPoints(quest.reward);
                     setToastMessage(`Quest Complete: ${quest.description} (+${quest.reward} points)`);
                     return { ...quest, progress: newProgress, status: 'completed' as QuestStatus };
                 }
@@ -455,12 +522,11 @@ const App: React.FC = () => {
             return quest;
         });
 
-        // Save updated quests to localStorage
         const todayStr = new Date().toISOString().split('T')[0];
         localStorage.setItem(QUESTS_KEY, JSON.stringify({ date: todayStr, quests: newQuests }));
         return newQuests;
     });
-  }, [currentUser]);
+  }, [currentUser, awardPoints]);
   
   // Listening Stats Tracking & Badge/Quest Checking
   useEffect(() => {
@@ -472,27 +538,32 @@ const App: React.FC = () => {
         setListeningStats(prevStats => {
           const now = new Date();
           const currentHour = now.getHours();
+          
+          // Award points for listening
           const pointsPer5Min = 2;
           const secondsPerInterval = trackingInterval / 1000;
           const intervalsPer5Min = (5 * 60) / secondsPerInterval;
-          const pointsForInterval = pointsPer5Min / intervalsPer5Min;
+          const basePointsForInterval = pointsPer5Min / intervalsPer5Min;
+          const multiplier = goldenHour.isActive ? goldenHour.multiplier : 1;
+          const finalPointsForInterval = basePointsForInterval * multiplier;
+
+          const oldPoints = prevStats.points || 0;
+          const newPoints = oldPoints + finalPointsForInterval;
           
           const newStats: ListeningStats = {
             ...prevStats,
             totalListeningTime: prevStats.totalListeningTime + (trackingInterval / 1000),
             monthlyListeningTime: prevStats.monthlyListeningTime + (trackingInterval / 1000),
             lastUpdated: now.toISOString(),
-            points: (prevStats.points || 0) + pointsForInterval,
+            points: newPoints,
           };
-
+          
           const newTimeByHour = { ...prevStats.listeningTimeByHour };
           const secondsToAdd = trackingInterval / 1000;
           newTimeByHour[currentHour] = (newTimeByHour[currentHour] || 0) + secondsToAdd;
           newStats.listeningTimeByHour = newTimeByHour;
 
           // Level Up Check
-          const oldPoints = prevStats.points || 0;
-          const newPoints = newStats.points || 0;
           const oldLevel = [...LISTENER_LEVELS].reverse().find(l => oldPoints >= l.minPoints);
           const newLevel = [...LISTENER_LEVELS].reverse().find(l => newPoints >= l.minPoints);
           if (newLevel && oldLevel && newLevel.name !== oldLevel.name) {
@@ -502,6 +573,10 @@ const App: React.FC = () => {
           if (liveNowPlaying.show?.name) {
             const showName = liveNowPlaying.show.name;
             newStats.showListeningTime[showName] = (newStats.showListeningTime[showName] || 0) + (trackingInterval / 1000);
+
+            const newShowPoints = { ...(newStats.showPoints || {}) };
+            newShowPoints[showName] = (newShowPoints[showName] || 0) + finalPointsForInterval;
+            newStats.showPoints = newShowPoints;
 
             setDailyShowsListened(prevShows => {
                 if (!prevShows.includes(showName)) {
@@ -521,7 +596,7 @@ const App: React.FC = () => {
     }, trackingInterval);
 
     return () => clearInterval(interval);
-  }, [liveNowPlaying.show, currentUser, handleQuestProgress]);
+  }, [liveNowPlaying.show, currentUser, handleQuestProgress, goldenHour]);
 
   // Check for new badges
   useEffect(() => {
@@ -663,7 +738,6 @@ const App: React.FC = () => {
     if (!currentUser) return;
     const oldUsername = currentUser.username;
     
-    // Find the user in the main list to preserve the password hash
     const userToUpdate = users.find(u => u.username === oldUsername);
     if (!userToUpdate) return;
     
@@ -676,7 +750,6 @@ const App: React.FC = () => {
     setUsers(updatedUsers);
     localStorage.setItem(USERS_KEY, JSON.stringify(updatedUsers));
   };
-
 
   const toggleFavoriteShow = useCallback(async (showId: number) => {
     const isAdding = !favoriteShows.includes(showId);
@@ -715,104 +788,77 @@ const App: React.FC = () => {
   }, [favoriteDjs]);
 
   const handleAddSongRequest = useCallback((request: SongRequestRecord) => {
-    setListeningStats(prev => ({ ...prev, points: (prev.points || 0) + 50 }));
+    awardPoints(50);
     const updatedRequests = [request, ...songRequests].slice(0, 10);
     setSongRequests(updatedRequests);
     localStorage.setItem(REQUESTS_KEY, JSON.stringify(updatedRequests));
     handleQuestProgress('request_song');
-  }, [songRequests, handleQuestProgress]);
+  }, [songRequests, handleQuestProgress, awardPoints]);
 
-  // FIX: Add a handler to receive dedication data from the SongRequest component.
   const handleAddDedication = useCallback((dedication: DedicationRecord) => {
-    setListeningStats(prev => ({ ...prev, points: (prev.points || 0) + 75 }));
+    awardPoints(75);
     setLatestDedication(dedication);
-    // Clear the dedication after some time so it's not repeatedly announced on re-renders.
-    setTimeout(() => setLatestDedication(null), 60000); // 1 minute
-  }, []);
+    setTimeout(() => setLatestDedication(null), 60000); 
+  }, [awardPoints]);
 
   const handleVibeVote = useCallback((vibeType: VibeType) => {
-    if (userVibe) return; // a user can only vote once per session
-    
+    if (userVibe) return;
     setUserVibe(vibeType);
     localStorage.setItem(VIBE_KEY, vibeType);
-
-    setVibes(currentVibes => 
-        currentVibes.map(v => 
-            v.type === vibeType ? { ...v, count: v.count + 1 } : v
-        )
-    );
+    setVibes(currentVibes => currentVibes.map(v => v.type === vibeType ? { ...v, count: v.count + 1 } : v));
   }, [userVibe]);
 
   const handleChatMessageSent = useCallback(() => {
-    if (!currentUser) return;
-    setListeningStats(prev => ({...prev, chatMessagesSent: (prev.chatMessagesSent || 0) + 1, points: (prev.points || 0) + 5 }));
+    awardPoints(5);
+    setListeningStats(prev => ({...prev, chatMessagesSent: (prev.chatMessagesSent || 0) + 1}));
     handleQuestProgress('send_chat_messages');
-  }, [currentUser, handleQuestProgress]);
+  }, [awardPoints, handleQuestProgress]);
 
   const handleVoteCast = useCallback(() => {
-    if (!currentUser) return;
-    setListeningStats(prev => ({...prev, votesCast: (prev.votesCast || 0) + 1, points: (prev.points || 0) + 10 }));
+    awardPoints(10);
+    setListeningStats(prev => ({...prev, votesCast: (prev.votesCast || 0) + 1}));
     handleQuestProgress('cast_votes');
-  }, [currentUser, handleQuestProgress]);
+  }, [awardPoints, handleQuestProgress]);
 
   const handleGameWon = useCallback(() => {
-    if (!currentUser) return;
-    setListeningStats(prev => ({...prev, points: (prev.points || 0) + 100 })); // Award 100 points
-  }, [currentUser]);
+    awardPoints(100);
+  }, [awardPoints]);
 
   const handleSongRating = useCallback((song: Song, rating: 'like' | 'dislike') => {
     if (!currentUser) return;
-
     const songId = `${song.title} - ${song.artist}`;
     
     setListeningStats(prev => {
-        const newStats: ListeningStats = {
-          ...prev,
-          likedSongs: [...prev.likedSongs],
-          dislikedSongs: [...prev.dislikedSongs],
-        };
+      const newStats: ListeningStats = { ...prev, likedSongs: [...prev.likedSongs], dislikedSongs: [...prev.dislikedSongs] };
+      const likedIndex = newStats.likedSongs.findIndex(s => s.id === songId);
+      const dislikedIndex = newStats.dislikedSongs.findIndex(s => s.id === songId);
+      let pointsAwarded = false;
+      const isFirstTimeRating = likedIndex === -1 && dislikedIndex === -1;
 
-        const likedIndex = newStats.likedSongs.findIndex(s => s.id === songId);
-        const dislikedIndex = newStats.dislikedSongs.findIndex(s => s.id === songId);
-
-        let pointsAwarded = false;
-        const isFirstTimeRating = likedIndex === -1 && dislikedIndex === -1;
-
-        if (likedIndex > -1) newStats.likedSongs.splice(likedIndex, 1);
-        if (dislikedIndex > -1) newStats.dislikedSongs.splice(dislikedIndex, 1);
-        
-        if (rating === 'like') {
-            if (likedIndex === -1) {
-                newStats.likedSongs.push({ id: songId, timestamp: Date.now() });
-                if (isFirstTimeRating) pointsAwarded = true;
-            }
-        } else if (rating === 'dislike') {
-            if (dislikedIndex === -1) {
-                newStats.dislikedSongs.push({ id: songId, timestamp: Date.now() });
-                if (isFirstTimeRating) pointsAwarded = true;
-            }
-        }
-        
-        if (pointsAwarded) {
-            newStats.points = (newStats.points || 0) + 15;
-            handleQuestProgress('rate_song');
-        }
-
-        return newStats;
+      if (likedIndex > -1) newStats.likedSongs.splice(likedIndex, 1);
+      if (dislikedIndex > -1) newStats.dislikedSongs.splice(dislikedIndex, 1);
+      
+      if (rating === 'like' && likedIndex === -1) {
+        newStats.likedSongs.push({ id: songId, timestamp: Date.now() });
+        if (isFirstTimeRating) pointsAwarded = true;
+      } else if (rating === 'dislike' && dislikedIndex === -1) {
+        newStats.dislikedSongs.push({ id: songId, timestamp: Date.now() });
+        if (isFirstTimeRating) pointsAwarded = true;
+      }
+      
+      if (pointsAwarded) {
+        awardPoints(15);
+        handleQuestProgress('rate_song');
+      }
+      return newStats;
     });
-  }, [currentUser, handleQuestProgress]);
+  }, [currentUser, handleQuestProgress, awardPoints]);
+
 
   const handleInstallClick = () => {
-    if (!installPrompt) {
-      return;
-    }
+    if (!installPrompt) return;
     installPrompt.prompt();
     installPrompt.userChoice.then((choiceResult: { outcome: string }) => {
-      if (choiceResult.outcome === 'accepted') {
-        console.log('User accepted the install prompt');
-      } else {
-        console.log('User dismissed the install prompt');
-      }
       setInstallPrompt(null);
     });
   };
@@ -844,7 +890,7 @@ const App: React.FC = () => {
   const renderPage = () => {
     switch (route) {
       case '#/contact':
-        return <ContactPage />;
+        return <Contact />;
       case '#/admin':
         return isAdmin ? <AdminDashboard /> : null;
       case '#/mystation':
@@ -917,6 +963,7 @@ const App: React.FC = () => {
                 songRequests={songRequests}
                 listeningStats={listeningStats}
                 latestLevelUp={latestLevelUp}
+                onStartGoldenHour={handleStartGoldenHour}
               />
               <ContentHub 
                 events={events}
@@ -964,6 +1011,7 @@ const App: React.FC = () => {
           onLogout={handleLogout}
           isAdmin={isAdmin}
         />
+        {goldenHour.isActive && <GoldenHourBanner endTime={goldenHour.endTime} multiplier={goldenHour.multiplier} />}
         <main className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-grow">
           {renderPage()}
         </main>

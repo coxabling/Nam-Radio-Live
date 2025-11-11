@@ -114,8 +114,17 @@ export interface LevelUpMessage {
   levelName: string;
 }
 
+export interface GoldenHourMessage {
+  id: number;
+  type: 'golden_hour';
+  author: string;
+  text: string;
+  isDj: boolean;
+  multiplier: number;
+}
 
-export type Message = TextMessage | PollMessage | GameMessage | TakeoverMessage | PersonalizedMessage | OnThisDayMessage | LevelUpMessage | TriviaMessage;
+
+export type Message = TextMessage | PollMessage | GameMessage | TakeoverMessage | PersonalizedMessage | OnThisDayMessage | LevelUpMessage | TriviaMessage | GoldenHourMessage;
 
 export interface LiveNowPlaying {
     song: Song;
@@ -173,6 +182,7 @@ export interface ListeningStats {
   monthlyListeningTime: number;
   lastUpdated: string; // ISO string for monthly reset
   showListeningTime: Record<string, number>; // Show name -> seconds
+  showPoints: Record<string, number>; // Show name -> weekly points
   hasListenedPostMidnight: boolean; // For Night Owl badge
   chatMessagesSent: number;
   votesCast: number;
