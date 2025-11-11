@@ -55,7 +55,17 @@ export interface GameMessage {
   type: 'game';
   author: string;
   clue: string;
-  answer: string; // Stored as "Song Title - Artist"
+  answer: string; // Stored as "Song Title"
+  winner: string | null;
+  isDj: boolean;
+}
+
+export interface TriviaMessage {
+  id: number;
+  type: 'trivia';
+  author: string;
+  question: string;
+  answer: string;
   winner: string | null;
   isDj: boolean;
 }
@@ -105,7 +115,7 @@ export interface LevelUpMessage {
 }
 
 
-export type Message = TextMessage | PollMessage | GameMessage | TakeoverMessage | PersonalizedMessage | OnThisDayMessage | LevelUpMessage;
+export type Message = TextMessage | PollMessage | GameMessage | TakeoverMessage | PersonalizedMessage | OnThisDayMessage | LevelUpMessage | TriviaMessage;
 
 export interface LiveNowPlaying {
     song: Song;

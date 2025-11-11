@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { Message, PollMessage, Song, TakeoverMessage, GameMessage, Vibe, DedicationRecord, MusicEvent, ApiScheduleItem, SongRequestRecord, ListeningStats, PersonalizedMessage, OnThisDayMessage, LevelUpMessage } from '../types';
-import { getAiChatResponse, generateTakeoverAnnouncement, generateTakeoverWinnerShoutout, generateSongClue, generateDjChitchat, generateVibeCommentary, generateDedicationShoutout, getRankedShowRecommendations, generateShowScoutAlert, generateLocalSpotlightPromo, generateEventShoutout, getOnThisDayInMusic, generateLevelUpMessage } from '../services/geminiService';
+import { Message, PollMessage, Song, TakeoverMessage, GameMessage, Vibe, DedicationRecord, MusicEvent, ApiScheduleItem, SongRequestRecord, ListeningStats, PersonalizedMessage, OnThisDayMessage, LevelUpMessage, TriviaMessage } from '../types';
+import { getAiChatResponse, generateTakeoverAnnouncement, generateTakeoverWinnerShoutout, generateSongClue, generateDjChitchat, generateVibeCommentary, generateDedicationShoutout, getRankedShowRecommendations, generateShowScoutAlert, generateLocalSpotlightPromo, generateEventShoutout, getOnThisDayInMusic, generateLevelUpMessage, generateTriviaQuestion } from '../services/geminiService';
 import { TAKEOVER_SONGS } from '../constants';
 
 const djPolls: Omit<PollMessage, 'id' | 'author' | 'isDj' | 'type'>[] = [
@@ -25,6 +25,7 @@ interface LiveChatProps {
   dominantVibe: Vibe | null;
   onChatMessageSent: () => void;
   onVoteCast: () => void;
+  onGameWon: () => void;
   latestDedication: DedicationRecord | null;
   events: MusicEvent[];
   schedule: ApiScheduleItem[];
@@ -39,7 +40,7 @@ type FilterType = 'dj' | 'polls' | 'games' | 'takeovers';
 const GEMINI_CALL_LIMIT = 100;
 const GEMINI_LIMIT_KEY = 'nam-radio-gemini-limit';
 
-const LiveChat: React.FC<LiveChatProps> = ({ liveNowPlaying, recentlyPlayed, currentUser, dominantVibe, onChatMessageSent, onVoteCast, latestDedication, events, schedule, userFavoriteShows, songRequests, listeningStats, latestLevelUp }) => {
+const LiveChat: React.FC<LiveChatProps> = ({ liveNowPlaying, recentlyPlayed, currentUser, dominantVibe, onChatMessageSent, onVoteCast, onGameWon, latestDedication, events, schedule, userFavoriteShows, songRequests, listeningStats, latestLevelUp }) => {
   const [messages, setMessages] = useState<Message[]>([{ id: 1, type: 'text', author: 'DJ Alex', text: 'Welcome to the live chat! Drop a message and say hi!', isDj: true }]);
   const [newMessage, setNewMessage] = useState('');
   const [userVotes, setUserVotes] = useState<Record<number, number>>({});
@@ -245,7 +246,7 @@ const LiveChat: React.FC<LiveChatProps> = ({ liveNowPlaying, recentlyPlayed, cur
       if (msg.author === userHandle) return true;
       if (msg.type === 'on_this_day') return true; // Always show this
       if (msg.type === 'poll') return filters.polls;
-      if (msg.type === 'game') return filters.games;
+      if (msg.type === 'game' || msg.type === 'trivia') return filters.games;
       if (msg.type === 'takeover') return filters.takeovers;
       if (msg.isDj) return filters.dj;
       return true; 
@@ -287,7 +288,7 @@ const LiveChat: React.FC<LiveChatProps> = ({ liveNowPlaying, recentlyPlayed, cur
 
         const chance = Math.random();
 
-        if (chance < 0.15) { // 15% chance for Listener Takeover
+        if (chance < 0.10) { // 10% chance for Listener Takeover
             incrementGeminiCallCount();
             setIsDjTyping(true);
             const songA = TAKEOVER_SONGS[Math.floor(Math.random() * TAKEOVER_SONGS.length)];
@@ -302,7 +303,7 @@ const LiveChat: React.FC<LiveChatProps> = ({ liveNowPlaying, recentlyPlayed, cur
 
             setTimeout(() => endTakeoverEvent(takeoverMessage.id), 30000);
 
-        } else if (chance < 0.30) { // 15% chance for a poll
+        } else if (chance < 0.20) { // 10% chance for a poll
             setMessages(prev => {
                 const randomPollTemplate = djPolls[Math.floor(Math.random() * djPolls.length)];
                 // Create a fresh poll object with votes reset to 0
@@ -317,7 +318,32 @@ const LiveChat: React.FC<LiveChatProps> = ({ liveNowPlaying, recentlyPlayed, cur
                 return [...prev, newPoll];
             });
 
-        } else if (chance < 0.45) { // 15% chance for Guess the Song
+        } else if (chance < 0.35) { // 15% chance for "Song Sleuth" Trivia
+            if (getGeminiCallCount().count >= GEMINI_CALL_LIMIT) return;
+            incrementGeminiCallCount();
+            setIsDjTyping(true);
+            const allSongs = [...recentlyPlayed, ...TAKEOVER_SONGS];
+            if(allSongs.length === 0) { setIsDjTyping(false); return; }
+            const songForTrivia = allSongs[Math.floor(Math.random() * allSongs.length)];
+            try {
+                const { question, answer } = await generateTriviaQuestion(songForTrivia);
+                setIsDjTyping(false);
+                const triviaMessage: TriviaMessage = {
+                    id: Date.now(),
+                    type: 'trivia',
+                    author: 'DJ Alex',
+                    question: `Alright music fans, time for some SONG SLEUTH TRIVIA! 🧠\n\n${question}`,
+                    answer,
+                    winner: null,
+                    isDj: true,
+                };
+                setMessages(prev => [...prev, triviaMessage]);
+            } catch (e) {
+                console.error("Failed to post trivia", e);
+                setIsDjTyping(false);
+            }
+
+        } else if (chance < 0.45) { // 10% chance for Guess the Song
             incrementGeminiCallCount();
             setIsDjTyping(true);
             const allSongs = [...recentlyPlayed, ...TAKEOVER_SONGS];
@@ -408,27 +434,31 @@ const LiveChat: React.FC<LiveChatProps> = ({ liveNowPlaying, recentlyPlayed, cur
     }
 
     if (trimmedMessage.startsWith('!guess ')) {
-        const guess = trimmedMessage.substring(7).trim();
-        if (!guess) return;
-
-        let gameToEnd: GameMessage | undefined;
-        setMessages(prev => {
-            const gameIndex = prev.map(m => m.type === 'game' && m.winner === null).lastIndexOf(true);
-            if (gameIndex === -1) return prev;
-            const newMessages = [...prev];
-            const game = newMessages[gameIndex] as GameMessage;
-            if (guess.toLowerCase() === game.answer.toLowerCase()) {
-                gameToEnd = { ...game, winner: userHandle };
-                newMessages[gameIndex] = gameToEnd;
-            }
-            return newMessages;
-        });
-
-        if (gameToEnd) {
-             const shoutout = `🎉 We have a winner! Congrats ${userHandle} for guessing "${gameToEnd.answer}" correctly! Great job!`;
-             const winnerMessage: Message = { id: Date.now() + 1, type: 'text', author: 'DJ Alex', text: shoutout, isDj: true };
-             setMessages(prev => [...prev, winnerMessage]);
-        }
+      const guess = trimmedMessage.substring(7).trim();
+      if (!guess) return;
+  
+      // Find the most recent, unanswered game or trivia question
+      const lastGameIndex = messages.map(m => (m.type === 'game' || m.type === 'trivia') && m.winner === null).lastIndexOf(true);
+      
+      if (lastGameIndex !== -1) {
+          const game = messages[lastGameIndex] as GameMessage | TriviaMessage;
+  
+          if (guess.toLowerCase() === game.answer.toLowerCase()) {
+              // Correct answer!
+              setMessages(prev => 
+                  prev.map((msg, index) => 
+                      index === lastGameIndex 
+                      ? { ...msg, winner: userHandle } 
+                      : msg
+                  ) as Message[] // Cast to Message[] to satisfy TS
+              );
+  
+              const shoutout = `🎉 We have a winner! Congrats ${userHandle} for correctly answering with "${game.answer}"! You've won 100 points!`;
+              const winnerMessage: Message = { id: Date.now() + 1, type: 'text', author: 'DJ Alex', text: shoutout, isDj: true };
+              setMessages(prev => [...prev, winnerMessage]);
+              onGameWon();
+          }
+      }
     }
   };
 
@@ -509,6 +539,22 @@ const LiveChat: React.FC<LiveChatProps> = ({ liveNowPlaying, recentlyPlayed, cur
                     </div>
                 </div>
             )
+          }
+          if (msg.type === 'trivia') {
+            return (
+              <div key={msg.id} className="p-3 bg-gradient-to-br from-teal-800 to-cyan-900 rounded-lg text-center border-2 border-teal-500 shadow-lg animate-fade-in">
+                  <span className="text-lg font-bold block text-teal-200">SONG SLEUTH TRIVIA!</span>
+                  <p className="text-white my-2 italic whitespace-pre-wrap">{msg.question}</p>
+                  {!msg.winner && <p className="text-xs text-slate-400">First to answer with !guess wins!</p>}
+                  {msg.winner && (
+                      <div className="mt-3 p-3 bg-amber-500/20 rounded-lg">
+                          <p className="text-sm text-amber-200">The winner is...</p>
+                          <p className="font-bold text-xl text-white">{msg.winner}!</p>
+                          <p className="text-amber-300">The answer was "{msg.answer}"</p>
+                      </div>
+                  )}
+              </div>
+            );
           }
           if (msg.type === 'game') {
               return (

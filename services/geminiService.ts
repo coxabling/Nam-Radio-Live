@@ -199,6 +199,45 @@ export const generateSongClue = async (song: Song): Promise<string> => {
     }
 };
 
+export const generateTriviaQuestion = async (song: Song): Promise<{ question: string; answer: string }> => {
+  const ai = new GoogleGenAI({ apiKey: getGeminiApiKey() });
+  const prompt = `You are a radio DJ hosting a "Song Sleuth" trivia game. The song is "${song.title}" by ${song.artist}. 
+  Create a clever, interesting, and verifiable trivia question about this song, its artist, or its history.
+  The answer should be concise (a few words at most).
+  Return this as a JSON object with "question" and "answer" keys.`;
+
+  try {
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: prompt,
+      config: {
+        tools: [{googleSearch: {}}],
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            question: { type: Type.STRING },
+            answer: { type: Type.STRING },
+          },
+          required: ["question", "answer"],
+        },
+      },
+    });
+
+    const jsonText = response.text.trim();
+    const trivia = JSON.parse(jsonText);
+    if (!trivia.question || !trivia.answer) {
+      throw new Error("AI returned incomplete trivia data.");
+    }
+    return trivia as { question: string; answer: string };
+
+  } catch (error) {
+    console.error("Error generating trivia question:", error);
+    // Fallback in case of error
+    throw new Error("Failed to get AI-curated trivia question.");
+  }
+};
+
 export const generateVibeCommentary = async (dominantVibeLabel: string): Promise<string> => {
     try {
         const ai = new GoogleGenAI({ apiKey: getGeminiApiKey() });
