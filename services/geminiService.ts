@@ -3,7 +3,7 @@
 import { GoogleGenAI, Type } from "@google/genai";
 // FIX: Import DedicationRecord for the new feature.
 // FIX: Import SongRating to resolve type errors.
-import { Song, SongRequestRecord, DedicationRecord, MusicEvent, ApiScheduleItem, SongOfTheWeek, ListeningStats, SongRating, StorySlideType, StorySlideData, Quest } from '../types';
+import { Song, SongRequestRecord, DedicationRecord, MusicEvent, ApiScheduleItem, SongOfTheWeek, ListeningStats, SongRating, StorySlideType, StorySlideData, Quest, MusicHotspot } from '../types';
 
 const getGeminiApiKey = (): string => {
   const apiKey = process.env.API_KEY;
@@ -388,6 +388,44 @@ For each event found, provide the following details. Prioritize official sources
   }
 };
 
+export const getLocalMusicHotspots = async (): Promise<MusicHotspot[]> => {
+    const ai = new GoogleGenAI({ apiKey: getGeminiApiKey() });
+    const prompt = `Find key music-related locations in and around Windhoek, Namibia. Include famous live music venues, important recording studios, and other significant musical hotspots. For each location, provide its name, a type (venue, studio, or other), a brief description, its address, and its precise latitude and longitude. Return the result as a JSON array.`;
+
+    try {
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: prompt,
+            config: {
+                tools: [{ googleMaps: {} }],
+                responseMimeType: "application/json",
+                responseSchema: {
+                    type: Type.ARRAY,
+                    items: {
+                        type: Type.OBJECT,
+                        properties: {
+                            name: { type: Type.STRING },
+                            type: { type: Type.STRING, enum: ['venue', 'studio', 'event', 'other'] },
+                            latitude: { type: Type.NUMBER },
+                            longitude: { type: Type.NUMBER },
+                            description: { type: Type.STRING },
+                            address: { type: Type.STRING },
+                        },
+                        required: ["name", "type", "latitude", "longitude", "description", "address"],
+                    },
+                },
+            },
+        });
+
+        const jsonText = response.text.trim();
+        return JSON.parse(jsonText) as MusicHotspot[];
+    } catch (error) {
+        console.error("Error fetching local music hotspots:", error);
+        throw new Error("Could not fetch local music hotspots at this time.");
+    }
+};
+
+
 export const getSongOfTheWeek = async (
   songRequests: SongRequestRecord[], 
   listeningStats: ListeningStats
@@ -715,5 +753,45 @@ export const generateListenerStoryCaption = async (
             case 'peak_time': return `You're officially part of the ${data.peakTime} crew!`;
             default: return "Thanks for an amazing month of listening!";
         }
+    }
+};
+
+export const generateShowPromoScript = async (show: ApiScheduleItem): Promise<string> => {
+    const ai = new GoogleGenAI({ apiKey: getGeminiApiKey() });
+    const prompt = `You are DJ Alex, an energetic AI host for Nam Radio Live. Create a short, punchy, and exciting radio promo script (2-3 sentences) for the upcoming show "${show.name}". The show's description is: "${show.description}". Make it sound unmissable!`;
+    try {
+        const response = await ai.models.generateContent({ model: 'gemini-2.5-flash', contents: prompt });
+        return response.text.trim();
+    } catch (error) {
+        console.error("Error generating show promo script:", error);
+        return `Get ready! "${show.name}" is coming up next on Nam Radio Live!`;
+    }
+};
+
+export const generateTtsAudio = async (text: string): Promise<string> => {
+    const ttsAi = new GoogleGenAI({ apiKey: getGeminiApiKey() });
+    const prompt = `Say it with an energetic and friendly radio DJ voice: ${text}`;
+    try {
+        const response = await ttsAi.models.generateContent({
+            model: "gemini-2.5-flash-preview-tts",
+            contents: [{ parts: [{ text: prompt }] }],
+            config: {
+                responseModalities: ['AUDIO'],
+                speechConfig: {
+                    voiceConfig: {
+                        prebuiltVoiceConfig: { voiceName: 'Kore' }, // An energetic and clear voice
+                    },
+                },
+            },
+        });
+
+        const base64Audio = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
+        if (!base64Audio) {
+            throw new Error("API did not return audio data.");
+        }
+        return base64Audio;
+    } catch (error) {
+        console.error("Error generating TTS audio:", error);
+        throw new Error("Could not generate audio at this time.");
     }
 };

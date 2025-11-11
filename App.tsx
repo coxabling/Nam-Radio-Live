@@ -11,8 +11,9 @@ import { getSchedule, getNowPlaying } from './services/azuracastService';
 import UpcomingShows from './components/UpcomingShows';
 import ScrollToTopButton from './components/ScrollToTopButton';
 import About from './components/About';
-import { getLocalMusicEvents, generateListenerQuests, generateShowRecommendation } from './services/geminiService';
-import { ApiScheduleItem, Song, SongRequestRecord, Vibe, VibeType, ListeningStats, Badge, DedicationRecord, MusicEvent, SongRating, LevelUpMessage, LiveNowPlaying, Quest, QuestType, QuestStatus } from './types';
+// FIX: Import `getLocalMusicEvents` to resolve reference error.
+import { getLocalMusicEvents, getLocalMusicHotspots, generateListenerQuests, generateShowRecommendation, generateTtsAudio } from './services/geminiService';
+import { ApiScheduleItem, Song, SongRequestRecord, Vibe, VibeType, ListeningStats, Badge, DedicationRecord, MusicEvent, SongRating, LevelUpMessage, LiveNowPlaying, Quest, QuestType, QuestStatus, MusicHotspot, AudioDedicationMessage } from './types';
 import LiveChat from './components/LiveChat';
 import Contact from './components/Contact';
 import MyStation, { BADGES, LISTENER_LEVELS } from './components/MyStation';
@@ -89,9 +90,13 @@ const App: React.FC = () => {
   const [songRequests, setSongRequests] = useState<SongRequestRecord[]>([]);
   const [recentlyPlayed, setRecentlyPlayed] = useState<Song[]>([]);
   const [latestDedication, setLatestDedication] = useState<DedicationRecord | null>(null);
+  const [latestAudioDedication, setLatestAudioDedication] = useState<Omit<AudioDedicationMessage, 'id' | 'author' | 'isDj'> | null>(null);
   const [events, setEvents] = useState<MusicEvent[]>([]);
   const [isEventsLoading, setIsEventsLoading] = useState(true);
   const [eventsError, setEventsError] = useState<string | null>(null);
+  const [musicHotspots, setMusicHotspots] = useState<MusicHotspot[]>([]);
+  const [isHotspotsLoading, setIsHotspotsLoading] = useState(true);
+  const [hotspotsError, setHotspotsError] = useState<string | null>(null);
   
   // Auth state
   const [users, setUsers] = useState<User[]>([]);
@@ -271,6 +276,20 @@ const App: React.FC = () => {
       }
     };
     loadEvents();
+
+    const loadHotspots = async () => {
+      setIsHotspotsLoading(true);
+      setHotspotsError(null);
+      try {
+        const fetchedHotspots = await getLocalMusicHotspots();
+        setMusicHotspots(fetchedHotspots);
+      } catch (error: any) {
+        setHotspotsError(error.message || 'Failed to load local hotspots.');
+      } finally {
+        setIsHotspotsLoading(false);
+      }
+    };
+    loadHotspots();
   }, []);
 
   // Effect to load or generate quests when user logs in
@@ -801,6 +820,28 @@ const App: React.FC = () => {
     setTimeout(() => setLatestDedication(null), 60000); 
   }, [awardPoints]);
 
+  const handleAddAudioDedication = useCallback(async (dedication: DedicationRecord) => {
+    if (!currentUser) return;
+    awardPoints(-150); // Deduct points
+    try {
+        const audioData = await generateTtsAudio(dedication.message);
+        const audioMessage: Omit<AudioDedicationMessage, 'id' | 'author' | 'isDj'> = {
+            type: 'audio_dedication',
+            recipientInfo: { to: dedication.to, from: currentUser.username },
+            song: dedication.song,
+            message: dedication.message,
+            audioData: audioData,
+        };
+        setLatestAudioDedication(audioMessage);
+        // Clear after a short delay to allow chat to pick it up
+        setTimeout(() => setLatestAudioDedication(null), 1000);
+    } catch (error) {
+        console.error("Failed to create audio dedication:", error);
+        setToastMessage("Sorry, couldn't voice your dedication right now.");
+        awardPoints(150); // Refund points on error
+    }
+  }, [currentUser, awardPoints]);
+
   const handleVibeVote = useCallback((vibeType: VibeType) => {
     if (userVibe) return;
     setUserVibe(vibeType);
@@ -947,7 +988,13 @@ const App: React.FC = () => {
               />
             </div>
             <div className="space-y-12">
-              <SongRequest currentUser={currentUser} onAddSongRequest={handleAddSongRequest} onAddDedication={handleAddDedication} />
+              <SongRequest 
+                currentUser={currentUser} 
+                onAddSongRequest={handleAddSongRequest} 
+                onAddDedication={handleAddDedication}
+                onAddAudioDedication={handleAddAudioDedication}
+                points={listeningStats.points}
+              />
               <LiveChat 
                 liveNowPlaying={liveNowPlaying} 
                 recentlyPlayed={recentlyPlayed} 
@@ -957,6 +1004,7 @@ const App: React.FC = () => {
                 onVoteCast={handleVoteCast} 
                 onGameWon={handleGameWon}
                 latestDedication={latestDedication} 
+                latestAudioDedication={latestAudioDedication}
                 events={events}
                 schedule={schedule}
                 userFavoriteShows={userFavoriteShows}
@@ -969,6 +1017,9 @@ const App: React.FC = () => {
                 events={events}
                 isEventsLoading={isEventsLoading}
                 eventsError={eventsError}
+                musicHotspots={musicHotspots}
+                isHotspotsLoading={isHotspotsLoading}
+                hotspotsError={hotspotsError}
               />
               <Djs 
                 djs={DJS} 

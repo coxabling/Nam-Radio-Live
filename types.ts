@@ -124,8 +124,22 @@ export interface GoldenHourMessage {
   multiplier: number;
 }
 
+export interface AudioDedicationMessage {
+  id: number;
+  type: 'audio_dedication';
+  author: string; // DJ Alex
+  isDj: boolean;
+  recipientInfo: {
+    to: string;
+    from: string;
+  };
+  song: Song;
+  message: string;
+  audioData: string; // base64 encoded audio
+}
 
-export type Message = TextMessage | PollMessage | GameMessage | TakeoverMessage | PersonalizedMessage | OnThisDayMessage | LevelUpMessage | TriviaMessage | GoldenHourMessage;
+
+export type Message = TextMessage | PollMessage | GameMessage | TakeoverMessage | PersonalizedMessage | OnThisDayMessage | LevelUpMessage | TriviaMessage | GoldenHourMessage | AudioDedicationMessage;
 
 export interface LiveNowPlaying {
     song: Song;
@@ -214,6 +228,15 @@ export interface MusicEvent {
   description: string;
   sourceUrl?: string;
   imageUrl?: string;
+}
+
+export interface MusicHotspot {
+    name: string;
+    type: 'venue' | 'studio' | 'event' | 'other';
+    latitude: number;
+    longitude: number;
+    description: string;
+    address: string;
 }
 
 export interface SongOfTheWeek {

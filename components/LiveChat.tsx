@@ -1,7 +1,31 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { Message, PollMessage, Song, TakeoverMessage, GameMessage, Vibe, DedicationRecord, MusicEvent, ApiScheduleItem, SongRequestRecord, ListeningStats, PersonalizedMessage, OnThisDayMessage, LevelUpMessage, TriviaMessage, GoldenHourMessage, TextMessage } from '../types';
+import { Message, PollMessage, Song, TakeoverMessage, GameMessage, Vibe, DedicationRecord, MusicEvent, ApiScheduleItem, SongRequestRecord, ListeningStats, PersonalizedMessage, OnThisDayMessage, LevelUpMessage, TriviaMessage, GoldenHourMessage, TextMessage, AudioDedicationMessage } from '../types';
 import { getAiChatResponse, generateTakeoverAnnouncement, generateTakeoverWinnerShoutout, generateSongClue, generateDjChitchat, generateVibeCommentary, generateDedicationShoutout, getRankedShowRecommendations, generateShowScoutAlert, generateLocalSpotlightPromo, generateEventShoutout, getOnThisDayInMusic, generateLevelUpMessage, generateTriviaQuestion, generateGoldenHourAnnouncement } from '../services/geminiService';
 import { TAKEOVER_SONGS } from '../constants';
+
+// Audio decoding functions
+function decode(base64: string) {
+    const binaryString = atob(base64);
+    const len = binaryString.length;
+    const bytes = new Uint8Array(len);
+    for (let i = 0; i < len; i++) {
+        bytes[i] = binaryString.charCodeAt(i);
+    }
+    return bytes;
+}
+async function decodeAudioData(data: Uint8Array, ctx: AudioContext): Promise<AudioBuffer> {
+    const sampleRate = 24000;
+    const numChannels = 1;
+    const dataInt16 = new Int16Array(data.buffer);
+    const frameCount = dataInt16.length / numChannels;
+    const buffer = ctx.createBuffer(numChannels, frameCount, sampleRate);
+    const channelData = buffer.getChannelData(0);
+    for (let i = 0; i < frameCount; i++) {
+        channelData[i] = dataInt16[i] / 32768.0;
+    }
+    return buffer;
+}
+
 
 const djPolls: Omit<PollMessage, 'id' | 'author' | 'isDj' | 'type'>[] = [
   { question: "What genre should we play next?", options: [{ text: "Classic Rock", votes: 0 }, { text: "Indie Hits", votes: 0 }, { text: "90s Pop", votes: 0 }] },
@@ -13,6 +37,55 @@ const TypingIndicator: React.FC<{ author: string }> = ({ author }) => (
 );
 
 const CalendarIcon = () => (<svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>);
+const PlayIcon = () => (<svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd" /></svg>);
+const LoadingIcon = () => (<div className="w-6 h-6 animate-spin rounded-full border-2 border-slate-400 border-t-white"></div>);
+const StopIcon = () => (<svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8 7a1 1 0 00-1 1v4a1 1 0 001 1h4a1 1 0 001-1V8a1 1 0 00-1-1H8z" clipRule="evenodd" /></svg>);
+
+
+const AudioDedication: React.FC<{ msg: AudioDedicationMessage }> = ({ msg }) => {
+    const [audioContext] = useState(new (window.AudioContext || (window as any).webkitAudioContext)());
+    const [isPlaying, setIsPlaying] = useState(false);
+    const audioSourceRef = useRef<AudioBufferSourceNode | null>(null);
+
+    const handlePlay = async () => {
+        if (isPlaying && audioSourceRef.current) {
+            audioSourceRef.current.stop();
+            setIsPlaying(false);
+            return;
+        }
+        try {
+            const audioBuffer = await decodeAudioData(decode(msg.audioData), audioContext);
+            const source = audioContext.createBufferSource();
+            source.buffer = audioBuffer;
+            source.connect(audioContext.destination);
+            source.start();
+            source.onended = () => setIsPlaying(false);
+            audioSourceRef.current = source;
+            setIsPlaying(true);
+        } catch (error) {
+            console.error("Failed to play dedication audio", error);
+        }
+    };
+
+    return (
+        <div className="p-4 bg-gradient-to-br from-pink-800 to-purple-900 rounded-lg border-2 border-pink-500 shadow-lg animate-fade-in">
+            <div className="text-center">
+                <span className="text-lg font-bold block text-pink-200">A Special Dedication!</span>
+                <p className="text-sm text-slate-200 mt-1">From <span className="font-bold">{msg.recipientInfo.from}</span> to <span className="font-bold">{msg.recipientInfo.to}</span></p>
+            </div>
+            <div className="flex items-center gap-4 mt-4">
+                <button onClick={handlePlay} className="p-2 bg-black/20 rounded-full text-white hover:bg-black/40 transition-colors">
+                    {isPlaying ? <StopIcon /> : <PlayIcon />}
+                </button>
+                <div className="flex-grow">
+                    <p className="font-semibold text-white">"{msg.message}"</p>
+                    <p className="text-xs text-slate-300 mt-1">Dedicating: {msg.song.title} by {msg.song.artist}</p>
+                </div>
+            </div>
+        </div>
+    );
+};
+
 
 interface User {
   username: string;
@@ -27,6 +100,7 @@ interface LiveChatProps {
   onVoteCast: () => void;
   onGameWon: () => void;
   latestDedication: DedicationRecord | null;
+  latestAudioDedication: Omit<AudioDedicationMessage, 'id' | 'author' | 'isDj'> | null;
   events: MusicEvent[];
   schedule: ApiScheduleItem[];
   userFavoriteShows: ApiScheduleItem[];
@@ -41,7 +115,7 @@ type FilterType = 'dj' | 'polls' | 'games' | 'takeovers';
 const GEMINI_CALL_LIMIT = 100;
 const GEMINI_LIMIT_KEY = 'nam-radio-gemini-limit';
 
-const LiveChat: React.FC<LiveChatProps> = ({ liveNowPlaying, recentlyPlayed, currentUser, dominantVibe, onChatMessageSent, onVoteCast, onGameWon, latestDedication, events, schedule, userFavoriteShows, songRequests, listeningStats, latestLevelUp, onStartGoldenHour }) => {
+const LiveChat: React.FC<LiveChatProps> = ({ liveNowPlaying, recentlyPlayed, currentUser, dominantVibe, onChatMessageSent, onVoteCast, onGameWon, latestDedication, latestAudioDedication, events, schedule, userFavoriteShows, songRequests, listeningStats, latestLevelUp, onStartGoldenHour }) => {
   const [messages, setMessages] = useState<Message[]>([{ id: 1, type: 'text', author: 'DJ Alex', text: 'Welcome to the live chat! Drop a message and say hi!', isDj: true }]);
   const [newMessage, setNewMessage] = useState('');
   const [userVotes, setUserVotes] = useState<Record<number, number>>({});
@@ -55,6 +129,7 @@ const LiveChat: React.FC<LiveChatProps> = ({ liveNowPlaying, recentlyPlayed, cur
     takeovers: true,
   });
   const dedicationAnnouncedRef = useRef(false);
+  const audioDedicationAnnouncedRef = useRef(false);
   const levelUpAnnouncedRef = useRef(false);
   const scoutedShowIds = useRef<Set<number>>(new Set());
 
@@ -182,6 +257,21 @@ const LiveChat: React.FC<LiveChatProps> = ({ liveNowPlaying, recentlyPlayed, cur
     announceDedication();
   }, [latestDedication]);
   
+  // Announce Audio Dedications
+  useEffect(() => {
+    if (latestAudioDedication && !audioDedicationAnnouncedRef.current) {
+        audioDedicationAnnouncedRef.current = true;
+        const audioMessage: AudioDedicationMessage = {
+            ...latestAudioDedication,
+            id: Date.now(),
+            author: 'DJ Alex',
+            isDj: true,
+        };
+        setMessages(prev => [...prev, audioMessage]);
+        setTimeout(() => { audioDedicationAnnouncedRef.current = false; }, 1000);
+    }
+  }, [latestAudioDedication]);
+
   // Announce Level Ups
   useEffect(() => {
     const announceLevelUp = async () => {
@@ -241,7 +331,7 @@ const LiveChat: React.FC<LiveChatProps> = ({ liveNowPlaying, recentlyPlayed, cur
     if (Object.values(filters).every(v => v)) return messages;
     
     return messages.filter(msg => {
-      if (msg.type === 'personalized' || msg.type === 'level_up' || msg.type === 'golden_hour') {
+      if (msg.type === 'personalized' || msg.type === 'level_up' || msg.type === 'golden_hour' || msg.type === 'audio_dedication') {
           return true; // Always show these special announcements
       }
       if (msg.author === userHandle) return true;
@@ -565,6 +655,9 @@ const LiveChat: React.FC<LiveChatProps> = ({ liveNowPlaying, recentlyPlayed, cur
 
       <div className="flex-grow bg-slate-800/50 rounded-lg p-4 overflow-y-auto mb-4 space-y-4 shadow-inner-lg">
         {filteredMessages.map(msg => {
+          if (msg.type === 'audio_dedication') {
+            return <AudioDedication key={msg.id} msg={msg} />;
+          }
           if (msg.type === 'golden_hour') {
             return (
               <div key={msg.id} className="p-4 bg-gradient-to-br from-amber-600 to-yellow-800 rounded-lg border-2 border-amber-400 shadow-lg animate-fade-in text-center animate-pulse-gold">

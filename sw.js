@@ -40,6 +40,7 @@ const urlsToCache = [
   '/components/RecommendationModal.tsx',
   '/components/GoldenHourBanner.tsx',
   '/components/ShowLeaderboards.tsx',
+  '/components/LocalSceneMap.tsx',
   '/logo192.svg',
   '/logo512.svg'
 ];
