@@ -123,8 +123,20 @@ export interface SoundboardMessage {
   soundText: string;
 }
 
+export interface AudioDedicationMessage {
+  id: number;
+  type: 'audio_dedication';
+  author: string; // DJ Alex
+  isDj: true;
+  to: string;
+  from: string;
+  message: string;
+  songTitle: string;
+  audioBase64: string;
+}
 
-export type Message = TextMessage | PollMessage | GameMessage | TakeoverMessage | PersonalizedMessage | OnThisDayMessage | LevelUpMessage | SoundboardMessage | TriviaMessage;
+
+export type Message = TextMessage | PollMessage | GameMessage | TakeoverMessage | PersonalizedMessage | OnThisDayMessage | LevelUpMessage | SoundboardMessage | TriviaMessage | AudioDedicationMessage;
 
 export interface LiveNowPlaying {
     song: Song;
@@ -212,6 +224,14 @@ export interface MusicEvent {
   description: string;
   sourceUrl?: string;
   imageUrl?: string;
+}
+
+export interface MusicHotspot {
+  name: string;
+  type: 'Venue' | 'Studio' | 'Store' | 'Other';
+  description: string;
+  latitude: number;
+  longitude: number;
 }
 
 export interface SongOfTheWeek {

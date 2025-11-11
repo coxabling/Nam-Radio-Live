@@ -63,3 +63,18 @@ body {
 .animate-marquee2 {
   animation: marquee2 40s linear infinite;
 }
+
+/* Local Scene Map styles */
+.map-pin {
+    transform: translate(-50%, -100%);
+    transition: transform 0.2s ease-in-out, filter 0.2s ease-in-out;
+}
+.map-pin:hover {
+    transform: translate(-50%, -100%) scale(1.2);
+    filter: drop-shadow(0 0 5px #FBBF24);
+}
+
+.map-popup {
+    transform: translate(-50%, -110%);
+    animation: fadeIn 0.3s ease-out;
+}

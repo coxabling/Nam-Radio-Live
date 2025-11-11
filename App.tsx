@@ -10,8 +10,8 @@ import { getSchedule, getNowPlaying } from './services/azuracastService';
 import UpcomingShows from './components/UpcomingShows';
 import ScrollToTopButton from './components/ScrollToTopButton';
 import About from './components/About';
-import { getLocalMusicEvents } from './services/geminiService';
-import { ApiScheduleItem, Song, SongRequestRecord, Vibe, VibeType, ListeningStats, Badge, DedicationRecord, MusicEvent, SongRating, LevelUpMessage, LiveNowPlaying } from './types';
+import { getLocalMusicEvents, getLocalMusicHotspots, generateDedicationShoutout, generateTtsAudio } from './services/geminiService';
+import { ApiScheduleItem, Song, SongRequestRecord, Vibe, VibeType, ListeningStats, Badge, DedicationRecord, MusicEvent, SongRating, LevelUpMessage, LiveNowPlaying, MusicHotspot, AudioDedicationMessage } from './types';
 import LiveChat from './components/LiveChat';
 import ContactPage from './components/ContactPage';
 import MyStation, { BADGES, LISTENER_LEVELS } from './components/MyStation';
@@ -84,6 +84,9 @@ const App: React.FC = () => {
   const [events, setEvents] = useState<MusicEvent[]>([]);
   const [isEventsLoading, setIsEventsLoading] = useState(true);
   const [eventsError, setEventsError] = useState<string | null>(null);
+  const [musicHotspots, setMusicHotspots] = useState<MusicHotspot[]>([]);
+  const [isHotspotsLoading, setIsHotspotsLoading] = useState(true);
+  const [hotspotsError, setHotspotsError] = useState<string | null>(null);
   
   // Auth state
   const [users, setUsers] = useState<User[]>([]);
@@ -117,6 +120,7 @@ const App: React.FC = () => {
     show: null
   });
   const [nowPlayingError, setNowPlayingError] = useState<string | null>(null);
+  const [messages, setMessages] = useState<any[]>([]);
 
   const isAdmin = useMemo(() => {
     return currentUser?.username.toLowerCase() === 'admin';
@@ -220,7 +224,22 @@ const App: React.FC = () => {
         setIsEventsLoading(false);
       }
     };
+    
+    const loadHotspots = async () => {
+        setIsHotspotsLoading(true);
+        setHotspotsError(null);
+        try {
+            const fetchedHotspots = await getLocalMusicHotspots();
+            setMusicHotspots(fetchedHotspots);
+        } catch (error: any) {
+            setHotspotsError(error.message || 'Failed to load local music hotspots.');
+        } finally {
+            setIsHotspotsLoading(false);
+        }
+    };
+
     loadEvents();
+    loadHotspots();
   }, []);
   
   const openLoginModal = useCallback((redirectPath?: string) => {
@@ -606,6 +625,39 @@ const App: React.FC = () => {
     // Clear the dedication after some time so it's not repeatedly announced on re-renders.
     setTimeout(() => setLatestDedication(null), 60000); // 1 minute
   }, []);
+  
+  const handleAddAudioDedication = useCallback(async (dedication: DedicationRecord) => {
+    if (!currentUser) return;
+    
+    const cost = 250;
+    setListeningStats(prev => ({ ...prev, points: (prev.points || 0) - cost }));
+    
+    try {
+        const shoutoutText = await generateDedicationShoutout(dedication);
+        const audioBase64 = await generateTtsAudio(shoutoutText);
+        
+        const audioMessage: AudioDedicationMessage = {
+            id: Date.now(),
+            type: 'audio_dedication',
+            author: 'DJ Alex',
+            isDj: true,
+            to: dedication.to,
+            from: dedication.from,
+            message: dedication.message,
+            songTitle: dedication.song.title,
+            audioBase64,
+        };
+        
+        setMessages(prev => [...prev, audioMessage]);
+
+    } catch (error) {
+        console.error("Failed to generate audio dedication", error);
+        // Refund points on error
+        setListeningStats(prev => ({ ...prev, points: (prev.points || 0) + cost }));
+        // Optionally, show a toast message to the user
+        setToastMessage("Sorry, couldn't create your audio dedication right now.");
+    }
+  }, [currentUser]);
 
   const handleVibeVote = useCallback((vibeType: VibeType) => {
     if (userVibe) return; // a user can only vote once per session
@@ -778,7 +830,13 @@ const App: React.FC = () => {
               />
             </div>
             <div className="space-y-12">
-              <SongRequest currentUser={currentUser} onAddSongRequest={handleAddSongRequest} onAddDedication={handleAddDedication} />
+              <SongRequest 
+                currentUser={currentUser} 
+                onAddSongRequest={handleAddSongRequest} 
+                onAddDedication={handleAddDedication}
+                onAddAudioDedication={handleAddAudioDedication}
+                listeningStats={listeningStats}
+              />
               <LiveChat 
                 liveNowPlaying={liveNowPlaying} 
                 recentlyPlayed={recentlyPlayed} 
@@ -800,6 +858,9 @@ const App: React.FC = () => {
                 events={events}
                 isEventsLoading={isEventsLoading}
                 eventsError={eventsError}
+                musicHotspots={musicHotspots}
+                isHotspotsLoading={isHotspotsLoading}
+                hotspotsError={hotspotsError}
               />
               <Djs 
                 djs={DJS} 

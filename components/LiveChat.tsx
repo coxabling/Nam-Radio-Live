@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { Message, PollMessage, Song, TakeoverMessage, GameMessage, Vibe, DedicationRecord, MusicEvent, ApiScheduleItem, SongRequestRecord, ListeningStats, PersonalizedMessage, OnThisDayMessage, LevelUpMessage, SoundboardMessage, SoundboardItem, TriviaMessage } from '../types';
+import { Message, PollMessage, Song, TakeoverMessage, GameMessage, Vibe, DedicationRecord, MusicEvent, ApiScheduleItem, SongRequestRecord, ListeningStats, PersonalizedMessage, OnThisDayMessage, LevelUpMessage, SoundboardMessage, SoundboardItem, TriviaMessage, AudioDedicationMessage } from '../types';
 import { getAiChatResponse, generateTakeoverAnnouncement, generateTakeoverWinnerShoutout, generateSongClue, generateDjChitchat, generateVibeCommentary, generateDedicationShoutout, getRankedShowRecommendations, generateShowScoutAlert, generateLocalSpotlightPromo, generateEventShoutout, getOnThisDayInMusic, generateLevelUpMessage, generateTriviaQuestion } from '../services/geminiService';
 import { TAKEOVER_SONGS, SOUNDBOARD_ITEMS } from '../constants';
 import SoundboardModal from './SoundboardModal';
@@ -15,6 +15,7 @@ const TypingIndicator: React.FC<{ author: string }> = ({ author }) => (
 
 const CalendarIcon = () => (<svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>);
 const SoundboardIcon = () => (<svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M18 3a1 1 0 00-1.196-.98l-10 2A1 1 0 006 5v6.334A4 4 0 108 15V7.237l8-1.6v5.152A4 4 0 1018 14V3z" /></svg>);
+const PlayIcon = () => (<svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd" /></svg>);
 
 
 interface User {
@@ -308,6 +309,7 @@ const LiveChat: React.FC<LiveChatProps> = ({ liveNowPlaying, recentlyPlayed, cur
       if (msg.type === 'poll') return filters.polls;
       if (msg.type === 'game' || msg.type === 'trivia') return filters.games;
       if (msg.type === 'takeover') return filters.takeovers;
+      if (msg.type === 'audio_dedication') return true;
       if (msg.isDj) return filters.dj;
       return true; 
     });
@@ -597,6 +599,23 @@ const LiveChat: React.FC<LiveChatProps> = ({ liveNowPlaying, recentlyPlayed, cur
 
       <div className="flex-grow bg-slate-800/50 rounded-lg p-4 overflow-y-auto mb-4 space-y-4 shadow-inner-lg">
         {filteredMessages.map(msg => {
+          if (msg.type === 'audio_dedication') {
+            return (
+              <div key={msg.id} className="p-3 bg-gradient-to-br from-pink-800 to-purple-900 rounded-lg border-2 border-pink-500 shadow-lg animate-fade-in">
+                <span className="text-lg font-bold block text-pink-200 text-center">A Special Dedication!</span>
+                <div className="mt-2 text-center text-white">
+                  <p>From <span className="font-bold text-amber-300">{msg.from}</span> to <span className="font-bold text-amber-300">{msg.to}</span></p>
+                  <p className="italic my-2">"{msg.message}"</p>
+                  <p className="text-sm text-slate-300">with the song <span className="font-semibold">"{msg.songTitle}"</span></p>
+                </div>
+                <div className="mt-3 text-center">
+                  <button onClick={() => playAudio(msg.audioBase64)} className="inline-flex items-center gap-2 px-4 py-2 bg-pink-500/50 text-white font-semibold rounded-lg hover:bg-pink-500/70 transition-colors">
+                    <PlayIcon /> Hear it from DJ Alex
+                  </button>
+                </div>
+              </div>
+            );
+          }
           if (msg.type === 'soundboard') {
             return (
                 <div key={msg.id} className="text-center py-2 animate-fade-in">

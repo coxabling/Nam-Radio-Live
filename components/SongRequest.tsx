@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { getRequestableSongs, submitSongRequest } from '../services/azuracastService';
-// FIX: Import Song type for dedication payload.
-import { RequestableSong, SongRequestRecord, Song } from '../types';
+import { RequestableSong, SongRequestRecord, Song, ListeningStats } from '../types';
 
 interface User {
   username: string;
@@ -10,12 +9,12 @@ interface User {
 interface SongRequestProps {
   currentUser: User | null;
   onAddSongRequest: (request: SongRequestRecord) => void;
-  // FIX: Add a prop to handle dedications.
   onAddDedication: (dedication: { song: Song, to: string, message: string, from: string }) => void;
+  onAddAudioDedication: (dedication: { song: Song, to: string, message: string, from: string }) => void;
+  listeningStats: ListeningStats;
 }
 
-const SongRequest: React.FC<SongRequestProps> = ({ currentUser, onAddSongRequest, onAddDedication }) => {
-  // FIX: Add tab state for switching between request and dedication.
+const SongRequest: React.FC<SongRequestProps> = ({ currentUser, onAddSongRequest, onAddDedication, onAddAudioDedication, listeningStats }) => {
   const [activeTab, setActiveTab] = useState<'request' | 'dedication'>('request');
   const [requestableSongs, setRequestableSongs] = useState<RequestableSong[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -24,15 +23,17 @@ const SongRequest: React.FC<SongRequestProps> = ({ currentUser, onAddSongRequest
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [result, setResult] = useState<{success: boolean; message: string} | null>(null);
   const [timeLeft, setTimeLeft] = useState<number>(0);
-  // FIX: Add state for dedication form data.
   const [dedicationData, setDedicationData] = useState({ to: '', message: '' });
+  const [isAudioDedication, setIsAudioDedication] = useState(false);
 
+  const AUDIO_DEDICATION_COST = 250;
   const userName = currentUser?.username || 'Guest';
 
   const resetForm = useCallback(() => {
     setSelectedSong(null);
     setSearchTerm('');
     setDedicationData({ to: '', message: '' });
+    setIsAudioDedication(false);
     setResult(null);
   }, []);
 
@@ -130,12 +131,17 @@ const SongRequest: React.FC<SongRequestProps> = ({ currentUser, onAddSongRequest
       onAddSongRequest(newRequest);
       
       if (activeTab === 'dedication' && currentUser) {
-          onAddDedication({
+          const dedicationPayload = {
               song: { title: selectedSong.song.title, artist: selectedSong.song.artist },
               to: dedicationData.to,
               message: dedicationData.message,
               from: currentUser.username,
-          });
+          };
+          if (isAudioDedication) {
+            onAddAudioDedication(dedicationPayload);
+          } else {
+            onAddDedication(dedicationPayload);
+          }
       }
 
       setResult({ success: true, message: activeTab === 'dedication' ? 'Your dedication has been sent!' : response.message });
@@ -217,6 +223,17 @@ const SongRequest: React.FC<SongRequestProps> = ({ currentUser, onAddSongRequest
                   <div>
                     <label htmlFor="dedication-message" className="block text-sm font-medium text-slate-300 mb-1">3. Your Message</label>
                     <textarea id="dedication-message" name="message" value={dedicationData.message} onChange={handleDedicationChange} rows={3} className="w-full bg-slate-800 border border-slate-600 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-amber-400" required maxLength={150}></textarea>
+                  </div>
+                  <div className="p-3 bg-slate-800/50 rounded-lg">
+                      <label htmlFor="audio-dedication" className="flex items-center cursor-pointer">
+                          <input type="checkbox" id="audio-dedication" checked={isAudioDedication} onChange={(e) => setIsAudioDedication(e.target.checked)} disabled={listeningStats.points < AUDIO_DEDICATION_COST} className="h-4 w-4 rounded border-gray-300 text-amber-600 focus:ring-amber-500 disabled:opacity-50" />
+                          <span className="ml-3 text-sm text-slate-300">
+                            Have DJ Alex read this on-air?
+                            <span className={`ml-2 font-bold ${listeningStats.points < AUDIO_DEDICATION_COST ? 'text-red-400' : 'text-amber-300'}`}>
+                                ({AUDIO_DEDICATION_COST} pts)
+                            </span>
+                          </span>
+                      </label>
                   </div>
               </div>
           )}

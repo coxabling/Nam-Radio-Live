@@ -1,5 +1,5 @@
 import { GoogleGenAI, Type, Modality } from "@google/genai";
-import { Song, SongRequestRecord, DedicationRecord, MusicEvent, ApiScheduleItem, SongOfTheWeek, ListeningStats, SongRating } from '../types';
+import { Song, SongRequestRecord, DedicationRecord, MusicEvent, ApiScheduleItem, SongOfTheWeek, ListeningStats, SongRating, MusicHotspot } from '../types';
 
 // Helper to ensure API key is present. It's called only once.
 const getApiKey = (): string => {
@@ -327,6 +327,41 @@ For each event found, provide the following details. Prioritize official sources
   }
 };
 
+export const getLocalMusicHotspots = async (): Promise<MusicHotspot[]> => {
+  try {
+    const prompt = `Find key music hotspots in Windhoek, Namibia. Include live music venues, important recording studios, and popular music stores. For each, provide its name, type (Venue, Studio, Store), a brief description, and its geographic coordinates (latitude and longitude). Return this as a structured JSON array.`;
+    
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: prompt,
+      config: {
+        tools: [{googleSearch: {}}], // Using googleSearch as googleMaps tool might not be available or required if asking for coordinates directly.
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.ARRAY,
+          items: {
+            type: Type.OBJECT,
+            properties: {
+              name: { type: Type.STRING },
+              type: { type: Type.STRING, enum: ['Venue', 'Studio', 'Store', 'Other'] },
+              description: { type: Type.STRING },
+              latitude: { type: Type.NUMBER },
+              longitude: { type: Type.NUMBER },
+            },
+            required: ["name", "type", "description", "latitude", "longitude"],
+          },
+        },
+      },
+    });
+
+    const jsonText = response.text.trim();
+    return JSON.parse(jsonText) as MusicHotspot[];
+  } catch (error) {
+    console.error("Error fetching local music hotspots:", error);
+    throw new Error("Could not fetch local music hotspots. Please try again later.");
+  }
+};
+
 export const getSongOfTheWeek = async (
   songRequests: SongRequestRecord[], 
   listeningStats: ListeningStats
@@ -575,5 +610,41 @@ export const generateSoundDropAudio = async (text: string, voice: 'Kore' | 'Puck
   } catch (error) {
     console.error("Error generating sound drop audio:", error);
     throw new Error("Could not generate the sound drop. The AI might be on a coffee break.");
+  }
+};
+
+export const generateShowPromoScript = async (showName: string, showDescription: string): Promise<string> => {
+  try {
+    const prompt = `You are an energetic radio DJ. Write a short, exciting, 2-sentence promo for an upcoming show called "${showName}". Here's the description: "${showDescription}". End with "on Nam Radio Live!".`;
+    const response = await ai.models.generateContent({ model: 'gemini-2.5-flash', contents: prompt });
+    return response.text;
+  } catch (error) {
+    console.error("Error generating show promo script:", error);
+    return `Get ready for ${showName}! Coming up next on Nam Radio Live!`;
+  }
+};
+
+export const generateTtsAudio = async (text: string): Promise<string> => {
+  try {
+    const response = await ttsAi.models.generateContent({
+      model: "gemini-2.5-flash-preview-tts",
+      contents: [{ parts: [{ text: `Say with an energetic, upbeat radio voice: ${text}` }] }],
+      config: {
+        responseModalities: [Modality.AUDIO],
+        speechConfig: {
+          voiceConfig: {
+            prebuiltVoiceConfig: { voiceName: 'Kore' },
+          },
+        },
+      },
+    });
+    const base64Audio = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
+    if (!base64Audio) {
+      throw new Error("No audio data returned from API.");
+    }
+    return base64Audio;
+  } catch (error) {
+    console.error("Error generating TTS audio:", error);
+    throw new Error("Could not generate audio at this time.");
   }
 };
