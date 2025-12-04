@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { getRequestableSongs, submitSongRequest } from '../services/azuracastService';
 // FIX: Import Song type for dedication payload.
-import { RequestableSong, SongRequestRecord, Song, DedicationRecord } from '../types';
+import { RequestableSong, SongRequestRecord, Song } from '../types';
 
 interface User {
   username: string;
@@ -10,12 +10,12 @@ interface User {
 interface SongRequestProps {
   currentUser: User | null;
   onAddSongRequest: (request: SongRequestRecord) => void;
-  onAddDedication: (dedication: DedicationRecord) => void;
-  onAddAudioDedication: (dedication: DedicationRecord) => Promise<void>;
-  points: number;
+  // FIX: Add a prop to handle dedications.
+  onAddDedication: (dedication: { song: Song, to: string, message: string, from: string }) => void;
 }
 
-const SongRequest: React.FC<SongRequestProps> = ({ currentUser, onAddSongRequest, onAddDedication, onAddAudioDedication, points }) => {
+const SongRequest: React.FC<SongRequestProps> = ({ currentUser, onAddSongRequest, onAddDedication }) => {
+  // FIX: Add tab state for switching between request and dedication.
   const [activeTab, setActiveTab] = useState<'request' | 'dedication'>('request');
   const [requestableSongs, setRequestableSongs] = useState<RequestableSong[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -24,9 +24,8 @@ const SongRequest: React.FC<SongRequestProps> = ({ currentUser, onAddSongRequest
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [result, setResult] = useState<{success: boolean; message: string} | null>(null);
   const [timeLeft, setTimeLeft] = useState<number>(0);
+  // FIX: Add state for dedication form data.
   const [dedicationData, setDedicationData] = useState({ to: '', message: '' });
-  const [useAiVoice, setUseAiVoice] = useState(false);
-  const aiVoiceCost = 150;
 
   const userName = currentUser?.username || 'Guest';
 
@@ -34,7 +33,6 @@ const SongRequest: React.FC<SongRequestProps> = ({ currentUser, onAddSongRequest
     setSelectedSong(null);
     setSearchTerm('');
     setDedicationData({ to: '', message: '' });
-    setUseAiVoice(false);
     setResult(null);
   }, []);
 
@@ -116,13 +114,8 @@ const SongRequest: React.FC<SongRequestProps> = ({ currentUser, onAddSongRequest
     }
 
     if (activeTab === 'dedication' && (!dedicationData.to || !dedicationData.message)) {
-      setResult({ success: false, message: 'Please fill out all dedication fields.' });
+      setResult({ success: false, message: 'Please fill out the dedication fields.' });
       return;
-    }
-
-    if (activeTab === 'dedication' && useAiVoice && points < aiVoiceCost) {
-        setResult({ success: false, message: `Not enough points for an AI-voiced dedication. You need ${aiVoiceCost} points.` });
-        return;
     }
     
     setIsSubmitting(true);
@@ -137,23 +130,15 @@ const SongRequest: React.FC<SongRequestProps> = ({ currentUser, onAddSongRequest
       onAddSongRequest(newRequest);
       
       if (activeTab === 'dedication' && currentUser) {
-          const dedicationRecord: DedicationRecord = {
+          onAddDedication({
               song: { title: selectedSong.song.title, artist: selectedSong.song.artist },
               to: dedicationData.to,
               message: dedicationData.message,
               from: currentUser.username,
-          };
-
-          if (useAiVoice) {
-            await onAddAudioDedication(dedicationRecord);
-            setResult({ success: true, message: 'Your AI-voiced dedication is being sent to the studio!' });
-          } else {
-            onAddDedication(dedicationRecord);
-            setResult({ success: true, message: 'Your dedication has been sent!' });
-          }
-      } else {
-         setResult({ success: true, message: response.message });
+          });
       }
+
+      setResult({ success: true, message: activeTab === 'dedication' ? 'Your dedication has been sent!' : response.message });
 
       const lastRequestKey = `nam-radio-live-last-request-${userName}`;
       localStorage.setItem(lastRequestKey, new Date().toISOString());
@@ -232,22 +217,6 @@ const SongRequest: React.FC<SongRequestProps> = ({ currentUser, onAddSongRequest
                   <div>
                     <label htmlFor="dedication-message" className="block text-sm font-medium text-slate-300 mb-1">3. Your Message</label>
                     <textarea id="dedication-message" name="message" value={dedicationData.message} onChange={handleDedicationChange} rows={3} className="w-full bg-slate-800 border border-slate-600 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-amber-400" required maxLength={150}></textarea>
-                  </div>
-                  <div className="p-3 bg-slate-800/50 rounded-lg">
-                    <label htmlFor="useAiVoice" className="flex items-center gap-3 cursor-pointer">
-                        <input
-                            type="checkbox"
-                            id="useAiVoice"
-                            checked={useAiVoice}
-                            onChange={(e) => setUseAiVoice(e.target.checked)}
-                            disabled={points < aiVoiceCost}
-                            className="h-4 w-4 rounded bg-slate-700 border-slate-500 text-amber-500 focus:ring-amber-400 disabled:opacity-50"
-                        />
-                        <div className="flex-grow">
-                            <span className="font-semibold text-white">Have DJ Alex read this on-air</span>
-                            <span className={`block text-xs ${points < aiVoiceCost ? 'text-red-400' : 'text-slate-400'}`}>Cost: {aiVoiceCost} Points (You have {Math.floor(points)})</span>
-                        </div>
-                    </label>
                   </div>
               </div>
           )}

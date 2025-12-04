@@ -1,7 +1,6 @@
-import React, { memo, useState, useEffect } from 'react';
+import React, { memo, useState } from 'react';
 import { ApiScheduleItem } from '../types';
 import ShareModal from './ShareModal';
-import { generateShowPromoScript, generateTtsAudio } from '../services/geminiService';
 
 interface UpcomingShowsProps {
   shows: ApiScheduleItem[];
@@ -9,29 +8,6 @@ interface UpcomingShowsProps {
   error: string | null;
   favoriteShows: number[];
   onToggleFavorite: (showId: number) => void;
-}
-
-// Audio decoding functions
-function decode(base64: string) {
-    const binaryString = atob(base64);
-    const len = binaryString.length;
-    const bytes = new Uint8Array(len);
-    for (let i = 0; i < len; i++) {
-        bytes[i] = binaryString.charCodeAt(i);
-    }
-    return bytes;
-}
-async function decodeAudioData(data: Uint8Array, ctx: AudioContext): Promise<AudioBuffer> {
-    const sampleRate = 24000;
-    const numChannels = 1;
-    const dataInt16 = new Int16Array(data.buffer);
-    const frameCount = dataInt16.length / numChannels;
-    const buffer = ctx.createBuffer(numChannels, frameCount, sampleRate);
-    const channelData = buffer.getChannelData(0);
-    for (let i = 0; i < frameCount; i++) {
-        channelData[i] = dataInt16[i] / 32768.0;
-    }
-    return buffer;
 }
 
 const StarIcon = ({ filled }: { filled: boolean }) => (
@@ -46,56 +22,8 @@ const ShareIcon = () => (
     </svg>
 );
 
-const HearPromoIcon = () => (
-    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
-    </svg>
-);
-
 const UpcomingShows: React.FC<UpcomingShowsProps> = ({ shows, loading, error, favoriteShows, onToggleFavorite }) => {
   const [showToShare, setShowToShare] = useState<ApiScheduleItem | null>(null);
-  const [loadingPromo, setLoadingPromo] = useState<number | null>(null);
-  const [audioContext, setAudioContext] = useState<AudioContext | null>(null);
-  const audioSourceRef = React.useRef<AudioBufferSourceNode | null>(null);
-
-  useEffect(() => {
-    if (!audioContext) {
-      setAudioContext(new (window.AudioContext || (window as any).webkitAudioContext)());
-    }
-     return () => {
-        audioSourceRef.current?.stop();
-        audioSourceRef.current?.disconnect();
-    }
-  }, [audioContext]);
-
-  const handleHearPromo = async (show: ApiScheduleItem) => {
-    if (!audioContext) return;
-    if (audioSourceRef.current) {
-        audioSourceRef.current.stop();
-    }
-    setLoadingPromo(show.id);
-    try {
-        const cacheKey = `promo-audio-${show.id}`;
-        let audioData = sessionStorage.getItem(cacheKey);
-
-        if (!audioData) {
-            const script = await generateShowPromoScript(show);
-            audioData = await generateTtsAudio(script);
-            sessionStorage.setItem(cacheKey, audioData);
-        }
-        
-        const audioBuffer = await decodeAudioData(decode(audioData), audioContext);
-        const source = audioContext.createBufferSource();
-        source.buffer = audioBuffer;
-        source.connect(audioContext.destination);
-        source.start();
-        audioSourceRef.current = source;
-    } catch (e) {
-        console.error("Failed to play promo", e);
-    } finally {
-        setLoadingPromo(null);
-    }
-  };
 
   const formatTime = (dateString: string) => {
     return new Date(dateString).toLocaleTimeString('en-US', {
@@ -140,14 +68,6 @@ const UpcomingShows: React.FC<UpcomingShowsProps> = ({ shows, loading, error, fa
                 {show.description && <p className="text-sm text-slate-400">{show.description}</p>}
               </div>
                <div className="pl-4 flex items-center gap-1">
-                <button
-                    onClick={() => handleHearPromo(show)}
-                    disabled={loadingPromo === show.id}
-                    className="p-2 rounded-full transition-colors text-slate-500 hover:text-amber-400 hover:bg-slate-700/50 disabled:cursor-wait disabled:text-amber-400 disabled:animate-pulse"
-                    aria-label="Hear promo"
-                >
-                    <HearPromoIcon />
-                </button>
                 <button 
                   onClick={() => setShowToShare(show)} 
                   className="p-2 rounded-full transition-colors text-slate-500 hover:text-amber-400 hover:bg-slate-700/50"

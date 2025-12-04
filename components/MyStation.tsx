@@ -1,14 +1,10 @@
-
-
 import React, { useState, useEffect, useMemo } from 'react';
-import { Dj, ApiScheduleItem, SongRequestRecord, ListeningStats, Badge, ListenerLevel, LiveNowPlaying, Quest } from '../types';
+import { Dj, ApiScheduleItem, SongRequestRecord, ListeningStats, Badge, ListenerLevel, LiveNowPlaying } from '../types';
 import { getShowRecommendations, generateDailyRewind } from '../services/geminiService';
 import { DJS } from '../constants';
 import DailyRewindModal from './DailyRewindModal';
-import ListeningDNA from './ListeningDNA';
+import ListeningDNA from './Contact';
 import ListenerStoryModal from './ListenerStoryModal';
-import ListenerQuests from './ListenerQuests';
-import ShowLeaderboards from './ShowLeaderboards';
 
 
 interface User {
@@ -113,7 +109,6 @@ interface MyStationProps {
   lastMonthListeningStats: ListeningStats | null;
   dailyShowsListened: string[];
   liveNowPlaying: LiveNowPlaying;
-  quests: Quest[];
 }
 
 const Marquee: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -131,7 +126,7 @@ const Marquee: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     );
 };
 
-const MyStation: React.FC<MyStationProps> = ({ favoriteShows, favoriteDjs, allShows, onToggleFavorite, onToggleFavoriteDj, currentShowName, currentUser, onUpdateUserProfile, songRequests, listeningStats, lastMonthListeningStats, dailyShowsListened, liveNowPlaying, quests }) => {
+const MyStation: React.FC<MyStationProps> = ({ favoriteShows, favoriteDjs, allShows, onToggleFavorite, onToggleFavoriteDj, currentShowName, currentUser, onUpdateUserProfile, songRequests, listeningStats, lastMonthListeningStats, dailyShowsListened, liveNowPlaying }) => {
   const [recommendations, setRecommendations] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -385,11 +380,7 @@ const MyStation: React.FC<MyStationProps> = ({ favoriteShows, favoriteDjs, allSh
             </div>
         </div>
 
-        <ListenerQuests quests={quests} />
-
         <ListeningDNA listeningStats={listeningStats} songRequests={songRequests} />
-
-        <ShowLeaderboards showPoints={listeningStats.showPoints} allShows={allShows} />
 
         <section>
             <h2 className="text-2xl font-bold mb-6 tracking-wide text-white">Badges Earned</h2>

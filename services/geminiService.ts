@@ -1,9 +1,10 @@
 
 
+
 import { GoogleGenAI, Type } from "@google/genai";
 // FIX: Import DedicationRecord for the new feature.
 // FIX: Import SongRating to resolve type errors.
-import { Song, SongRequestRecord, DedicationRecord, MusicEvent, ApiScheduleItem, SongOfTheWeek, ListeningStats, SongRating, StorySlideType, StorySlideData, Quest, MusicHotspot } from '../types';
+import { Song, SongRequestRecord, DedicationRecord, MusicEvent, ApiScheduleItem, SongOfTheWeek, ListeningStats, SongRating, StorySlideType, StorySlideData } from '../types';
 
 const getGeminiApiKey = (): string => {
   const apiKey = process.env.API_KEY;
@@ -104,53 +105,6 @@ export const getShowRecommendations = async (
         return "Our recommendation engine is taking a quick nap. Please try again in a moment!";
     }
 };
-
-export const generateShowRecommendation = async (
-  favoritedShow: ApiScheduleItem,
-  candidateShows: ApiScheduleItem[]
-): Promise<{ recommendedShowName: string; reason: string }> => {
-  const ai = new GoogleGenAI({ apiKey: getGeminiApiKey() });
-
-  const candidateShowDescriptions = candidateShows
-    .map(s => `{"name": "${s.name}", "description": "${s.description.replace(/"/g, '\\"')}"}`)
-    .join(', ');
-
-  const prompt = `You are DJ Alex, a helpful and insightful AI music curator for Nam Radio Live. A listener just favorited the show "${favoritedShow.name}", which is described as: "${favoritedShow.description}".
-
-  From the following list of other shows, please pick the SINGLE BEST recommendation for this listener.
-  
-  Available shows: [${candidateShowDescriptions}]
-
-  Analyze the descriptions and choose the one that is the best fit. Then, provide a compelling, friendly, one-sentence reason why they would like your recommendation, based on their new favorite show.
-
-  Return your response as a single, clean JSON object with two keys: "recommendedShowName" and "reason". Do not add any extra text or formatting.`;
-  
-  const response = await ai.models.generateContent({
-    model: 'gemini-2.5-flash',
-    contents: prompt,
-    config: {
-      responseMimeType: 'application/json',
-      responseSchema: {
-        type: Type.OBJECT,
-        properties: {
-          recommendedShowName: { type: Type.STRING },
-          reason: { type: Type.STRING },
-        },
-        required: ['recommendedShowName', 'reason'],
-      },
-    },
-  });
-
-  const jsonText = response.text.trim();
-  const result = JSON.parse(jsonText);
-  
-  if (!candidateShows.some(s => s.name === result.recommendedShowName)) {
-      throw new Error("AI recommended a show that was not in the provided candidate list.");
-  }
-  
-  return result;
-};
-
 
 export const getArticleSummary = async (articleTitle: string, articleSource: string): Promise<string> => {
     try {
@@ -388,44 +342,6 @@ For each event found, provide the following details. Prioritize official sources
   }
 };
 
-export const getLocalMusicHotspots = async (): Promise<MusicHotspot[]> => {
-    const ai = new GoogleGenAI({ apiKey: getGeminiApiKey() });
-    const prompt = `Find key music-related locations in and around Windhoek, Namibia. Include famous live music venues, important recording studios, and other significant musical hotspots. For each location, provide its name, a type (venue, studio, or other), a brief description, its address, and its precise latitude and longitude. Return the result as a JSON array.`;
-
-    try {
-        const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash',
-            contents: prompt,
-            config: {
-                tools: [{ googleMaps: {} }],
-                responseMimeType: "application/json",
-                responseSchema: {
-                    type: Type.ARRAY,
-                    items: {
-                        type: Type.OBJECT,
-                        properties: {
-                            name: { type: Type.STRING },
-                            type: { type: Type.STRING, enum: ['venue', 'studio', 'event', 'other'] },
-                            latitude: { type: Type.NUMBER },
-                            longitude: { type: Type.NUMBER },
-                            description: { type: Type.STRING },
-                            address: { type: Type.STRING },
-                        },
-                        required: ["name", "type", "latitude", "longitude", "description", "address"],
-                    },
-                },
-            },
-        });
-
-        const jsonText = response.text.trim();
-        return JSON.parse(jsonText) as MusicHotspot[];
-    } catch (error) {
-        console.error("Error fetching local music hotspots:", error);
-        throw new Error("Could not fetch local music hotspots at this time.");
-    }
-};
-
-
 export const getSongOfTheWeek = async (
   songRequests: SongRequestRecord[], 
   listeningStats: ListeningStats
@@ -632,19 +548,6 @@ export const generateLevelUpMessage = async (username: string, levelName: string
     }
   };
 
-// FIX: Add generateGoldenHourAnnouncement function to resolve import error.
-export const generateGoldenHourAnnouncement = async (multiplier: number): Promise<string> => {
-    try {
-        const ai = new GoogleGenAI({ apiKey: getGeminiApiKey() });
-        const prompt = `You are an energetic radio DJ for "Nam Radio Live". Announce that a "Golden Hour" has just started! All points listeners earn for the next hour will be multiplied by ${multiplier}x. Make it sound exciting and urgent, encouraging listeners to chat, request songs, and participate to maximize their points.`;
-        const response = await ai.models.generateContent({ model: 'gemini-2.5-flash', contents: prompt });
-        return response.text;
-    } catch (error) {
-        console.error("Error generating Golden Hour announcement:", error);
-        return `🔥 GOLDEN HOUR IS LIVE! All points are worth ${multiplier}x for the next hour! Let's go! 🔥`;
-    }
-};
-
 export const getTopGenres = async (artists: string[]): Promise<string[]> => {
   if (artists.length === 0) {
     return [];
@@ -675,40 +578,6 @@ export const getTopGenres = async (artists: string[]): Promise<string[]> => {
     // Fallback in case of error
     return ["Eclectic Mix"];
   }
-};
-
-export const generateListenerQuests = async (): Promise<Omit<Quest, 'progress' | 'status'>[]> => {
-    const ai = new GoogleGenAI({ apiKey: getGeminiApiKey() });
-    const prompt = `You are an AI game designer for "Nam Radio Live". Create a list of 3 engaging daily quests for a listener. The quests should encourage them to explore the app and interact with the station. 
-    Available quest types are: 'listen_time' (target in minutes), 'send_chat_messages', 'cast_votes', 'request_song', 'rate_song'.
-    Make the descriptions fun, short, and encouraging. Keep targets reasonable for a daily goal (e.g., listen for 30-60 mins, send 3-5 messages, cast 2-3 votes). Rewards should be between 50 and 200 points.
-    
-    Return the response as a JSON array of objects, where each object has "id", "description", "type", "target", and "reward". The id should be a unique string like "quest_1", "quest_2", etc.`;
-
-    const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
-        contents: prompt,
-        config: {
-            responseMimeType: "application/json",
-            responseSchema: {
-                type: Type.ARRAY,
-                items: {
-                    type: Type.OBJECT,
-                    properties: {
-                        id: { type: Type.STRING },
-                        description: { type: Type.STRING },
-                        type: { type: Type.STRING },
-                        target: { type: Type.INTEGER },
-                        reward: { type: Type.INTEGER },
-                    },
-                    required: ["id", "description", "type", "target", "reward"],
-                },
-            },
-        },
-    });
-
-    const jsonText = response.text.trim();
-    return JSON.parse(jsonText);
 };
 
 export const generateListenerStoryCaption = async (
@@ -753,45 +622,5 @@ export const generateListenerStoryCaption = async (
             case 'peak_time': return `You're officially part of the ${data.peakTime} crew!`;
             default: return "Thanks for an amazing month of listening!";
         }
-    }
-};
-
-export const generateShowPromoScript = async (show: ApiScheduleItem): Promise<string> => {
-    const ai = new GoogleGenAI({ apiKey: getGeminiApiKey() });
-    const prompt = `You are DJ Alex, an energetic AI host for Nam Radio Live. Create a short, punchy, and exciting radio promo script (2-3 sentences) for the upcoming show "${show.name}". The show's description is: "${show.description}". Make it sound unmissable!`;
-    try {
-        const response = await ai.models.generateContent({ model: 'gemini-2.5-flash', contents: prompt });
-        return response.text.trim();
-    } catch (error) {
-        console.error("Error generating show promo script:", error);
-        return `Get ready! "${show.name}" is coming up next on Nam Radio Live!`;
-    }
-};
-
-export const generateTtsAudio = async (text: string): Promise<string> => {
-    const ttsAi = new GoogleGenAI({ apiKey: getGeminiApiKey() });
-    const prompt = `Say it with an energetic and friendly radio DJ voice: ${text}`;
-    try {
-        const response = await ttsAi.models.generateContent({
-            model: "gemini-2.5-flash-preview-tts",
-            contents: [{ parts: [{ text: prompt }] }],
-            config: {
-                responseModalities: ['AUDIO'],
-                speechConfig: {
-                    voiceConfig: {
-                        prebuiltVoiceConfig: { voiceName: 'Kore' }, // An energetic and clear voice
-                    },
-                },
-            },
-        });
-
-        const base64Audio = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
-        if (!base64Audio) {
-            throw new Error("API did not return audio data.");
-        }
-        return base64Audio;
-    } catch (error) {
-        console.error("Error generating TTS audio:", error);
-        throw new Error("Could not generate audio at this time.");
     }
 };

@@ -1,20 +1,16 @@
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
-import { Article, MusicEvent, MusicHotspot } from '../types';
+import { Article, MusicEvent } from '../types';
 import { getArticleSummary } from '../services/geminiService';
 import { fetchNews, fetchBlogPosts } from '../services/newsService';
-import LocalSceneMap from './LocalSceneMap';
 
 interface ContentHubProps {
   events: MusicEvent[];
   isEventsLoading: boolean;
   eventsError: string | null;
-  musicHotspots: MusicHotspot[];
-  isHotspotsLoading: boolean;
-  hotspotsError: string | null;
 }
 
-const ContentHub: React.FC<ContentHubProps> = ({ events, isEventsLoading, eventsError, musicHotspots, isHotspotsLoading, hotspotsError }) => {
-  const [activeHubTab, setActiveHubTab] = useState<'news' | 'blog' | 'events' | 'map'>('news');
+const ContentHub: React.FC<ContentHubProps> = ({ events, isEventsLoading, eventsError }) => {
+  const [activeHubTab, setActiveHubTab] = useState<'news' | 'blog' | 'events'>('news');
   
   // News State
   const [activeNewsCategory, setActiveNewsCategory] = useState<string>('namibia');
@@ -109,7 +105,7 @@ const ContentHub: React.FC<ContentHubProps> = ({ events, isEventsLoading, events
     }
   }, [summaries]);
   
-  const HubTab: React.FC<{ name: 'news' | 'blog' | 'events' | 'map'; children: React.ReactNode }> = ({ name, children }) => (
+  const HubTab: React.FC<{ name: 'news' | 'blog' | 'events'; children: React.ReactNode }> = ({ name, children }) => (
     <button onClick={() => setActiveHubTab(name)} className={`px-4 py-2 text-sm font-semibold rounded-t-md transition-colors w-full sm:w-auto ${activeHubTab === name ? 'bg-slate-800/50 text-amber-300 border-b-2 border-amber-400' : 'text-slate-400 hover:text-white'}`}>{children}</button>
   );
 
@@ -200,7 +196,6 @@ const ContentHub: React.FC<ContentHubProps> = ({ events, isEventsLoading, events
         <HubTab name="news">Latest Headlines</HubTab>
         <HubTab name="blog">African Music Blog</HubTab>
         <HubTab name="events">Events Hub</HubTab>
-        <HubTab name="map">Local Scene</HubTab>
       </div>
       
       <div className="mt-4">
@@ -234,16 +229,6 @@ const ContentHub: React.FC<ContentHubProps> = ({ events, isEventsLoading, events
           <div className="animate-fade-in" key="events">
             {renderEvents()}
           </div>
-        )}
-
-        {activeHubTab === 'map' && (
-            <div className="animate-fade-in" key="map">
-                <LocalSceneMap 
-                    hotspots={musicHotspots} 
-                    isLoading={isHotspotsLoading} 
-                    error={hotspotsError} 
-                />
-            </div>
         )}
       </div>
     </section>

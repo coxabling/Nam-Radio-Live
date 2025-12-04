@@ -1,31 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { Message, PollMessage, Song, TakeoverMessage, GameMessage, Vibe, DedicationRecord, MusicEvent, ApiScheduleItem, SongRequestRecord, ListeningStats, PersonalizedMessage, OnThisDayMessage, LevelUpMessage, TriviaMessage, GoldenHourMessage, TextMessage, AudioDedicationMessage } from '../types';
-import { getAiChatResponse, generateTakeoverAnnouncement, generateTakeoverWinnerShoutout, generateSongClue, generateDjChitchat, generateVibeCommentary, generateDedicationShoutout, getRankedShowRecommendations, generateShowScoutAlert, generateLocalSpotlightPromo, generateEventShoutout, getOnThisDayInMusic, generateLevelUpMessage, generateTriviaQuestion, generateGoldenHourAnnouncement } from '../services/geminiService';
+import { Message, PollMessage, Song, TakeoverMessage, GameMessage, Vibe, DedicationRecord, MusicEvent, ApiScheduleItem, SongRequestRecord, ListeningStats, PersonalizedMessage, OnThisDayMessage, LevelUpMessage, TriviaMessage } from '../types';
+import { getAiChatResponse, generateTakeoverAnnouncement, generateTakeoverWinnerShoutout, generateSongClue, generateDjChitchat, generateVibeCommentary, generateDedicationShoutout, getRankedShowRecommendations, generateShowScoutAlert, generateLocalSpotlightPromo, generateEventShoutout, getOnThisDayInMusic, generateLevelUpMessage, generateTriviaQuestion } from '../services/geminiService';
 import { TAKEOVER_SONGS } from '../constants';
-
-// Audio decoding functions
-function decode(base64: string) {
-    const binaryString = atob(base64);
-    const len = binaryString.length;
-    const bytes = new Uint8Array(len);
-    for (let i = 0; i < len; i++) {
-        bytes[i] = binaryString.charCodeAt(i);
-    }
-    return bytes;
-}
-async function decodeAudioData(data: Uint8Array, ctx: AudioContext): Promise<AudioBuffer> {
-    const sampleRate = 24000;
-    const numChannels = 1;
-    const dataInt16 = new Int16Array(data.buffer);
-    const frameCount = dataInt16.length / numChannels;
-    const buffer = ctx.createBuffer(numChannels, frameCount, sampleRate);
-    const channelData = buffer.getChannelData(0);
-    for (let i = 0; i < frameCount; i++) {
-        channelData[i] = dataInt16[i] / 32768.0;
-    }
-    return buffer;
-}
-
 
 const djPolls: Omit<PollMessage, 'id' | 'author' | 'isDj' | 'type'>[] = [
   { question: "What genre should we play next?", options: [{ text: "Classic Rock", votes: 0 }, { text: "Indie Hits", votes: 0 }, { text: "90s Pop", votes: 0 }] },
@@ -37,55 +13,6 @@ const TypingIndicator: React.FC<{ author: string }> = ({ author }) => (
 );
 
 const CalendarIcon = () => (<svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>);
-const PlayIcon = () => (<svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd" /></svg>);
-const LoadingIcon = () => (<div className="w-6 h-6 animate-spin rounded-full border-2 border-slate-400 border-t-white"></div>);
-const StopIcon = () => (<svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8 7a1 1 0 00-1 1v4a1 1 0 001 1h4a1 1 0 001-1V8a1 1 0 00-1-1H8z" clipRule="evenodd" /></svg>);
-
-
-const AudioDedication: React.FC<{ msg: AudioDedicationMessage }> = ({ msg }) => {
-    const [audioContext] = useState(new (window.AudioContext || (window as any).webkitAudioContext)());
-    const [isPlaying, setIsPlaying] = useState(false);
-    const audioSourceRef = useRef<AudioBufferSourceNode | null>(null);
-
-    const handlePlay = async () => {
-        if (isPlaying && audioSourceRef.current) {
-            audioSourceRef.current.stop();
-            setIsPlaying(false);
-            return;
-        }
-        try {
-            const audioBuffer = await decodeAudioData(decode(msg.audioData), audioContext);
-            const source = audioContext.createBufferSource();
-            source.buffer = audioBuffer;
-            source.connect(audioContext.destination);
-            source.start();
-            source.onended = () => setIsPlaying(false);
-            audioSourceRef.current = source;
-            setIsPlaying(true);
-        } catch (error) {
-            console.error("Failed to play dedication audio", error);
-        }
-    };
-
-    return (
-        <div className="p-4 bg-gradient-to-br from-pink-800 to-purple-900 rounded-lg border-2 border-pink-500 shadow-lg animate-fade-in">
-            <div className="text-center">
-                <span className="text-lg font-bold block text-pink-200">A Special Dedication!</span>
-                <p className="text-sm text-slate-200 mt-1">From <span className="font-bold">{msg.recipientInfo.from}</span> to <span className="font-bold">{msg.recipientInfo.to}</span></p>
-            </div>
-            <div className="flex items-center gap-4 mt-4">
-                <button onClick={handlePlay} className="p-2 bg-black/20 rounded-full text-white hover:bg-black/40 transition-colors">
-                    {isPlaying ? <StopIcon /> : <PlayIcon />}
-                </button>
-                <div className="flex-grow">
-                    <p className="font-semibold text-white">"{msg.message}"</p>
-                    <p className="text-xs text-slate-300 mt-1">Dedicating: {msg.song.title} by {msg.song.artist}</p>
-                </div>
-            </div>
-        </div>
-    );
-};
-
 
 interface User {
   username: string;
@@ -100,14 +27,12 @@ interface LiveChatProps {
   onVoteCast: () => void;
   onGameWon: () => void;
   latestDedication: DedicationRecord | null;
-  latestAudioDedication: Omit<AudioDedicationMessage, 'id' | 'author' | 'isDj'> | null;
   events: MusicEvent[];
   schedule: ApiScheduleItem[];
   userFavoriteShows: ApiScheduleItem[];
   songRequests: SongRequestRecord[];
   listeningStats: ListeningStats;
   latestLevelUp: { username: string; levelName: string } | null;
-  onStartGoldenHour: (multiplier: number) => void;
 }
 
 type FilterType = 'dj' | 'polls' | 'games' | 'takeovers';
@@ -115,7 +40,7 @@ type FilterType = 'dj' | 'polls' | 'games' | 'takeovers';
 const GEMINI_CALL_LIMIT = 100;
 const GEMINI_LIMIT_KEY = 'nam-radio-gemini-limit';
 
-const LiveChat: React.FC<LiveChatProps> = ({ liveNowPlaying, recentlyPlayed, currentUser, dominantVibe, onChatMessageSent, onVoteCast, onGameWon, latestDedication, latestAudioDedication, events, schedule, userFavoriteShows, songRequests, listeningStats, latestLevelUp, onStartGoldenHour }) => {
+const LiveChat: React.FC<LiveChatProps> = ({ liveNowPlaying, recentlyPlayed, currentUser, dominantVibe, onChatMessageSent, onVoteCast, onGameWon, latestDedication, events, schedule, userFavoriteShows, songRequests, listeningStats, latestLevelUp }) => {
   const [messages, setMessages] = useState<Message[]>([{ id: 1, type: 'text', author: 'DJ Alex', text: 'Welcome to the live chat! Drop a message and say hi!', isDj: true }]);
   const [newMessage, setNewMessage] = useState('');
   const [userVotes, setUserVotes] = useState<Record<number, number>>({});
@@ -129,7 +54,6 @@ const LiveChat: React.FC<LiveChatProps> = ({ liveNowPlaying, recentlyPlayed, cur
     takeovers: true,
   });
   const dedicationAnnouncedRef = useRef(false);
-  const audioDedicationAnnouncedRef = useRef(false);
   const levelUpAnnouncedRef = useRef(false);
   const scoutedShowIds = useRef<Set<number>>(new Set());
 
@@ -257,21 +181,6 @@ const LiveChat: React.FC<LiveChatProps> = ({ liveNowPlaying, recentlyPlayed, cur
     announceDedication();
   }, [latestDedication]);
   
-  // Announce Audio Dedications
-  useEffect(() => {
-    if (latestAudioDedication && !audioDedicationAnnouncedRef.current) {
-        audioDedicationAnnouncedRef.current = true;
-        const audioMessage: AudioDedicationMessage = {
-            ...latestAudioDedication,
-            id: Date.now(),
-            author: 'DJ Alex',
-            isDj: true,
-        };
-        setMessages(prev => [...prev, audioMessage]);
-        setTimeout(() => { audioDedicationAnnouncedRef.current = false; }, 1000);
-    }
-  }, [latestAudioDedication]);
-
   // Announce Level Ups
   useEffect(() => {
     const announceLevelUp = async () => {
@@ -331,8 +240,8 @@ const LiveChat: React.FC<LiveChatProps> = ({ liveNowPlaying, recentlyPlayed, cur
     if (Object.values(filters).every(v => v)) return messages;
     
     return messages.filter(msg => {
-      if (msg.type === 'personalized' || msg.type === 'level_up' || msg.type === 'golden_hour' || msg.type === 'audio_dedication') {
-          return true; // Always show these special announcements
+      if (msg.type === 'personalized' || msg.type === 'level_up') {
+          return msg.recipient === userHandle;
       }
       if (msg.author === userHandle) return true;
       if (msg.type === 'on_this_day') return true; // Always show this
@@ -372,33 +281,14 @@ const LiveChat: React.FC<LiveChatProps> = ({ liveNowPlaying, recentlyPlayed, cur
                     setIsDjTyping(true);
                     const shoutout = await generateTakeoverWinnerShoutout(winningSong);
                     setIsDjTyping(false);
-                    setMessages(prev => [...prev, { id: Date.now() + 1, type: 'text', author: 'DJ Alex', text: shoutout, isDj: true, song: winningSong }]);
+                    setMessages(prev => [...prev, { id: Date.now() + 1, type: 'text', author: 'DJ Alex', text: shoutout, isDj: true }]);
                 }
             }
         };
 
         const chance = Math.random();
 
-        if (chance < 0.05) { // 5% chance for Golden Hour
-            if (getGeminiCallCount().count >= GEMINI_CALL_LIMIT) return;
-            incrementGeminiCallCount();
-            setIsDjTyping(true);
-            const multiplier = Math.random() > 0.7 ? 3 : 2; // 30% chance for 3x, 70% for 2x
-            const announcement = await generateGoldenHourAnnouncement(multiplier);
-            setIsDjTyping(false);
-
-            const goldenHourMessage: GoldenHourMessage = {
-                id: Date.now(),
-                type: 'golden_hour',
-                author: 'DJ Alex',
-                text: announcement,
-                isDj: true,
-                multiplier: multiplier,
-            };
-            setMessages(prev => [...prev, goldenHourMessage]);
-            onStartGoldenHour(multiplier);
-        
-        } else if (chance < 0.15) { // 10% chance for Listener Takeover
+        if (chance < 0.10) { // 10% chance for Listener Takeover
             incrementGeminiCallCount();
             setIsDjTyping(true);
             const songA = TAKEOVER_SONGS[Math.floor(Math.random() * TAKEOVER_SONGS.length)];
@@ -413,7 +303,7 @@ const LiveChat: React.FC<LiveChatProps> = ({ liveNowPlaying, recentlyPlayed, cur
 
             setTimeout(() => endTakeoverEvent(takeoverMessage.id), 30000);
 
-        } else if (chance < 0.25) { // 10% chance for a poll
+        } else if (chance < 0.20) { // 10% chance for a poll
             setMessages(prev => {
                 const randomPollTemplate = djPolls[Math.floor(Math.random() * djPolls.length)];
                 // Create a fresh poll object with votes reset to 0
@@ -428,7 +318,7 @@ const LiveChat: React.FC<LiveChatProps> = ({ liveNowPlaying, recentlyPlayed, cur
                 return [...prev, newPoll];
             });
 
-        } else if (chance < 0.40) { // 15% chance for "Song Sleuth" Trivia
+        } else if (chance < 0.35) { // 15% chance for "Song Sleuth" Trivia
             if (getGeminiCallCount().count >= GEMINI_CALL_LIMIT) return;
             incrementGeminiCallCount();
             setIsDjTyping(true);
@@ -453,7 +343,7 @@ const LiveChat: React.FC<LiveChatProps> = ({ liveNowPlaying, recentlyPlayed, cur
                 setIsDjTyping(false);
             }
 
-        } else if (chance < 0.50) { // 10% chance for Guess the Song
+        } else if (chance < 0.45) { // 10% chance for Guess the Song
             incrementGeminiCallCount();
             setIsDjTyping(true);
             const allSongs = [...recentlyPlayed, ...TAKEOVER_SONGS];
@@ -466,12 +356,12 @@ const LiveChat: React.FC<LiveChatProps> = ({ liveNowPlaying, recentlyPlayed, cur
                 type: 'game',
                 author: 'DJ Alex',
                 clue: `Alright team, time for GUESS THE SONG! 🧐 Here's your clue: "${clue}" \nType !guess followed by your answer!`,
-                song: songToGuess,
+                answer: songToGuess.title,
                 winner: null,
                 isDj: true,
             };
             setMessages(prev => [...prev, gameMessage]);
-        } else if (chance < 0.70) { // 20% chance for chit-chat or event shoutout
+        } else if (chance < 0.65) { // 20% chance for chit-chat or event shoutout
             if (recentlyPlayed.length > 0) {
                 if (getGeminiCallCount().count >= GEMINI_CALL_LIMIT) { return; }
                 const lastPlayedSong = recentlyPlayed[0];
@@ -487,16 +377,16 @@ const LiveChat: React.FC<LiveChatProps> = ({ liveNowPlaying, recentlyPlayed, cur
                     text = await generateDjChitchat(recentlyPlayed);
                 }
                 setIsDjTyping(false);
-                setMessages(prev => [...prev, { id: Date.now(), type: 'text', author: 'DJ Alex', text, isDj: true, song: lastPlayedSong }]);
+                setMessages(prev => [...prev, { id: Date.now(), type: 'text', author: 'DJ Alex', text, isDj: true }]);
             }
-        } else if (chance < 0.85 && dominantVibe) { // 15% chance for vibe commentary
+        } else if (chance < 0.80 && dominantVibe) { // 15% chance for vibe commentary
              if (getGeminiCallCount().count >= GEMINI_CALL_LIMIT) { return; }
              incrementGeminiCallCount();
              setIsDjTyping(true);
              const vibeComment = await generateVibeCommentary(dominantVibe.label);
              setIsDjTyping(false);
              setMessages(prev => [...prev, { id: Date.now(), type: 'text', author: 'DJ Alex', text: vibeComment, isDj: true }]);
-        } else if (chance < 0.95) { // 10% chance for Local Spotlight promo
+        } else if (chance < 0.90) { // 10% chance for Local Spotlight promo
             if (getGeminiCallCount().count >= GEMINI_CALL_LIMIT) { return; }
             incrementGeminiCallCount();
             setIsDjTyping(true);
@@ -512,30 +402,14 @@ const LiveChat: React.FC<LiveChatProps> = ({ liveNowPlaying, recentlyPlayed, cur
 
     djMessageTimer.current = window.setTimeout(postDjEvent, 25000); 
     return () => { if (djMessageTimer.current) clearTimeout(djMessageTimer.current) };
-  }, [recentlyPlayed, dominantVibe, events, onStartGoldenHour]); 
+  }, [recentlyPlayed, dominantVibe, events]); 
   
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     const trimmedMessage = newMessage.trim();
     if (!trimmedMessage) return;
 
-    const userMessage: TextMessage = { id: Date.now(), type: 'text', author: userHandle, text: trimmedMessage, isDj: false };
-    
-    // Check if message mentions a song
-    const potentialSongs = [liveNowPlaying.song, ...recentlyPlayed];
-    let mentionedSong: Song | undefined = undefined;
-
-    for (const song of potentialSongs) {
-        if (song.title && trimmedMessage.toLowerCase().includes(song.title.toLowerCase())) {
-            mentionedSong = song;
-            break; // Found a match, stop looking
-        }
-    }
-
-    if (mentionedSong) {
-        userMessage.song = mentionedSong;
-    }
-
+    const userMessage: Message = { id: Date.now(), type: 'text', author: userHandle, text: trimmedMessage, isDj: false };
     setMessages(prev => [...prev, userMessage]);
     onChatMessageSent();
     setNewMessage('');
@@ -568,8 +442,8 @@ const LiveChat: React.FC<LiveChatProps> = ({ liveNowPlaying, recentlyPlayed, cur
       
       if (lastGameIndex !== -1) {
           const game = messages[lastGameIndex] as GameMessage | TriviaMessage;
-          
-          if (game.type === 'game' && guess.toLowerCase() === game.song.title.toLowerCase()) {
+  
+          if (guess.toLowerCase() === game.answer.toLowerCase()) {
               // Correct answer!
               setMessages(prev => 
                   prev.map((msg, index) => 
@@ -579,25 +453,6 @@ const LiveChat: React.FC<LiveChatProps> = ({ liveNowPlaying, recentlyPlayed, cur
                   ) as Message[] // Cast to Message[] to satisfy TS
               );
   
-              const shoutout = `🎉 We have a winner! Congrats ${userHandle} for guessing "${game.song.title}"! You've won 100 points!`;
-              const winnerMessage: TextMessage = { 
-                id: Date.now() + 1, 
-                type: 'text', 
-                author: 'DJ Alex', 
-                text: shoutout, 
-                isDj: true,
-                song: game.song,
-              };
-              setMessages(prev => [...prev, winnerMessage]);
-              onGameWon();
-          } else if (game.type === 'trivia' && guess.toLowerCase() === game.answer.toLowerCase()) {
-              setMessages(prev => 
-                  prev.map((msg, index) => 
-                      index === lastGameIndex 
-                      ? { ...msg, winner: userHandle } 
-                      : msg
-                  ) as Message[]
-              );
               const shoutout = `🎉 We have a winner! Congrats ${userHandle} for correctly answering with "${game.answer}"! You've won 100 points!`;
               const winnerMessage: Message = { id: Date.now() + 1, type: 'text', author: 'DJ Alex', text: shoutout, isDj: true };
               setMessages(prev => [...prev, winnerMessage]);
@@ -655,18 +510,6 @@ const LiveChat: React.FC<LiveChatProps> = ({ liveNowPlaying, recentlyPlayed, cur
 
       <div className="flex-grow bg-slate-800/50 rounded-lg p-4 overflow-y-auto mb-4 space-y-4 shadow-inner-lg">
         {filteredMessages.map(msg => {
-          if (msg.type === 'audio_dedication') {
-            return <AudioDedication key={msg.id} msg={msg} />;
-          }
-          if (msg.type === 'golden_hour') {
-            return (
-              <div key={msg.id} className="p-4 bg-gradient-to-br from-amber-600 to-yellow-800 rounded-lg border-2 border-amber-400 shadow-lg animate-fade-in text-center animate-pulse-gold">
-                  <span className="text-xl font-bold block text-yellow-200">GOLDEN HOUR IS ACTIVE!</span>
-                  <p className="text-lg font-bold text-white my-2">All points are now worth {msg.multiplier}x!</p>
-                  <p className="text-sm text-yellow-200 italic">"{msg.text}"</p>
-              </div>
-            )
-          }
           if (msg.type === 'level_up') {
             return (
                 <div key={msg.id} className="p-4 bg-gradient-to-br from-purple-800 to-indigo-900 rounded-lg border-2 border-purple-500 shadow-lg animate-fade-in text-center">
@@ -722,7 +565,7 @@ const LiveChat: React.FC<LiveChatProps> = ({ liveNowPlaying, recentlyPlayed, cur
                         <div className="mt-3 p-3 bg-amber-500/20 rounded-lg">
                             <p className="text-sm text-amber-200">The winner is...</p>
                             <p className="font-bold text-xl text-white">{msg.winner}!</p>
-                            <p className="text-amber-300">The song was "{msg.song.title}"</p>
+                            <p className="text-amber-300">The song was "{msg.answer}"</p>
                         </div>
                     )}
                 </div>
@@ -781,26 +624,14 @@ const LiveChat: React.FC<LiveChatProps> = ({ liveNowPlaying, recentlyPlayed, cur
               </div>
             );
           }
-          if (msg.type === 'text') {
-            return (
-                <div key={msg.id} className={`flex flex-col ${msg.author === userHandle ? 'items-end' : 'items-start'}`}>
-                <div className={`rounded-lg px-3 py-2 max-w-[80%] ${msg.isDj ? 'bg-amber-900/70' : 'bg-slate-700'}`}>
-                    <span className={`text-xs font-bold block ${msg.isDj ? 'text-amber-200' : 'text-slate-200'}`}>{msg.author}</span>
-                    {msg.song && msg.song.artUrl && (
-                        <div className="flex items-center gap-3 my-2 bg-black/20 p-2 rounded-md">
-                            <img src={msg.song.artUrl} alt={msg.song.title} className="w-10 h-10 rounded-md object-cover" />
-                            <div className="overflow-hidden">
-                                <p className="font-semibold text-white truncate text-sm">{msg.song.title}</p>
-                                <p className="text-xs text-slate-300 truncate">{msg.song.artist}</p>
-                            </div>
-                        </div>
-                    )}
-                    <p className="text-sm text-white break-words">{msg.text}</p>
-                </div>
-                </div>
-            );
-          }
-          return null;
+          return (
+            <div key={msg.id} className={`flex flex-col ${msg.author === userHandle ? 'items-end' : 'items-start'}`}>
+              <div className={`rounded-lg px-3 py-2 max-w-[80%] ${msg.isDj ? 'bg-amber-900/70' : 'bg-slate-700'}`}>
+                <span className={`text-xs font-bold block ${msg.isDj ? 'text-amber-200' : 'text-slate-200'}`}>{msg.author}</span>
+                <p className="text-sm text-white break-words">{msg.text}</p>
+              </div>
+            </div>
+          );
         })}
         {isDjTyping && <TypingIndicator author="DJ Alex" />}
         <div ref={chatEndRef} />

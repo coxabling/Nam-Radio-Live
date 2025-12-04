@@ -39,7 +39,6 @@ export interface TextMessage {
   author: string;
   text: string;
   isDj: boolean;
-  song?: Song;
 }
 
 export interface PollMessage {
@@ -56,7 +55,7 @@ export interface GameMessage {
   type: 'game';
   author: string;
   clue: string;
-  song: Song;
+  answer: string; // Stored as "Song Title"
   winner: string | null;
   isDj: boolean;
 }
@@ -115,31 +114,8 @@ export interface LevelUpMessage {
   levelName: string;
 }
 
-export interface GoldenHourMessage {
-  id: number;
-  type: 'golden_hour';
-  author: string;
-  text: string;
-  isDj: boolean;
-  multiplier: number;
-}
 
-export interface AudioDedicationMessage {
-  id: number;
-  type: 'audio_dedication';
-  author: string; // DJ Alex
-  isDj: boolean;
-  recipientInfo: {
-    to: string;
-    from: string;
-  };
-  song: Song;
-  message: string;
-  audioData: string; // base64 encoded audio
-}
-
-
-export type Message = TextMessage | PollMessage | GameMessage | TakeoverMessage | PersonalizedMessage | OnThisDayMessage | LevelUpMessage | TriviaMessage | GoldenHourMessage | AudioDedicationMessage;
+export type Message = TextMessage | PollMessage | GameMessage | TakeoverMessage | PersonalizedMessage | OnThisDayMessage | LevelUpMessage | TriviaMessage;
 
 export interface LiveNowPlaying {
     song: Song;
@@ -197,7 +173,6 @@ export interface ListeningStats {
   monthlyListeningTime: number;
   lastUpdated: string; // ISO string for monthly reset
   showListeningTime: Record<string, number>; // Show name -> seconds
-  showPoints: Record<string, number>; // Show name -> weekly points
   hasListenedPostMidnight: boolean; // For Night Owl badge
   chatMessagesSent: number;
   votesCast: number;
@@ -228,15 +203,6 @@ export interface MusicEvent {
   description: string;
   sourceUrl?: string;
   imageUrl?: string;
-}
-
-export interface MusicHotspot {
-    name: string;
-    type: 'venue' | 'studio' | 'event' | 'other';
-    latitude: number;
-    longitude: number;
-    description: string;
-    address: string;
 }
 
 export interface SongOfTheWeek {
@@ -292,25 +258,4 @@ export interface StorySlide {
     type: StorySlideType;
     data: StorySlideData;
     caption: string;
-}
-
-// AI Listener Quests
-export type QuestType =
-  | 'listen_time' // Listen for X minutes
-  | 'send_chat_messages' // Send X chat messages
-  | 'cast_votes' // Vote in X polls/takeovers
-  | 'request_song' // Request a song
-  | 'rate_song'; // Like or dislike X songs
-
-export type QuestStatus = 'in_progress' | 'completed';
-
-export interface Quest {
-  id: string;
-  description: string;
-  type: QuestType;
-  target: number;
-  progress: number;
-  reward: number; // points
-  status: QuestStatus;
-  meta?: Record<string, any>; // For extra data, e.g., { genre: '90s' }
 }
