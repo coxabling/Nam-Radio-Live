@@ -1,9 +1,4 @@
-
-
-
 import { GoogleGenAI, Type } from "@google/genai";
-// FIX: Import DedicationRecord for the new feature.
-// FIX: Import SongRating to resolve type errors.
 import { Song, SongRequestRecord, DedicationRecord, MusicEvent, ApiScheduleItem, SongOfTheWeek, ListeningStats, SongRating, StorySlideType, StorySlideData } from '../types';
 
 const getGeminiApiKey = (): string => {
@@ -14,12 +9,25 @@ const getGeminiApiKey = (): string => {
   return apiKey;
 };
 
-// ... existing functions ...
+// Helper to parse JSON from Markdown code blocks often returned by LLMs
+const parseJson = (text: string) => {
+    try {
+        let cleaned = text.trim();
+        // Remove markdown code blocks if present
+        cleaned = cleaned.replace(/^```json\s*/, '').replace(/\s*```$/, '');
+        // Also handle generic code blocks
+        cleaned = cleaned.replace(/^```\s*/, '').replace(/\s*```$/, '');
+        return JSON.parse(cleaned);
+    } catch (e) {
+        console.error("Failed to parse JSON", e, text);
+        throw new Error("Invalid JSON response from AI");
+    }
+}
+
 export const getDjConfirmation = async (songTitle: string, artistName: string, userName:string): Promise<string> => {
   try {
     const ai = new GoogleGenAI({ apiKey: getGeminiApiKey() });
     const prompt = `You are a cool and charismatic radio DJ for a modern online station called "Nam Radio Live". A listener named ${userName} just requested the song "${songTitle}" by "${artistName}". Write a short, creative, and exciting confirmation message for them (2-3 sentences). Mention the song and their name. Your tone should be friendly and energetic.`;
-    // FIX: Corrected model name from 'gem-2.5-flash' to 'gemini-2.5-flash'
     const response = await ai.models.generateContent({ model: 'gemini-2.5-flash', contents: prompt });
     return response.text;
   } catch (error) {
@@ -55,7 +63,6 @@ export const generateDjChitchat = async (recentlyPlayed: Song[]): Promise<string
     }
 };
 
-// FIX: Add missing getSongFunFact function.
 export const getSongFunFact = async (song: Song): Promise<string> => {
   try {
     const ai = new GoogleGenAI({ apiKey: getGeminiApiKey() });
@@ -205,7 +212,7 @@ export const generateTriviaQuestion = async (song: Song): Promise<{ question: st
   const prompt = `You are a radio DJ hosting a "Song Sleuth" trivia game. The song is "${song.title}" by ${song.artist}. 
   Create a clever, interesting, and verifiable trivia question about this song, its artist, or its history.
   The answer should be concise (a few words at most).
-  Return this as a JSON object with "question" and "answer" keys.`;
+  Return this as a valid JSON object with "question" and "answer" keys. Do NOT use markdown code blocks.`;
 
   try {
     const response = await ai.models.generateContent({
@@ -213,24 +220,12 @@ export const generateTriviaQuestion = async (song: Song): Promise<{ question: st
       contents: prompt,
       config: {
         tools: [{googleSearch: {}}],
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            question: { type: Type.STRING },
-            answer: { type: Type.STRING },
-          },
-          required: ["question", "answer"],
-        },
+        // Note: responseMimeType is NOT supported with googleSearch tools in the current API version,
+        // so we must parse the text manually.
       },
     });
 
-    const jsonText = response.text.trim();
-    const trivia = JSON.parse(jsonText);
-    if (!trivia.question || !trivia.answer) {
-      throw new Error("AI returned incomplete trivia data.");
-    }
-    return trivia as { question: string; answer: string };
+    return parseJson(response.text);
 
   } catch (error) {
     console.error("Error generating trivia question:", error);
@@ -281,7 +276,6 @@ export const generateDailyRewind = async (
     }
 };
 
-// FIX: Add new function to generate dedication shoutouts.
 export const generateDedicationShoutout = async (dedication: DedicationRecord): Promise<string> => {
     try {
         const ai = new GoogleGenAI({ apiKey: getGeminiApiKey() });
@@ -307,38 +301,23 @@ To do this, you must search across a diverse range of web sources. Do not rely o
 - Official venue websites
 - Artist social media pages
 
-For each event found, provide the following details. Prioritize official sources for accuracy. Also, find a publicly accessible URL for a relevant promotional image (like a poster, artist photo, or venue picture). Return this as a structured JSON array.`;
+For each event found, provide the following details. Prioritize official sources for accuracy. Also, find a publicly accessible URL for a relevant promotional image (like a poster, artist photo, or venue picture).
+Return this as a structured JSON array string. Each object should have keys: eventName, date, venue, description, sourceUrl, imageUrl. Do NOT use markdown code blocks.`;
 
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash',
       contents: prompt,
       config: {
         tools: [{googleSearch: {}}],
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.ARRAY,
-          items: {
-            type: Type.OBJECT,
-            properties: {
-              eventName: { type: Type.STRING, description: "The name of the event." },
-              date: { type: Type.STRING, description: "The date of the event." },
-              venue: { type: Type.STRING, description: "The venue where the event takes place." },
-              description: { type: Type.STRING, description: "A brief description of the event." },
-              sourceUrl: { type: Type.STRING, description: "The direct URL to the source of the event information." },
-              imageUrl: { type: Type.STRING, description: "A publicly accessible URL for a relevant promotional image." }
-            },
-            required: ["eventName", "date", "venue", "description", "sourceUrl"],
-          },
-        },
+        // responseMimeType: "application/json" cannot be used with tools.
       },
     });
 
-    const jsonText = response.text.trim();
-    const events = JSON.parse(jsonText);
-    return events as MusicEvent[];
+    return parseJson(response.text) as MusicEvent[];
   } catch (error) {
     console.error("Error fetching local music events:", error);
-    throw new Error("Could not fetch local events at this time. Please try again later.");
+    // Return empty list rather than throwing to avoid breaking the UI
+    return [];
   }
 };
 
@@ -379,28 +358,18 @@ export const getSongOfTheWeek = async (
 
     prompt += `\n\nUse this listener data, along with your knowledge of general music trends (feel free to use web search), to select ONE song that would be a perfect fit for our "Song of the Week". It could be one of the songs from the lists, or a different song that matches the vibe.
 
-    After selecting the song, provide a short, exciting, one-paragraph description explaining why this song is a must-listen for our audience.`;
+    After selecting the song, provide a short, exciting, one-paragraph description explaining why this song is a must-listen for our audience.
+    Return the result as a JSON object with keys: title, artist, description. Do NOT use markdown code blocks.`;
 
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash',
       contents: prompt,
       config: {
         tools: [{googleSearch: {}}],
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            title: { type: Type.STRING, description: "The title of the song." },
-            artist: { type: Type.STRING, description: "The name of the artist or band." },
-            description: { type: Type.STRING, description: "The short, exciting description of the song." }
-          },
-          required: ["title", "artist", "description"],
-        },
       },
     });
 
-    const jsonText = response.text.trim();
-    return JSON.parse(jsonText) as SongOfTheWeek;
+    return parseJson(response.text) as SongOfTheWeek;
   } catch (error) {
     console.error("Error fetching Song of the Week:", error);
     throw new Error("DJ Alex is busy digging in the crates... couldn't pick a song right now. Please try again later.");
