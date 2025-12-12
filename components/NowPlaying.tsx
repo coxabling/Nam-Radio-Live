@@ -93,10 +93,10 @@ const NowPlaying: React.FC<NowPlayingProps> = ({ liveNowPlaying, recentlyPlayed,
         )}
         <iframe
           title="Live Radio Player"
-          src="https://music-station.live/public/namradio/embed?autoplay=1&layout=large&rounded=1&allow_popup=1&continuous=1"
+          src="https://music-station.live/public/namradio/embed?autoplay=1&layout=compact&rounded=1&allow_popup=1&continuous=1"
           frameBorder="0"
           allowTransparency={true}
-          style={{ width: '100%', height: '150px', border: 0, borderRadius: '12px' }}
+          style={{ width: '100%', minHeight: '150px', height: '150px', border: 0, borderRadius: '12px' }}
         ></iframe>
         <div className="mt-6">
           <h3 className="text-lg font-semibold mb-3 text-slate-300">Share The Vibe</h3>
