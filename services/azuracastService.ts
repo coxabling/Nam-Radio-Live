@@ -32,6 +32,9 @@ interface AzuraScheduleItem {
     name: string;
     description: string;
     is_now: boolean;
+    // AzuraCast also provides ISO strings, but timestamps are reliable
+    start: string;
+    end: string;
 }
 
 // Function to map AzuraCast schedule to our app's type
@@ -68,10 +71,11 @@ const apiHeaders = {
 
 /**
  * Fetches the live schedule from AzuraCast.
+ * Corresponds to: GET https://music-station.live/api/station/namradio/schedule
  */
 export const getSchedule = async (): Promise<ApiScheduleItem[]> => {
     try {
-        const response = await fetch(`${AZURACAST_BASE_URL}/api/station/${AZURACAST_STATION_ID}/schedule?_=${new Date().getTime()}`, {
+        const response = await fetch(`${AZURACAST_BASE_URL}/api/station/${AZURACAST_STATION_ID}/schedule`, {
             headers: apiHeaders
         });
         if (!response.ok) {
@@ -90,7 +94,7 @@ export const getSchedule = async (): Promise<ApiScheduleItem[]> => {
  */
 export const getNowPlaying = async (): Promise<{ currentSong: Song, history: Song[], showName: string | null }> => {
     try {
-        // Cache busting to ensure fresh data
+        // Cache busting to ensure fresh data for now playing
         const response = await fetch(`${AZURACAST_BASE_URL}/api/nowplaying/${AZURACAST_STATION_ID}?_=${new Date().getTime()}`, {
             headers: apiHeaders
         });
