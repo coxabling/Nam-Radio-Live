@@ -12,7 +12,15 @@ interface AzuraNowPlaying {
   listeners: AzuraListeners;
   now_playing: {
     song: AzuraNowPlayingSong;
-    playlist: string; // This is the show name
+    playlist?: string; // This is the show name or playlist name
+    is_request: boolean;
+    elapsed: number;
+    duration: number;
+  };
+  live: {
+      is_live: boolean;
+      streamer_name: string;
+      broadcast_title: string;
   };
   song_history: { song: AzuraNowPlayingSong }[];
 }
@@ -58,7 +66,7 @@ const getFallbackCurrentShow = (): string => {
  */
 export const getSchedule = async (): Promise<ApiScheduleItem[]> => {
     try {
-        const response = await fetch(`${AZURACAST_BASE_URL}/api/station/${AZURACAST_STATION_ID}/schedule`);
+        const response = await fetch(`${AZURACAST_BASE_URL}/api/station/${AZURACAST_STATION_ID}/schedule?_=${new Date().getTime()}`);
         if (!response.ok) {
             throw new Error(`Network response was not ok: ${response.statusText}`);
         }
@@ -75,7 +83,8 @@ export const getSchedule = async (): Promise<ApiScheduleItem[]> => {
  */
 export const getNowPlaying = async (): Promise<{ currentSong: Song, history: Song[], showName: string | null }> => {
     try {
-        const response = await fetch(`${AZURACAST_BASE_URL}/api/nowplaying/${AZURACAST_STATION_ID}`);
+        // Cache busting to ensure fresh data
+        const response = await fetch(`${AZURACAST_BASE_URL}/api/nowplaying/${AZURACAST_STATION_ID}?_=${new Date().getTime()}`);
         if (!response.ok) {
             throw new Error(`Network response was not ok: ${response.statusText}`);
         }
@@ -92,7 +101,13 @@ export const getNowPlaying = async (): Promise<{ currentSong: Song, history: Son
             artUrl: item.song.art,
         }));
         
-        return { currentSong, history, showName: data.now_playing.playlist || null };
+        // Determine show name: prioritizing live broadcast title, then streamer name, then playlist
+        let showName = data.now_playing.playlist || null;
+        if (data.live && data.live.is_live) {
+            showName = data.live.broadcast_title || data.live.streamer_name || showName;
+        }
+
+        return { currentSong, history, showName };
 
     } catch (error) {
         console.warn("Using fallback now-playing data due to API error:", error);
@@ -112,7 +127,7 @@ export const getNowPlaying = async (): Promise<{ currentSong: Song, history: Son
  */
 export const getRequestableSongs = async (): Promise<RequestableSong[]> => {
     try {
-        const response = await fetch(`${AZURACAST_BASE_URL}/api/station/${AZURACAST_STATION_ID}/requests`);
+        const response = await fetch(`${AZURACAST_BASE_URL}/api/station/${AZURACAST_STATION_ID}/requests?_=${new Date().getTime()}`);
         if (!response.ok) {
             throw new Error(`Network response was not ok: ${response.statusText}`);
         }
@@ -149,7 +164,7 @@ export const submitSongRequest = async (requestId: string): Promise<{ success: b
 
 export const getLiveStats = async (): Promise<AzuraListeners> => {
     try {
-        const response = await fetch(`${AZURACAST_BASE_URL}/api/nowplaying/${AZURACAST_STATION_ID}`);
+        const response = await fetch(`${AZURACAST_BASE_URL}/api/nowplaying/${AZURACAST_STATION_ID}?_=${new Date().getTime()}`);
         if (!response.ok) throw new Error(`Network response was not ok`);
         const data: AzuraNowPlaying = await response.json();
         return data.listeners;
@@ -161,7 +176,7 @@ export const getLiveStats = async (): Promise<AzuraListeners> => {
 
 export const getListenerReport = async (): Promise<AzuraListenersReport> => {
     try {
-        const response = await fetch(`${AZURACAST_BASE_URL}/api/station/${AZURACAST_STATION_ID}/listeners`);
+        const response = await fetch(`${AZURACAST_BASE_URL}/api/station/${AZURACAST_STATION_ID}/listeners?_=${new Date().getTime()}`);
         if (!response.ok) throw new Error(`Network response was not ok`);
         return await response.json();
     } catch (error) {
@@ -175,7 +190,7 @@ export const getListenerReport = async (): Promise<AzuraListenersReport> => {
 
 export const getPerformanceReport = async (): Promise<AzuraPerformanceReportItem[]> => {
     try {
-        const response = await fetch(`${AZURACAST_BASE_URL}/api/station/${AZURACAST_STATION_ID}/performance`);
+        const response = await fetch(`${AZURACAST_BASE_URL}/api/station/${AZURACAST_STATION_ID}/performance?_=${new Date().getTime()}`);
         if (!response.ok) throw new Error(`Network response was not ok`);
         const data: AzuraPerformanceReportItem[] = await response.json();
         // Return top 10 by play count
@@ -197,7 +212,7 @@ export const getPerformanceReport = async (): Promise<AzuraPerformanceReportItem
 
 export const getSongHistory = async (): Promise<AzuraHistoryItem[]> => {
     try {
-        const response = await fetch(`${AZURACAST_BASE_URL}/api/station/${AZURACAST_STATION_ID}/history`);
+        const response = await fetch(`${AZURACAST_BASE_URL}/api/station/${AZURACAST_STATION_ID}/history?_=${new Date().getTime()}`);
         if (!response.ok) throw new Error(`Network response was not ok`);
         // Return last 10 songs
         const data: AzuraHistoryItem[] = await response.json();
