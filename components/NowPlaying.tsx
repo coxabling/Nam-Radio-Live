@@ -93,7 +93,7 @@ const NowPlaying: React.FC<NowPlayingProps> = ({ liveNowPlaying, recentlyPlayed,
         )}
         <iframe
           title="Live Radio Player"
-          src="https://music-station.live/public/namradio/embed?layout=large&allow_popup=1&continuous=1"
+          src="https://music-station.live/public/namradio/embed?autoplay=1&layout=large&rounded=1&allow_popup=1&continuous=1"
           frameBorder="0"
           allowTransparency={true}
           style={{ width: '100%', height: '150px', border: 0, borderRadius: '12px' }}
