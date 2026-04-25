@@ -63,7 +63,7 @@ const LoginModal: React.FC<LoginModalProps> = ({ onClose, onLogin, onSignUp }) =
       if (mode === 'forgot') {
           return (
               <>
-                  <h2 className="text-2xl font-bold mb-6 tracking-wide text-amber-300 text-center">
+                  <h2 className="text-xl font-bold mb-6 tracking-tight text-slate-200 text-center uppercase tracking-widest">
                       Reset Password
                   </h2>
                   <div className="text-center text-slate-300 bg-slate-800/50 p-4 rounded-lg">
@@ -79,8 +79,8 @@ const LoginModal: React.FC<LoginModalProps> = ({ onClose, onLogin, onSignUp }) =
 
       return (
           <>
-            <h2 className="text-2xl font-bold mb-6 tracking-wide text-amber-300 text-center">
-                {mode === 'signup' ? 'Create an Account' : 'Login to Nam Radio Live'}
+            <h2 className="text-xl font-bold mb-6 tracking-tight text-slate-200 text-center uppercase tracking-widest">
+                {mode === 'signup' ? 'Create Account' : 'Welcome Back'}
             </h2>
 
             <form onSubmit={handleSubmit} className="space-y-4">
@@ -128,6 +128,10 @@ const LoginModal: React.FC<LoginModalProps> = ({ onClose, onLogin, onSignUp }) =
       role="dialog"
     >
       <div className="relative bg-slate-900/80 backdrop-blur-xl rounded-2xl p-8 shadow-lg border border-slate-700/50 w-full max-w-md">
+        <div className="flex flex-col items-center mb-6">
+            <img src="/logo192.svg" alt="Nam Radio Live Logo" className="w-20 h-20 mb-4 shadow-xl rounded-xl" />
+            <p className="text-sm font-bold tracking-widest text-amber-500 uppercase">Nam Radio Live</p>
+        </div>
         <button
           onClick={onClose}
           className="absolute top-4 right-4 text-slate-400 hover:text-white transition-colors"

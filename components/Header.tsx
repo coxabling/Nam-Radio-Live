@@ -67,9 +67,12 @@ const Header: React.FC<HeaderProps> = ({ isLoggedIn, currentUser, currentShowNam
     <header className="sticky top-0 z-20 py-4 px-4 md:px-8 shadow-lg bg-slate-900/60 backdrop-blur-lg border-b border-slate-700/50">
       <div className="container mx-auto flex justify-between items-center">
         <div className="flex items-center">
-           <a href="#/" onClick={handleHomeClick} className="flex items-center gap-3">
-             <img src="/logo192.svg" alt="Nam Radio Live Logo" className="w-12 h-12" />
-             <span className="text-xl font-bold tracking-wider text-white hidden sm:inline">Nam Radio Live</span>
+           <a href="#/" onClick={handleHomeClick} className="flex items-center gap-3 group">
+             <div className="relative">
+               <img src="/logo192.svg" alt="Nam Radio Live Logo" className="w-12 h-12 transition-transform group-hover:scale-110" />
+               <div className="absolute inset-0 bg-amber-500/20 blur-xl rounded-full -z-10 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+             </div>
+             <span className="text-xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-amber-200 via-amber-400 to-amber-600 hidden sm:inline">Nam Radio Live</span>
            </a>
         </div>
         <nav className="hidden md:flex items-center gap-2">
