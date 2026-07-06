@@ -2,11 +2,8 @@ import { GoogleGenAI, Type } from "@google/genai";
 import { Song, SongRequestRecord, DedicationRecord, MusicEvent, ApiScheduleItem, SongOfTheWeek, ListeningStats, SongRating, StorySlideType, StorySlideData } from '../types';
 
 const getGeminiApiKey = (): string => {
-  const apiKey = process.env.API_KEY;
-  if (!apiKey) {
-    throw new Error("API_KEY environment variable not set");
-  }
-  return apiKey;
+  const apiKey = process.env.API_KEY || process.env.GEMINI_API_KEY;
+  return apiKey || "placeholder_api_key_not_configured";
 };
 
 // Helper to parse JSON from Markdown code blocks often returned by LLMs

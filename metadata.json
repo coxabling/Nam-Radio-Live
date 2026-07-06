@@ -2,5 +2,5 @@
   "name": "Nam Radio Live",
   "description": "Nam Radio exists to reduce inequalities for emerging artists within the entertainment industry to increase opportunities on mainstream platforms by providing a platform that is less judgemental making their recognition easy and valuable.",
   "requestFramePermissions": [],
-  "majorCapabilities": []
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

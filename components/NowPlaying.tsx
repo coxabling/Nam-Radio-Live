@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { motion } from 'motion/react';
+import { ThumbsUp, ThumbsDown, Radio, Sparkles, History, Music, ExternalLink, MessageSquare } from 'lucide-react';
 import { getSongFunFact } from '../services/geminiService';
 import { Song, ApiScheduleItem, Vibe, VibeType, SongRating } from '../types';
 import VibeCheck from './VibeCheck';
@@ -34,7 +36,10 @@ const ThumbsDownIcon = ({ filled }: { filled: boolean }) => (<svg xmlns="http://
 
 const NowPlaying: React.FC<NowPlayingProps> = ({ liveNowPlaying, recentlyPlayed, vibes, userVibe, onVibeVote, nowPlayingError, likedSongs, dislikedSongs, onSongRating, isLoggedIn }) => {
   const shareUrl = window.location.href;
-  const shareText = `I'm listening to ${liveNowPlaying.song.title} on Nam Radio Live! Tune in! 🎶`;
+  const isSongLoaded = liveNowPlaying.song && liveNowPlaying.song.title !== 'Loading...' && liveNowPlaying.song.title !== '';
+  const shareText = isSongLoaded 
+    ? `I'm listening to "${liveNowPlaying.song.title}" by ${liveNowPlaying.song.artist} on Nam Radio Live! 📻🎶 Join the vibe here:`
+    : `Tuning into Nam Radio Live! 📻🎶 Join the vibe now:`;
   
   const twitterShareUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(shareUrl)}`;
   const facebookShareUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`;
@@ -82,165 +87,231 @@ const NowPlaying: React.FC<NowPlayingProps> = ({ liveNowPlaying, recentlyPlayed,
   );
 
   return (
-    <section className="bg-slate-900/50 backdrop-blur-xl rounded-2xl p-6 md:p-8 shadow-lg border border-slate-700/50 space-y-8">
+    <motion.section 
+      initial={{ opacity: 0, y: 15 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4 }}
+      className="bg-slate-950/30 backdrop-blur-2xl rounded-2xl p-6 md:p-8 shadow-2xl border border-slate-800/80 space-y-8"
+    >
       <div>
-        <h2 className="text-2xl font-bold mb-4 tracking-wide text-amber-300">Live Player</h2>
+        <div className="flex items-center gap-3 mb-4">
+          <div className="p-2 bg-amber-500/10 rounded-lg text-amber-400 border border-amber-500/20">
+            <Radio className="w-5 h-5 animate-pulse" />
+          </div>
+          <h2 className="text-2xl font-bold tracking-tight font-display text-white">Live Player</h2>
+        </div>
+
         {nowPlayingError && (
-            <div className="mb-4 p-3 bg-red-500/10 text-red-400 text-sm rounded-lg border border-red-500/20 flex items-center gap-3">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 3.001-1.742 3.001H4.42c-1.53 0-2.493-1.667-1.743-3.001l5.58-9.92zM10 13a1 1 0 110-2 1 1 0 010 2zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" /></svg>
-                <span>{nowPlayingError}</span>
-            </div>
+          <div className="mb-4 p-3.5 bg-red-500/10 text-red-400 text-sm rounded-xl border border-red-500/20 flex items-center gap-3">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 3.001-1.742 3.001H4.42c-1.53 0-2.493-1.667-1.743-3.001l5.58-9.92zM10 13a1 1 0 110-2 1 1 0 010 2zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" /></svg>
+            <span>{nowPlayingError}</span>
+          </div>
         )}
-        <iframe
-          title="Live Radio Player"
-          src="https://music-station.live/public/namradio/embed?autoplay=1&layout=compact&rounded=1&allow_popup=1&continuous=1"
-          frameBorder="0"
-          allowTransparency={true}
-          style={{ width: '100%', minHeight: '150px', height: '150px', border: 0, borderRadius: '12px' }}
-        ></iframe>
-        <div className="mt-6">
-          <h3 className="text-lg font-semibold mb-3 text-slate-300">Share The Vibe</h3>
-          <div className="flex items-center gap-3">
-            <a href={twitterShareUrl} target="_blank" rel="noopener noreferrer" aria-label="Share on Twitter" className="p-3 bg-slate-800 hover:bg-slate-700 rounded-full transition-all text-white hover:scale-110">
+
+        <div className="relative rounded-2xl overflow-hidden border border-slate-800/80 bg-slate-950/40 p-1 shadow-inner">
+          <iframe
+            title="Live Radio Player"
+            src="https://music-station.live/public/namradio/embed?autoplay=1&layout=compact&rounded=1&allow_popup=1&continuous=1"
+            frameBorder="0"
+            allowTransparency={true}
+            style={{ width: '100%', minHeight: '150px', height: '150px', border: 0, borderRadius: '12px' }}
+          ></iframe>
+        </div>
+        
+        <div className="mt-5 bg-slate-900/40 rounded-xl p-4 border border-slate-800/40">
+          <h3 className="text-sm font-semibold mb-3 text-slate-400 uppercase tracking-widest font-mono">Broadcast Feed</h3>
+          <div className="flex items-center gap-2.5">
+            <a href={twitterShareUrl} target="_blank" rel="noopener noreferrer" aria-label="Share on Twitter" className="p-2.5 bg-slate-950/60 border border-slate-800 hover:border-slate-700 hover:bg-slate-900 rounded-lg transition-all text-slate-300 hover:text-white hover:scale-105">
               <TwitterIcon />
             </a>
-            <a href={facebookShareUrl} target="_blank" rel="noopener noreferrer" aria-label="Share on Facebook" className="p-3 bg-slate-800 hover:bg-slate-700 rounded-full transition-all text-white hover:scale-110">
+            <a href={facebookShareUrl} target="_blank" rel="noopener noreferrer" aria-label="Share on Facebook" className="p-2.5 bg-slate-950/60 border border-slate-800 hover:border-slate-700 hover:bg-slate-900 rounded-lg transition-all text-slate-300 hover:text-white hover:scale-105">
               <FacebookIcon />
             </a>
-            <a href={whatsappShareUrl} target="_blank" rel="noopener noreferrer" aria-label="Share on WhatsApp" className="p-3 bg-slate-800 hover:bg-slate-700 rounded-full transition-all text-white hover:scale-110">
+            <a href={whatsappShareUrl} target="_blank" rel="noopener noreferrer" aria-label="Share on WhatsApp" className="p-2.5 bg-slate-950/60 border border-slate-800 hover:border-slate-700 hover:bg-slate-900 rounded-lg transition-all text-slate-300 hover:text-white hover:scale-105">
               <WhatsAppIcon />
             </a>
           </div>
         </div>
       </div>
-       <div className="border-t border-slate-700/50 pt-6">
-        <h2 className="text-2xl font-bold mb-4 tracking-wide text-amber-300">More About The Music</h2>
+
+      <div className="border-t border-slate-800/80 pt-6">
+        <div className="flex items-center gap-2.5 mb-6">
+          <div className="p-1.5 bg-amber-500/10 rounded-lg text-amber-400 border border-amber-500/20">
+            <Music className="w-5 h-5" />
+          </div>
+          <h2 className="text-2xl font-bold tracking-tight font-display text-white">More About The Music</h2>
+        </div>
+
         <div className="space-y-6">
-            <div className="bg-slate-800/50 rounded-lg p-4 flex flex-col sm:flex-row items-center sm:items-start gap-4">
-              {liveNowPlaying.song.artUrl ? (
-                <img src={liveNowPlaying.song.artUrl} alt={`Album art for ${liveNowPlaying.song.title}`} className="w-24 h-24 rounded-lg object-cover shadow-lg flex-shrink-0" />
-              ) : (
-                <MusicArtPlaceholder />
-              )}
-              <div className="text-center sm:text-left flex-grow">
-                <p className="text-sm text-slate-400">Now Playing</p>
-                <p className="font-bold text-lg text-white">{liveNowPlaying.song.title}</p>
-                <p className="text-md text-slate-300">{liveNowPlaying.song.artist}</p>
-                 <div className="mt-4 border-t border-slate-700 pt-3">
-                    <p className="text-xs text-slate-400 mb-2">Find it on:</p>
-                    <div className="flex items-center gap-4">
-                        <a href={youtubeSearchUrl} target="_blank" rel="noopener noreferrer" aria-label="Search on YouTube" className="text-slate-400 hover:text-white transition-all hover:scale-110"><YouTubeIcon/></a>
-                        <a href={spotifySearchUrl} target="_blank" rel="noopener noreferrer" aria-label="Search on Spotify" className="text-slate-400 hover:text-white transition-all hover:scale-110"><SpotifyIcon/></a>
-                        <a href={appleMusicSearchUrl} target="_blank" rel="noopener noreferrer" aria-label="Search on Apple Music" className="text-slate-400 hover:text-white transition-all hover:scale-110"><AppleMusicIcon/></a>
-                    </div>
-                 </div>
-                 <div className="mt-3 pt-3 border-t border-slate-700/50">
-                    {isLoggedIn ? (
-                        <div className="flex items-center gap-2">
-                            <span className="text-xs text-slate-400">Rate this song:</span>
-                            <button 
-                                onClick={() => onSongRating(liveNowPlaying.song, 'like')}
-                                className={`p-2 rounded-full transition-colors ${isCurrentLiked ? 'text-green-400 bg-green-500/20' : 'text-slate-500 hover:text-green-400'}`}
-                                aria-label="Like current song"
-                            >
-                                <ThumbsUpIcon filled={isCurrentLiked} />
-                            </button>
-                            <button 
-                                onClick={() => onSongRating(liveNowPlaying.song, 'dislike')}
-                                className={`p-2 rounded-full transition-colors ${isCurrentDisliked ? 'text-red-400 bg-red-500/20' : 'text-slate-500 hover:text-red-400'}`}
-                                aria-label="Dislike current song"
-                            >
-                                <ThumbsDownIcon filled={isCurrentDisliked} />
-                            </button>
-                        </div>
-                    ) : (
-                        <p className="text-xs text-slate-500">Log in to rate this song.</p>
-                    )}
+          <div className="bg-slate-900/50 rounded-xl p-5 border border-slate-800/40 flex flex-col md:flex-row items-center md:items-start gap-5">
+            {liveNowPlaying.song.artUrl ? (
+              <img src={liveNowPlaying.song.artUrl} alt={`Album art for ${liveNowPlaying.song.title}`} className="w-24 h-24 rounded-xl object-cover shadow-2xl border border-slate-800 flex-shrink-0" />
+            ) : (
+              <MusicArtPlaceholder />
+            )}
+            <div className="text-center md:text-left flex-grow">
+              <p className="text-xs font-mono uppercase text-slate-500 tracking-wider font-semibold">Now Playing</p>
+              <p className="font-extrabold text-xl text-white tracking-tight mt-0.5">{liveNowPlaying.song.title}</p>
+              <p className="text-md font-medium text-slate-300 mt-0.5">{liveNowPlaying.song.artist}</p>
+              
+              <div className="mt-4 border-t border-slate-800/80 pt-4 flex flex-wrap items-center justify-between gap-4">
+                <div>
+                  <p className="text-xs text-slate-500 mb-2 font-medium uppercase tracking-wider font-mono">Stream On</p>
+                  <div className="flex items-center gap-3">
+                    <a href={youtubeSearchUrl} target="_blank" rel="noopener noreferrer" aria-label="Search on YouTube" className="text-slate-400 hover:text-white transition-all hover:scale-110" title="Find on YouTube"><YouTubeIcon/></a>
+                    <a href={spotifySearchUrl} target="_blank" rel="noopener noreferrer" aria-label="Search on Spotify" className="text-slate-400 hover:text-white transition-all hover:scale-110" title="Find on Spotify"><SpotifyIcon/></a>
+                    <a href={appleMusicSearchUrl} target="_blank" rel="noopener noreferrer" aria-label="Search on Apple Music" className="text-slate-400 hover:text-white transition-all hover:scale-110" title="Find on Apple Music"><AppleMusicIcon/></a>
+                  </div>
+                </div>
+                
+                <div className="flex flex-col items-center md:items-end">
+                  <p className="text-xs text-slate-500 mb-2 font-medium uppercase tracking-wider font-mono">Share This Song</p>
+                  <div className="flex items-center gap-2">
+                    <a 
+                      href={twitterShareUrl} 
+                      target="_blank" 
+                      rel="noopener noreferrer" 
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-950 border border-slate-800 hover:border-slate-700 text-xs font-semibold rounded-lg text-slate-300 transition-all duration-200 shadow-md"
+                    >
+                      <TwitterIcon />
+                      <span>Tweet</span>
+                    </a>
+                    <a 
+                      href={whatsappShareUrl} 
+                      target="_blank" 
+                      rel="noopener noreferrer" 
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-950 border border-slate-800 hover:border-slate-700 text-xs font-semibold rounded-lg text-slate-300 transition-all duration-200 shadow-md"
+                    >
+                      <WhatsAppIcon />
+                      <span>WhatsApp</span>
+                    </a>
+                  </div>
                 </div>
               </div>
-              <button 
-                onClick={handleGetFunFact}
-                disabled={isLoadingFact}
-                className="w-full mt-4 sm:mt-0 sm:w-auto px-4 py-2 bg-amber-500 text-white font-semibold rounded-lg shadow-md hover:bg-amber-600 transition-all duration-200 disabled:bg-slate-600 disabled:cursor-not-allowed flex-shrink-0"
-              >
-                {isLoadingFact ? 'Discovering...' : 'Discover a Fun Fact'}
-              </button>
-            </div>
 
-            <VibeCheck vibes={vibes} selectedVibe={userVibe} onVote={onVibeVote} />
+              <div className="mt-4 pt-3 border-t border-slate-800/80">
+                {isLoggedIn ? (
+                  <div className="flex items-center gap-2.5">
+                    <span className="text-xs text-slate-400 font-medium">Rate:</span>
+                    <button 
+                      onClick={() => onSongRating(liveNowPlaying.song, 'like')}
+                      className={`p-2 rounded-lg transition-all ${isCurrentLiked ? 'text-green-400 bg-green-500/10 border border-green-500/20' : 'text-slate-400 hover:text-green-400 hover:bg-slate-800/50'}`}
+                      aria-label="Like current song"
+                    >
+                      <ThumbsUp className="w-4 h-4" />
+                    </button>
+                    <button 
+                      onClick={() => onSongRating(liveNowPlaying.song, 'dislike')}
+                      className={`p-2 rounded-lg transition-all ${isCurrentDisliked ? 'text-red-400 bg-red-500/10 border border-red-500/20' : 'text-slate-400 hover:text-red-400 hover:bg-slate-800/50'}`}
+                      aria-label="Dislike current song"
+                    >
+                      <ThumbsDown className="w-4 h-4" />
+                    </button>
+                  </div>
+                ) : (
+                  <p className="text-xs text-slate-500">Log in to rate this track & unlock features.</p>
+                )}
+              </div>
+            </div>
+            
+            <button 
+              onClick={handleGetFunFact}
+              disabled={isLoadingFact}
+              className="w-full md:w-auto px-4 py-2.5 bg-gradient-to-r from-amber-500 to-amber-600 text-slate-950 font-bold rounded-xl shadow-lg hover:from-amber-400 hover:to-amber-500 transition-all duration-200 disabled:bg-slate-800 disabled:text-slate-500 disabled:cursor-not-allowed flex items-center justify-center gap-2 flex-shrink-0"
+            >
+              <Sparkles className="w-4 h-4" />
+              <span>{isLoadingFact ? 'Discovering...' : 'Song Fact'}</span>
+            </button>
+          </div>
+
+          <VibeCheck vibes={vibes} selectedVibe={userVibe} onVote={onVibeVote} />
         </div>
         
         {isLoadingFact && (
-          <div className="flex justify-center items-center h-24">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-amber-300"></div>
+          <div className="flex justify-center items-center h-20 mt-4">
+            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-amber-400"></div>
           </div>
         )}
-        {factError && <p className="mt-4 text-center text-red-400">{factError}</p>}
+        {factError && <p className="mt-4 text-center text-sm text-red-400 bg-red-500/5 p-3 rounded-xl border border-red-500/10">{factError}</p>}
         {funFact && (
-           <div className="mt-4 p-4 bg-amber-500/10 border-l-4 border-amber-400 rounded-r-lg prose prose-invert">
-             <p className="text-slate-300 italic">
-              <span className="font-bold text-amber-300 not-italic">DJ Alex says:</span> "{funFact}"
-             </p>
-           </div>
+          <motion.div 
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mt-4 p-4.5 bg-amber-500/5 border-l-2 border-amber-400 rounded-r-xl prose prose-invert"
+          >
+            <p className="text-slate-300 italic text-sm leading-relaxed">
+              <span className="font-bold text-amber-400 not-italic uppercase tracking-wider text-xs block mb-1">💡 DJ AI Trivia</span> "{funFact}"
+            </p>
+          </motion.div>
         )}
       </div>
 
-      <div>
-        <h2 className="text-2xl font-bold mb-4 tracking-wide text-amber-300">Recently Played</h2>
-        <div className="bg-slate-800/50 rounded-lg p-4 max-h-96 overflow-y-auto">
-            {!isLoggedIn && (
-                <div className="text-center text-xs text-slate-400 mb-2 p-2 bg-slate-900/50 rounded-md">
-                    Log in to rate songs and get better recommendations!
-                </div>
-            )}
-            {recentlyPlayed.length > 0 ? (
-                <ul className="space-y-1">
-                    {recentlyPlayed.map((song, index) => {
-                        const songId = `${song.title} - ${song.artist}`;
-                        const isLiked = likedSongs.some(s => s.id === songId);
-                        const isDisliked = dislikedSongs.some(s => s.id === songId);
+      <div className="border-t border-slate-800/80 pt-6">
+        <div className="flex items-center gap-2.5 mb-4">
+          <div className="p-1.5 bg-amber-500/10 rounded-lg text-amber-400 border border-amber-500/20">
+            <History className="w-5 h-5" />
+          </div>
+          <h2 className="text-2xl font-bold tracking-tight font-display text-white">Recently Played</h2>
+        </div>
 
-                        return (
-                            <li key={`${song.title}-${index}`} className="flex items-center gap-3 p-2 hover:bg-slate-700/50 rounded-md transition-colors">
-                                {song.artUrl ? (
-                                    <img src={song.artUrl} alt={song.title} className="w-10 h-10 rounded-md object-cover flex-shrink-0" />
-                                ) : (
-                                    <div className="w-10 h-10 bg-slate-700/50 flex items-center justify-center rounded-md flex-shrink-0">
-                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2z" /></svg>
-                                    </div>
-                                )}
-                                <div className="flex-grow overflow-hidden">
-                                    <p className="font-semibold text-white truncate">{song.title}</p>
-                                    <p className="text-sm text-slate-400 truncate">{song.artist}</p>
-                                </div>
-                                {isLoggedIn && (
-                                    <div className="flex items-center gap-2">
-                                        <button 
-                                            onClick={() => onSongRating(song, 'like')}
-                                            className={`p-2 rounded-full transition-colors ${isLiked ? 'text-green-400 bg-green-500/20' : 'text-slate-500 hover:text-green-400'}`}
-                                            aria-label="Like song"
-                                        >
-                                            <ThumbsUpIcon filled={isLiked} />
-                                        </button>
-                                        <button 
-                                            onClick={() => onSongRating(song, 'dislike')}
-                                            className={`p-2 rounded-full transition-colors ${isDisliked ? 'text-red-400 bg-red-500/20' : 'text-slate-500 hover:text-red-400'}`}
-                                            aria-label="Dislike song"
-                                        >
-                                            <ThumbsDownIcon filled={isDisliked} />
-                                        </button>
-                                    </div>
-                                )}
-                            </li>
-                        );
-                    })}
-                </ul>
-            ) : (
-                <p className="text-slate-400 text-center py-8">Loading recently played songs...</p>
-            )}
+        <div className="bg-slate-900/40 rounded-xl p-3 border border-slate-800/40">
+          {!isLoggedIn && (
+            <div className="text-center text-xs text-slate-400 mb-3 p-2.5 bg-slate-950/60 rounded-lg border border-slate-850">
+              🔒 Log in to rate songs and build your personalized music station!
+            </div>
+          )}
+          {recentlyPlayed.length > 0 ? (
+            <ul className="space-y-1.5 max-h-80 overflow-y-auto pr-1">
+              {recentlyPlayed.map((song, index) => {
+                const songId = `${song.title} - ${song.artist}`;
+                const isLiked = likedSongs.some(s => s.id === songId);
+                const isDisliked = dislikedSongs.some(s => s.id === songId);
+
+                return (
+                  <motion.li 
+                    key={`${song.title}-${index}`} 
+                    whileHover={{ x: 2 }}
+                    className="flex items-center gap-3 p-2 hover:bg-slate-900/60 rounded-lg transition-all"
+                  >
+                    {song.artUrl ? (
+                      <img src={song.artUrl} alt={song.title} className="w-11 h-11 rounded-lg object-cover flex-shrink-0 shadow-md border border-slate-800" />
+                    ) : (
+                      <div className="w-11 h-11 bg-slate-950 border border-slate-800 flex items-center justify-center rounded-lg flex-shrink-0">
+                        <Music className="h-5 w-5 text-slate-500" />
+                      </div>
+                    )}
+                    <div className="flex-grow overflow-hidden">
+                      <p className="font-bold text-slate-200 text-sm truncate">{song.title}</p>
+                      <p className="text-xs text-slate-400 truncate mt-0.5">{song.artist}</p>
+                    </div>
+                    {isLoggedIn && (
+                      <div className="flex items-center gap-1 flex-shrink-0">
+                        <button 
+                          onClick={() => onSongRating(song, 'like')}
+                          className={`p-1.5 rounded-md transition-colors ${isLiked ? 'text-green-400 bg-green-500/10' : 'text-slate-500 hover:text-green-400 hover:bg-slate-800/40'}`}
+                          aria-label="Like song"
+                        >
+                          <ThumbsUp className="w-3.5 h-3.5" />
+                        </button>
+                        <button 
+                          onClick={() => onSongRating(song, 'dislike')}
+                          className={`p-1.5 rounded-md transition-colors ${isDisliked ? 'text-red-400 bg-red-500/10' : 'text-slate-500 hover:text-red-400 hover:bg-slate-800/40'}`}
+                          aria-label="Dislike song"
+                        >
+                          <ThumbsDown className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    )}
+                  </motion.li>
+                );
+              })}
+            </ul>
+          ) : (
+            <p className="text-slate-500 text-center py-10 text-sm">Waiting for broadcast feed stream history...</p>
+          )}
         </div>
       </div>
-    </section>
+    </motion.section>
   );
 };
 

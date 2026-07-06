@@ -836,7 +836,7 @@ const App: React.FC = () => {
   };
   
   return (
-    <div className="bg-slate-900 min-h-screen text-slate-200">
+    <div className="bg-slate-950 min-h-screen text-slate-100 selection:bg-amber-500/30 selection:text-amber-200">
         {bgUrls.map((url, index) => (
             url && (
                 <div 
@@ -844,15 +844,15 @@ const App: React.FC = () => {
                     className="fixed top-0 left-0 w-full h-full bg-cover bg-center bg-no-repeat transition-opacity duration-1000 ease-in-out"
                     style={{ 
                         backgroundImage: `url(${url})`, 
-                        filter: 'blur(5px)', 
-                        transform: 'scale(1.1)', 
+                        filter: 'blur(8px)', 
+                        transform: 'scale(1.15)', 
                         zIndex: 0,
-                        opacity: index === activeBgIndex ? 1 : 0
+                        opacity: index === activeBgIndex ? 0.35 : 0
                     }}
                 />
             )
         ))}
-      <div className="fixed top-0 left-0 w-full h-full bg-gradient-to-b from-slate-900/80 to-slate-900" style={{ zIndex: 1 }} />
+      <div className="fixed top-0 left-0 w-full h-full bg-gradient-to-b from-slate-950/85 via-slate-950/95 to-slate-950" style={{ zIndex: 1 }} />
       
       <div className="relative z-10 flex flex-col min-h-screen">
         <Header 

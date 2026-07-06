@@ -17,12 +17,23 @@ root.render(
 );
 
 // Register the service worker for PWA functionality
-if ('serviceWorker' in navigator) {
+const isIframe = window.self !== window.top;
+const isDev = window.location.hostname === 'localhost' || 
+            window.location.hostname === '127.0.0.1' || 
+            window.location.hostname.indexOf('run.app') !== -1 ||
+            window.location.hostname.indexOf('webcontainer') !== -1 ||
+            window.location.hostname.indexOf('aistudio') !== -1;
+
+if ('serviceWorker' in navigator && !isIframe && !isDev) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js').then(registration => {
-      console.log('SW registered: ', registration);
-    }).catch(registrationError => {
-      console.log('SW registration failed: ', registrationError);
-    });
+    try {
+      navigator.serviceWorker.register('/sw.js').then(registration => {
+        console.log('SW registered: ', registration);
+      }).catch(registrationError => {
+        console.warn('SW registration failed: ', registrationError);
+      });
+    } catch (err) {
+      console.warn('SW registration threw an error:', err);
+    }
   });
 }

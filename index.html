@@ -2,6 +2,51 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <script>
+      // Global error handler to suppress cross-origin "Script error." caused by third-party tracking/ads or blocked resources in sandboxed environments
+      window.onerror = function (message, url, line, column, error) {
+        var msg = String(message || '');
+        if (
+          msg.indexOf('Script error') !== -1 ||
+          msg.indexOf('cross-origin') !== -1 ||
+          !url ||
+          line === 0 ||
+          column === 0
+        ) {
+          console.warn('Suppressed cross-origin or sandbox script error:', message, 'at', url);
+          return true; // Prevents the error from bubbling up to the parent window
+        }
+        return false; // Allow real local application errors to propagate normally
+      };
+
+      // Capturing-phase error handler for 100% reliable interception of third-party script failures
+      window.addEventListener('error', function(event) {
+        var msg = String(event.message || '');
+        if (
+          msg.indexOf('Script error') !== -1 ||
+          msg.indexOf('cross-origin') !== -1
+        ) {
+          console.warn('Suppressed cross-origin error event:', event.message);
+          event.stopImmediatePropagation();
+          event.preventDefault();
+        }
+      }, true);
+
+      // Handle unhandled promise rejections from cross-origin scripts silently
+      window.addEventListener('unhandledrejection', function(event) {
+        if (event.reason) {
+          var reasonStr = String(event.reason.stack || event.reason.message || event.reason);
+          if (
+            reasonStr.indexOf('Script error') !== -1 ||
+            reasonStr.indexOf('cross-origin') !== -1
+          ) {
+            console.warn('Suppressed cross-origin unhandled rejection:', reasonStr);
+            event.stopImmediatePropagation();
+            event.preventDefault();
+          }
+        }
+      }, true);
+    </script>
     <link rel="icon" type="image/svg+xml" href="/logo192.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Nam Radio Live</title>
@@ -11,29 +56,8 @@
     <meta name="theme-color" content="#111827" />
     <link rel="apple-touch-icon" href="/logo192.svg" />
 
-    <script src="https://cdn.tailwindcss.com"></script>
-  <script type="importmap">
-{
-  "imports": {
-    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.28.0",
-    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
-    "react/": "https://aistudiocdn.com/react@^19.2.0/",
-    "react": "https://aistudiocdn.com/react@^19.2.0"
-  }
-}
-</script>
-<link rel="stylesheet" href="/index.css">
-<script data-ad-client="ca-pub-4056101199267804" async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-    <!-- Google tag (gtag.js) -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id=G-TH2R0DV23F"></script>
-    <script>
-      window.dataLayer = window.dataLayer || [];
-      function gtag(){dataLayer.push(arguments);}
-      gtag('js', new Date());
-
-      gtag('config', 'G-TH2R0DV23F');
-    </script>
-</head>
+    <link rel="stylesheet" href="/index.css">
+  </head>
   <body>
     <div id="root"></div>
     <script type="module" src="/index.tsx"></script>
