@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Message, PollMessage, Song, TakeoverMessage, GameMessage, Vibe, DedicationRecord, MusicEvent, ApiScheduleItem, SongRequestRecord, ListeningStats, PersonalizedMessage, OnThisDayMessage, LevelUpMessage, TriviaMessage } from '../types';
-import { getAiChatResponse, generateTakeoverAnnouncement, generateTakeoverWinnerShoutout, generateSongClue, generateDjChitchat, generateVibeCommentary, generateDedicationShoutout, getRankedShowRecommendations, generateShowScoutAlert, generateLocalSpotlightPromo, generateEventShoutout, getOnThisDayInMusic, generateLevelUpMessage, generateTriviaQuestion } from '../services/geminiService';
+import { getAiChatResponse, generateTakeoverAnnouncement, generateTakeoverWinnerShoutout, generateSongClue, generateDjChitchat, generateVibeCommentary, generateDedicationShoutout, getRankedShowRecommendations, generateShowScoutAlert, generateLocalSpotlightPromo, generateEventShoutout, getOnThisDayInMusic, generateLevelUpMessage, generateTriviaQuestion, generateDjJoke } from '../services/geminiService';
 import { TAKEOVER_SONGS } from '../constants';
+import { LISTENER_LEVELS } from './MyStation';
 
 const djPolls: Omit<PollMessage, 'id' | 'author' | 'isDj' | 'type'>[] = [
   { question: "What genre should we play next?", options: [{ text: "Classic Rock", votes: 0 }, { text: "Indie Hits", votes: 0 }, { text: "90s Pop", votes: 0 }] },
@@ -414,6 +415,72 @@ const LiveChat: React.FC<LiveChatProps> = ({ liveNowPlaying, recentlyPlayed, cur
     onChatMessageSent();
     setNewMessage('');
     
+    if (trimmedMessage.toLowerCase() === '!help') {
+        const helpText = `Here are the active DJ Alex chat commands you can use:\n` +
+            `• !ask <your question> - Ask DJ Alex anything about music, shows, or news!\n` +
+            `• !guess <song title> - Submit a guess for active games or trivia challenges!\n` +
+            `• !joke - Request a funny music joke from the DJ!\n` +
+            `• !vibe - Check DJ Alex's thoughts on the current room vibe!\n` +
+            `• !points - Check your current station points balance!\n` +
+            `• !level - Display your current Listener Level!`;
+        const helpMessage: Message = { id: Date.now() + 1, type: 'text', author: 'DJ Alex', text: helpText, isDj: true };
+        setMessages(prev => [...prev, helpMessage]);
+        return;
+    }
+
+    if (trimmedMessage.toLowerCase() === '!joke') {
+        const { count } = getGeminiCallCount();
+        if (count >= GEMINI_CALL_LIMIT) {
+            const jokeFallback = "Why did the DJ get kicked out of the produce section? Because he kept dropping the beets! 🎧😂";
+            setMessages(prev => [...prev, { id: Date.now() + 1, type: 'text', author: 'DJ Alex', text: jokeFallback, isDj: true }]);
+            return;
+        }
+        incrementGeminiCallCount();
+        setIsDjTyping(true);
+        generateDjJoke().then((jokeText) => {
+            setIsDjTyping(false);
+            setMessages(prev => [...prev, { id: Date.now() + 1, type: 'text', author: 'DJ Alex', text: jokeText, isDj: true }]);
+        }).catch(() => {
+            setIsDjTyping(false);
+            setMessages(prev => [...prev, { id: Date.now() + 1, type: 'text', author: 'DJ Alex', text: "Why did the guitar get arrested? Because it was caught shredding in a school zone! 🎸👮", isDj: true }]);
+        });
+        return;
+    }
+
+    if (trimmedMessage.toLowerCase() === '!vibe') {
+        const currentVibeLabel = dominantVibe ? dominantVibe.label : 'Energetic';
+        const { count } = getGeminiCallCount();
+        if (count >= GEMINI_CALL_LIMIT) {
+            setMessages(prev => [...prev, { id: Date.now() + 1, type: 'text', author: 'DJ Alex', text: `The room has a fantastic ${currentVibeLabel} vibe right now! Keep spinning those tracks! 🎶✨`, isDj: true }]);
+            return;
+        }
+        incrementGeminiCallCount();
+        setIsDjTyping(true);
+        generateVibeCommentary(currentVibeLabel).then((vibeComment) => {
+            setIsDjTyping(false);
+            setMessages(prev => [...prev, { id: Date.now() + 1, type: 'text', author: 'DJ Alex', text: vibeComment, isDj: true }]);
+        }).catch(() => {
+            setIsDjTyping(false);
+            setMessages(prev => [...prev, { id: Date.now() + 1, type: 'text', author: 'DJ Alex', text: `Vibes are solid! We are feeling very ${currentVibeLabel} today! 🎧`, isDj: true }]);
+        });
+        return;
+    }
+
+    if (trimmedMessage.toLowerCase() === '!points') {
+        const points = listeningStats?.points || 0;
+        const ptsMsg = `Hey @${userHandle}! You currently have ${points} station points. Keep listening, voting, and interacting to rise up the charts! 🏆`;
+        setMessages(prev => [...prev, { id: Date.now() + 1, type: 'text', author: 'DJ Alex', text: ptsMsg, isDj: true }]);
+        return;
+    }
+
+    if (trimmedMessage.toLowerCase() === '!level') {
+        const points = listeningStats?.points || 0;
+        const activeLevel = [...LISTENER_LEVELS].reverse().find(level => points >= level.minPoints) || LISTENER_LEVELS[0];
+        const lvlMsg = `Hey @${userHandle}! Your current Listener Level is: "${activeLevel.name}" (${points} pts). Rock on! 🤘🔥`;
+        setMessages(prev => [...prev, { id: Date.now() + 1, type: 'text', author: 'DJ Alex', text: lvlMsg, isDj: true }]);
+        return;
+    }
+
     if (trimmedMessage.startsWith('!ask ')) {
         const { count } = getGeminiCallCount();
         if (count >= GEMINI_CALL_LIMIT) {

@@ -8,8 +8,6 @@ const Podcasts: React.FC = () => {
       <iframe
         title="Podcasts"
         src="https://music-station.live/public/namradio/podcasts?embed=true"
-        frameBorder="0"
-        allowTransparency={true}
         style={{ width: '100%', minHeight: '400px', height: '400px', border: 0, borderRadius: '12px' }}
       ></iframe>
     </section>

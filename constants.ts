@@ -2,7 +2,7 @@ import { Dj, ApiScheduleItem, Article, Song } from './types';
 
 export const AZURACAST_BASE_URL = 'https://music-station.live';
 export const AZURACAST_STATION_ID = 'namradio';
-export const AZURACAST_API_KEY = 'c9e61b4745be4a16:e662b13faa8feb34bc842fa16589f420';
+export const AZURACAST_API_KEY = 'api-e1228a28120a75dd:0099d04c27a8e7d2e3da6746f412b6a6';
 
 
 export const DJS: Dj[] = [

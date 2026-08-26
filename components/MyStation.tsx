@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Dj, ApiScheduleItem, SongRequestRecord, ListeningStats, Badge, ListenerLevel, LiveNowPlaying } from '../types';
+import { Dj, ApiScheduleItem, SongRequestRecord, ListeningStats, Badge, ListenerLevel, LiveNowPlaying, VibeType, UserStationDnaExport } from '../types';
 import { getShowRecommendations, generateDailyRewind } from '../services/geminiService';
 import { DJS } from '../constants';
 import DailyRewindModal from './DailyRewindModal';
 import ListeningDNA from './Contact';
 import ListenerStoryModal from './ListenerStoryModal';
+import StationDnaHub from './StationDnaHub';
 
 
 interface User {
@@ -109,6 +110,8 @@ interface MyStationProps {
   lastMonthListeningStats: ListeningStats | null;
   dailyShowsListened: string[];
   liveNowPlaying: LiveNowPlaying;
+  userVibe?: VibeType | null;
+  onRestoreDna?: (importedDna: UserStationDnaExport) => void;
 }
 
 const Marquee: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -126,7 +129,23 @@ const Marquee: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     );
 };
 
-const MyStation: React.FC<MyStationProps> = ({ favoriteShows, favoriteDjs, allShows, onToggleFavorite, onToggleFavoriteDj, currentShowName, currentUser, onUpdateUserProfile, songRequests, listeningStats, lastMonthListeningStats, dailyShowsListened, liveNowPlaying }) => {
+const MyStation: React.FC<MyStationProps> = ({
+  favoriteShows,
+  favoriteDjs,
+  allShows,
+  onToggleFavorite,
+  onToggleFavoriteDj,
+  currentShowName,
+  currentUser,
+  onUpdateUserProfile,
+  songRequests,
+  listeningStats,
+  lastMonthListeningStats,
+  dailyShowsListened,
+  liveNowPlaying,
+  userVibe,
+  onRestoreDna,
+}) => {
   const [recommendations, setRecommendations] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -498,6 +517,17 @@ const MyStation: React.FC<MyStationProps> = ({ favoriteShows, favoriteDjs, allSh
                 <p className="text-slate-400 bg-slate-800/50 p-4 rounded-lg">You haven't requested any songs yet.</p>
             )}
         </section>
+
+        {/* Station DNA & Zero Data Silos Portability Hub */}
+        <StationDnaHub
+          username={currentUser.username}
+          listeningStats={listeningStats}
+          favoriteShows={favoriteShows.map(s => s.id)}
+          favoriteDjs={favoriteDjs.map(d => d.id)}
+          songRequests={songRequests}
+          userVibe={userVibe || null}
+          onRestoreDna={onRestoreDna || (() => {})}
+        />
       </div>
        {isRewindModalOpen && (
         <DailyRewindModal 

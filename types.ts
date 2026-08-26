@@ -180,6 +180,30 @@ export interface ListeningStats {
   likedSongs: SongRating[];
   dislikedSongs: SongRating[];
   listeningTimeByHour: Record<number, number>;
+  bookmarkedArticles?: Article[];
+  sentDedications?: DedicationRecord[];
+  streakDays?: number;
+  lastActiveDate?: string;
+}
+
+export interface UserStationDnaExport {
+  version: string;
+  exportedAt: string;
+  username: string;
+  listeningStats: ListeningStats;
+  favoriteShows: number[];
+  favoriteDjs: number[];
+  songRequests: SongRequestRecord[];
+  vibeVote: VibeType | null;
+}
+
+export interface SongInsight {
+  title: string;
+  artist: string;
+  meaning: string;
+  culturalBackstory: string;
+  moodKeywords: string[];
+  djTip: string;
 }
 
 export interface Badge {

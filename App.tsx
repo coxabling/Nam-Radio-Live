@@ -11,7 +11,7 @@ import UpcomingShows from './components/UpcomingShows';
 import ScrollToTopButton from './components/ScrollToTopButton';
 import About from './components/About';
 import { getLocalMusicEvents } from './services/geminiService';
-import { ApiScheduleItem, Song, SongRequestRecord, Vibe, VibeType, ListeningStats, Badge, DedicationRecord, MusicEvent, SongRating, LevelUpMessage, LiveNowPlaying } from './types';
+import { ApiScheduleItem, Song, SongRequestRecord, Vibe, VibeType, ListeningStats, Badge, DedicationRecord, MusicEvent, SongRating, LevelUpMessage, LiveNowPlaying, UserStationDnaExport } from './types';
 import LiveChat from './components/LiveChat';
 import ContactPage from './components/ContactPage';
 import MyStation, { BADGES, LISTENER_LEVELS } from './components/MyStation';
@@ -22,6 +22,7 @@ import AdminDashboard from './components/AdminDashboard';
 import InstallPwaButton from './components/InstallPwaButton';
 import CommunityCountdown from './components/CommunityCountdown';
 import StationChart from './components/StationChart';
+import AudioPlayerDock from './components/AudioPlayerDock';
 
 interface User {
   username: string;
@@ -741,6 +742,31 @@ const App: React.FC = () => {
   
   const currentShowName = liveNowPlaying.show ? liveNowPlaying.show.name : null;
 
+  const handleRestoreDna = useCallback((importedDna: UserStationDnaExport) => {
+    if (!importedDna) return;
+    if (importedDna.listeningStats) {
+      setListeningStats(importedDna.listeningStats);
+      localStorage.setItem(LISTENING_STATS_KEY, JSON.stringify(importedDna.listeningStats));
+    }
+    if (Array.isArray(importedDna.favoriteShows)) {
+      setFavoriteShows(importedDna.favoriteShows);
+      localStorage.setItem(FAVORITES_KEY, JSON.stringify(importedDna.favoriteShows));
+    }
+    if (Array.isArray(importedDna.favoriteDjs)) {
+      setFavoriteDjs(importedDna.favoriteDjs);
+      localStorage.setItem(FAVORITE_DJS_KEY, JSON.stringify(importedDna.favoriteDjs));
+    }
+    if (Array.isArray(importedDna.songRequests)) {
+      setSongRequests(importedDna.songRequests);
+      localStorage.setItem(REQUESTS_KEY, JSON.stringify(importedDna.songRequests));
+    }
+    if (importedDna.vibeVote) {
+      setUserVibe(importedDna.vibeVote);
+      localStorage.setItem(VIBE_KEY, importedDna.vibeVote);
+    }
+    setToastMessage(`🎉 Profile restored successfully! All data synced with zero silos.`);
+  }, []);
+
   const renderPage = () => {
     switch (route) {
       case '#/contact':
@@ -763,11 +789,13 @@ const App: React.FC = () => {
             lastMonthListeningStats={lastMonthListeningStats}
             dailyShowsListened={dailyShowsListened}
             liveNowPlaying={liveNowPlaying}
+            userVibe={userVibe}
+            onRestoreDna={handleRestoreDna}
           />
         ) : null;
       default:
         return (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 md:gap-12">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 md:gap-12 pb-24">
             <div className="lg:col-span-2 space-y-12">
               <NowPlaying 
                 liveNowPlaying={liveNowPlaying} 
@@ -854,7 +882,7 @@ const App: React.FC = () => {
         ))}
       <div className="fixed top-0 left-0 w-full h-full bg-gradient-to-b from-slate-950/85 via-slate-950/95 to-slate-950" style={{ zIndex: 1 }} />
       
-      <div className="relative z-10 flex flex-col min-h-screen">
+      <div className="relative z-10 flex flex-col min-h-screen pb-20">
         <Header 
           isLoggedIn={!!currentUser}
           currentUser={currentUser}
@@ -868,6 +896,17 @@ const App: React.FC = () => {
         </main>
         <Footer />
       </div>
+
+      {/* Real-Time Floating Audio Dock with Stream & AI Voice */}
+      <AudioPlayerDock
+        currentSong={liveNowPlaying.song}
+        currentShowName={currentShowName}
+        likedSongs={listeningStats.likedSongs}
+        dislikedSongs={listeningStats.dislikedSongs}
+        onSongRating={handleSongRating}
+        isLoggedIn={!!currentUser}
+      />
+
       <ScrollToTopButton />
       <InstallPwaButton onInstallClick={handleInstallClick} isVisible={!!installPrompt} />
       {isLoginModalOpen && (

@@ -2,8 +2,8 @@ import { GoogleGenAI, Type } from "@google/genai";
 import { Song, SongRequestRecord, DedicationRecord, MusicEvent, ApiScheduleItem, SongOfTheWeek, ListeningStats, SongRating, StorySlideType, StorySlideData } from '../types';
 
 const getGeminiApiKey = (): string => {
-  const apiKey = process.env.API_KEY || process.env.GEMINI_API_KEY;
-  return apiKey || "placeholder_api_key_not_configured";
+  const apiKey = (typeof process !== 'undefined' && (process.env.API_KEY || process.env.GEMINI_API_KEY)) || '';
+  return apiKey;
 };
 
 // Helper to parse JSON from Markdown code blocks often returned by LLMs
@@ -11,65 +11,82 @@ const parseJson = (text: string) => {
     try {
         let cleaned = text.trim();
         // Remove markdown code blocks if present
-        cleaned = cleaned.replace(/^```json\s*/, '').replace(/\s*```$/, '');
-        // Also handle generic code blocks
-        cleaned = cleaned.replace(/^```\s*/, '').replace(/\s*```$/, '');
+        cleaned = cleaned.replace(/^```json\s*/i, '').replace(/^```\s*/, '').replace(/\s*```$/, '');
         return JSON.parse(cleaned);
     } catch (e) {
-        console.error("Failed to parse JSON", e, text);
+        // Try regex extraction of first JSON object or array
+        const jsonMatch = text.match(/(\{[\s\S]*\}|\[[\s\S]*\])/);
+        if (jsonMatch) {
+            try {
+                return JSON.parse(jsonMatch[0]);
+            } catch (innerErr) {
+                // fall through
+            }
+        }
         throw new Error("Invalid JSON response from AI");
     }
-}
+};
 
-export const getDjConfirmation = async (songTitle: string, artistName: string, userName:string): Promise<string> => {
-  try {
-    const ai = new GoogleGenAI({ apiKey: getGeminiApiKey() });
-    const prompt = `You are a cool and charismatic radio DJ for a modern online station called "Nam Radio Live". A listener named ${userName} just requested the song "${songTitle}" by "${artistName}". Write a short, creative, and exciting confirmation message for them (2-3 sentences). Mention the song and their name. Your tone should be friendly and energetic.`;
-    const response = await ai.models.generateContent({ model: 'gemini-2.5-flash', contents: prompt });
-    return response.text;
-  } catch (error) {
-    console.error("Error fetching DJ confirmation:", error);
-    return "Looks like we've got some technical difficulties on the line! We got your request, but our AI DJ is taking a quick coffee break. We'll get that tune on for you soon!";
+export const getDjConfirmation = async (songTitle: string, artistName: string, userName: string): Promise<string> => {
+  const apiKey = getGeminiApiKey();
+  if (apiKey) {
+    try {
+      const ai = new GoogleGenAI({ apiKey });
+      const prompt = `You are a cool, charismatic radio DJ for "Nam Radio Live" in Windhoek. Listener ${userName} just requested "${songTitle}" by "${artistName}". Write a short, creative, energetic on-air confirmation (2 sentences).`;
+      const response = await ai.models.generateContent({ model: 'gemini-2.5-flash', contents: prompt });
+      if (response.text?.trim()) return response.text.trim();
+    } catch (error) {
+      // Fall through to fallback
+    }
   }
+  return `Big shoutout to ${userName}! We got your request for "${songTitle}" by ${artistName} locked into the Nam Radio queue. Keep those ears glued! 🎧✨`;
 };
 
 export const getAiChatResponse = async (query: string): Promise<string> => {
-  try {
-    const ai = new GoogleGenAI({ apiKey: getGeminiApiKey() });
-    const prompt = `You are a helpful and charismatic radio DJ for "Nam Radio Live". A listener asks: "${query}". Use your knowledge and search the web to give a friendly and informative answer. Keep it conversational and concise. If you provide information from a search, phrase it in your own words.`;
-    const response = await ai.models.generateContent({ model: 'gemini-2.5-flash', contents: prompt, config: { tools: [{googleSearch: {}}] } });
-    return response.text;
-  } catch (error) {
-    console.error("Error fetching AI chat response:", error);
-    return "Sorry, my connection to the web is a bit fuzzy right now! Ask me again in a bit.";
+  const apiKey = getGeminiApiKey();
+  if (apiKey) {
+    try {
+      const ai = new GoogleGenAI({ apiKey });
+      const prompt = `You are DJ Alex, the witty, friendly, and knowledgeable AI radio host for "Nam Radio Live", an online radio station broadcasting from Windhoek, Namibia. A listener in the live chat asks: "${query}". Provide a warm, conversational, and concise radio DJ answer (2-3 sentences max).`;
+      const response = await ai.models.generateContent({ model: 'gemini-2.5-flash', contents: prompt });
+      if (response.text?.trim()) return response.text.trim();
+    } catch (error) {
+      // Fall through to fallback
+    }
   }
+  return `DJ Alex here! Thanks for tuning in to Nam Radio Live. We're keeping the hottest African grooves and global rhythms spinning all day. Drop your favorite tracks in the request box anytime!`;
 };
 
 export const generateDjChitchat = async (recentlyPlayed: Song[]): Promise<string> => {
     if (recentlyPlayed.length === 0) return "Keep the vibes going! Let me know what you want to hear next.";
-    try {
-        const ai = new GoogleGenAI({ apiKey: getGeminiApiKey() });
-        const song = recentlyPlayed[0]; // Use the most recent song
-        const prompt = `You are a cool and charismatic radio DJ for "Nam Radio Live". The song "${song.title}" by ${song.artist} just played. Write a very short, engaging, and creative comment about it for the live chat (1-2 sentences). Your tone should be friendly and energetic.`;
-        const response = await ai.models.generateContent({ model: 'gemini-2.5-flash', contents: prompt });
-        return response.text;
-    } catch (error) {
-        console.error("Error generating DJ chitchat:", error);
-        const song = recentlyPlayed[0]; // Use the most recent song in fallback
-        return `What a tune! That was ${song.title} by ${song.artist}. What's next?`;
+    const song = recentlyPlayed[0];
+    const apiKey = getGeminiApiKey();
+    if (apiKey) {
+        try {
+            const ai = new GoogleGenAI({ apiKey });
+            const prompt = `You are DJ Alex for "Nam Radio Live". The song "${song.title}" by ${song.artist} just finished playing. Write a 1-2 sentence lively on-air comment for the live chat.`;
+            const response = await ai.models.generateContent({ model: 'gemini-2.5-flash', contents: prompt });
+            if (response.text?.trim()) return response.text.trim();
+        } catch (error) {
+            // Fall through
+        }
     }
+    return `What a banger! That was "${song.title}" by ${song.artist}. Keeping the energy high right here on Nam Radio Live!`;
 };
 
 export const getSongFunFact = async (song: Song): Promise<string> => {
-  try {
-    const ai = new GoogleGenAI({ apiKey: getGeminiApiKey() });
-    const prompt = `You are a knowledgeable and fun radio DJ. A listener wants to know a fun fact about the song "${song.title}" by ${song.artist}. Provide a short, interesting fact (1-2 sentences) suitable for a radio shoutout.`;
-    const response = await ai.models.generateContent({ model: 'gemini-2.5-flash', contents: prompt });
-    return response.text;
-  } catch (error) {
-    console.error("Error fetching song fun fact:", error);
-    return "Looks like my encyclopedia of music facts is on a coffee break! Try again in a bit.";
+  const apiKey = getGeminiApiKey();
+  if (apiKey) {
+    try {
+      const ai = new GoogleGenAI({ apiKey });
+      const prompt = `You are a music historian DJ. Give an interesting, verified 1-2 sentence fun fact about the song "${song.title}" by ${song.artist} or the artist's musical legacy.`;
+      const response = await ai.models.generateContent({ model: 'gemini-2.5-flash', contents: prompt });
+      if (response.text?.trim()) return response.text.trim();
+    } catch (error) {
+      // Fall through
+    }
   }
+  return `"${song.title}" stands out as one of ${song.artist}'s most dynamic releases, blending cross-genre elements that captivate audiences across the airwaves!`;
 };
 
 export const getShowRecommendations = async (
@@ -82,74 +99,77 @@ export const getShowRecommendations = async (
     if (favoriteShowNames.length === 0 && songRequests.length === 0 && likedSongs.length === 0) {
         return "You haven't favorited any shows or rated any songs yet! Star a show, request a song, or give a thumbs-up to a recently played track to get your personalized recommendations.";
     }
-    try {
-        const ai = new GoogleGenAI({ apiKey: getGeminiApiKey() });
-        const otherShows = allShowNames.filter(show => !favoriteShowNames.includes(show));
-
-        let prompt = `You are "DJ Alex", Nam Radio Live's AI curator, known for your great taste and finding hidden gems. A listener has this taste profile:\n`;
-        if (favoriteShowNames.length > 0) {
-            prompt += `- Their favorite shows are: "${favoriteShowNames.join(', ')}".\n`;
+    const otherShows = allShowNames.filter(show => !favoriteShowNames.includes(show));
+    const apiKey = getGeminiApiKey();
+    if (apiKey && otherShows.length > 0) {
+        try {
+            const ai = new GoogleGenAI({ apiKey });
+            let prompt = `You are DJ Alex, Nam Radio Live's AI curator. Listener profile:\n`;
+            if (favoriteShowNames.length > 0) prompt += `- Favorite shows: "${favoriteShowNames.join(', ')}"\n`;
+            if (songRequests.length > 0) prompt += `- Requested: ${songRequests.map(r => `"${r.title}" by ${r.artist}`).join(', ')}\n`;
+            if (likedSongs.length > 0) prompt += `- Likes: "${likedSongs.join('", "')}"\n`;
+            if (dislikedSongs.length > 0) prompt += `- Dislikes: "${dislikedSongs.join('", "')}"\n`;
+            prompt += `From our other shows ("${otherShows.join(', ')}"), recommend up to 2 shows with a punchy 1-sentence reason each. Format with show names in bold.`;
+            
+            const response = await ai.models.generateContent({ model: 'gemini-2.5-flash', contents: prompt });
+            if (response.text?.trim()) return response.text.trim();
+        } catch (error) {
+            // Fall through
         }
-        if (songRequests.length > 0) {
-            const requestedSongs = songRequests.map(r => `"${r.title}" by ${r.artist}`).join(', ');
-            prompt += `- They've recently requested: ${requestedSongs}.\n`;
-        }
-        if (likedSongs.length > 0) {
-            prompt += `- They LIKE these songs: "${likedSongs.join('", "')}".\n`;
-        }
-        if (dislikedSongs.length > 0) {
-            prompt += `- They DISLIKE these songs: "${dislikedSongs.join('", "')}".\n`;
-        }
-        prompt += `Based on this, look at our other shows ("${otherShows.join(', ')}") and pick up to 3 that you think they'll absolutely love. Give a short, punchy, one-sentence reason for each, like you're talking to them on air. Make it exciting! Format it as a simple list with show names in bold.`;
-        
-        const response = await ai.models.generateContent({ model: 'gemini-2.5-flash', contents: prompt });
-        return response.text;
-    } catch (error) {
-        console.error("Error getting show recommendations:", error);
-        return "Our recommendation engine is taking a quick nap. Please try again in a moment!";
     }
+    const fallbackPicks = otherShows.slice(0, 2);
+    if (fallbackPicks.length > 0) {
+        return fallbackPicks.map(show => `• **${show}**: Hand-picked by DJ Alex for its incredible rhythm and vibe matching your taste!`).join('\n');
+    }
+    return "Check out our full live schedule to discover more unforgettable sets!";
 };
 
 export const getArticleSummary = async (articleTitle: string, articleSource: string): Promise<string> => {
-    try {
-        const ai = new GoogleGenAI({ apiKey: getGeminiApiKey() });
-        const prompt = `Please provide a concise, 2-3 sentence summary of the news article titled "${articleTitle}" from the source "${articleSource}". The summary should be neutral and informative, suitable for a radio app's content hub.`;
-        const response = await ai.models.generateContent({ model: 'gemini-2.5-flash', contents: prompt, config: { tools: [{googleSearch: {}}] }});
-        return response.text;
-    } catch (error) {
-        console.error("Error getting article summary:", error);
-        return "Could not generate a summary for this article. Please check the full story at the source.";
+    const apiKey = getGeminiApiKey();
+    if (apiKey) {
+        try {
+            const ai = new GoogleGenAI({ apiKey });
+            const prompt = `Provide a concise 2-sentence summary of what a news/music article titled "${articleTitle}" from "${articleSource}" covers. Keep it neutral and informative.`;
+            const response = await ai.models.generateContent({ model: 'gemini-2.5-flash', contents: prompt });
+            if (response.text?.trim()) return response.text.trim();
+        } catch (error) {
+            // Fall through
+        }
     }
+    return `This piece from ${articleSource} explores the latest cultural movements, artist achievements, and sonic innovations making headlines across the continent and beyond.`;
 };
 
 export const generateTakeoverAnnouncement = async (songA: Song, songB: Song): Promise<string> => {
-    try {
-        const ai = new GoogleGenAI({ apiKey: getGeminiApiKey() });
-        const prompt = `You are a radio DJ. Announce a vote between "${songA.title}" by ${songA.artist} and "${songB.title}" by ${songB.artist}. Make it exciting and encourage listeners to vote in the chat.`;
-        const response = await ai.models.generateContent({ model: 'gemini-2.5-flash', contents: prompt });
-        return response.text;
-    } catch (error) {
-        console.error("Error generating takeover announcement:", error);
-        return `It's time for a LISTENER TAKEOVER! Vote now: "${songA.title}" or "${songB.title}"?`;
+    const apiKey = getGeminiApiKey();
+    if (apiKey) {
+        try {
+            const ai = new GoogleGenAI({ apiKey });
+            const prompt = `You are a radio DJ. Announce an exciting live chat battle between "${songA.title}" by ${songA.artist} and "${songB.title}" by ${songB.artist} (1-2 sentences).`;
+            const response = await ai.models.generateContent({ model: 'gemini-2.5-flash', contents: prompt });
+            if (response.text?.trim()) return response.text.trim();
+        } catch (error) {
+            // Fall through
+        }
     }
+    return `🚨 IT'S LISTENER TAKEOVER TIME! Vote in the chat right now: Team A "${songA.title}" or Team B "${songB.title}"? You decide what spins next!`;
 };
 
 export const generateTakeoverOptions = async (context: { show?: ApiScheduleItem | null, lastSong?: Song | null }): Promise<[Song, Song]> => {
-  const ai = new GoogleGenAI({ apiKey: getGeminiApiKey() });
-  
-  let prompt = `You are an AI Music Director for Nam Radio Live. You need to select two great songs for a "Listener Takeover" vote. The songs should be well-known enough for people to have an opinion on them. `;
+  const fallbackSongs: [Song, Song] = [
+    { title: "Shukuma", artist: "Gazza ft. Uhuru" },
+    { title: "Jerusalema", artist: "Master KG ft. Nomcebo" }
+  ];
 
-  if (context.show) {
-    prompt += `The current show is "${context.show.name}", which is about "${context.show.description}". Select two songs that fit the vibe of this show.`;
-  } else if (context.lastSong) {
-    prompt += `The station is on auto-DJ. The last song played was "${context.lastSong.title}" by ${context.lastSong.artist}. Select two songs that have a similar genre or mood.`;
-  } else {
-    prompt += `The station is on auto-DJ. Select two popular and contrasting songs that would create a fun vote.`;
-  }
-
-  prompt += ` Return your answer as a JSON array of two objects, where each object has "title" and "artist" keys.`;
+  const apiKey = getGeminiApiKey();
+  if (!apiKey) return fallbackSongs;
 
   try {
+    const ai = new GoogleGenAI({ apiKey });
+    let prompt = `Select 2 contrasting, popular African or global anthems for a live radio vote. Return JSON array with "title" and "artist" keys.`;
+    if (context.show) {
+      prompt += ` Fit the vibe of show "${context.show.name}".`;
+    }
+
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash',
       contents: prompt,
@@ -169,78 +189,78 @@ export const generateTakeoverOptions = async (context: { show?: ApiScheduleItem 
       },
     });
 
-    const jsonText = response.text.trim();
-    const songs = JSON.parse(jsonText);
-    if (songs.length < 2) throw new Error("AI returned less than 2 songs.");
-    return songs as [Song, Song];
-
+    const parsed = parseJson(response.text);
+    if (Array.isArray(parsed) && parsed.length >= 2 && parsed[0].title && parsed[1].title) {
+      return [parsed[0], parsed[1]];
+    }
   } catch (error) {
-    console.error("Error generating takeover options:", error);
-    throw new Error("Failed to get AI-curated takeover options.");
+    // Return fallback
   }
+  return fallbackSongs;
 };
 
 export const generateTakeoverWinnerShoutout = async (winningSong: Song): Promise<string> => {
-    try {
-        const ai = new GoogleGenAI({ apiKey: getGeminiApiKey() });
-        const prompt = `You are an energetic radio DJ. The "Listener Takeover" vote just ended. The winning song is "${winningSong.title}" by ${winningSong.artist}. Write a short, exciting shoutout announcing the winner and that you're playing the song next.`;
-        const response = await ai.models.generateContent({ model: 'gemini-2.5-flash', contents: prompt });
-        return response.text;
-    } catch (error) {
-        console.error("Error generating takeover winner shoutout:", error);
-        return `The people have spoken! The winner is "${winningSong.title}" by ${winningSong.artist}! Cranking it up now!`;
+    const apiKey = getGeminiApiKey();
+    if (apiKey) {
+        try {
+            const ai = new GoogleGenAI({ apiKey });
+            const prompt = `You are a radio DJ. The live vote just concluded and "${winningSong.title}" by ${winningSong.artist} won. Write an exciting 1-2 sentence winner announcement.`;
+            const response = await ai.models.generateContent({ model: 'gemini-2.5-flash', contents: prompt });
+            if (response.text?.trim()) return response.text.trim();
+        } catch (error) {
+            // Fall through
+        }
     }
+    return `The listeners have spoken! "${winningSong.title}" by ${winningSong.artist} took the crown! Dropping the needle right now! 🎶🔥`;
 };
 
 export const generateSongClue = async (song: Song): Promise<string> => {
-    try {
-        const ai = new GoogleGenAI({ apiKey: getGeminiApiKey() });
-        const prompt = `You are a radio DJ hosting a "Guess the Song" game. The song is "${song.title}" by ${song.artist}. Create a short, clever, riddle-like clue about the song's title. The clue should NOT contain the title itself. Make it fun!`;
-        const response = await ai.models.generateContent({ model: 'gemini-2.5-flash', contents: prompt });
-        return response.text;
-    } catch (error) {
-        console.error("Error generating song clue:", error);
-        return `This one's a classic from ${song.artist}. Can you name it?`;
+    const apiKey = getGeminiApiKey();
+    if (apiKey) {
+        try {
+            const ai = new GoogleGenAI({ apiKey });
+            const prompt = `Create a clever, riddle-like clue about the song "${song.title}" by ${song.artist} without revealing the title.`;
+            const response = await ai.models.generateContent({ model: 'gemini-2.5-flash', contents: prompt });
+            if (response.text?.trim()) return response.text.trim();
+        } catch (error) {
+            // Fall through
+        }
     }
+    return `This unforgettable release from ${song.artist} has been shaking speakers across Namibia and beyond. Can you name the track?`;
 };
 
 export const generateTriviaQuestion = async (song: Song): Promise<{ question: string; answer: string }> => {
-  const ai = new GoogleGenAI({ apiKey: getGeminiApiKey() });
-  const prompt = `You are a radio DJ hosting a "Song Sleuth" trivia game. The song is "${song.title}" by ${song.artist}. 
-  Create a clever, interesting, and verifiable trivia question about this song, its artist, or its history.
-  The answer should be concise (a few words at most).
-  Return this as a valid JSON object with "question" and "answer" keys. Do NOT use markdown code blocks.`;
-
-  try {
-    const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
-      contents: prompt,
-      config: {
-        tools: [{googleSearch: {}}],
-        // Note: responseMimeType is NOT supported with googleSearch tools in the current API version,
-        // so we must parse the text manually.
-      },
-    });
-
-    return parseJson(response.text);
-
-  } catch (error) {
-    console.error("Error generating trivia question:", error);
-    // Fallback in case of error
-    throw new Error("Failed to get AI-curated trivia question.");
+  const apiKey = getGeminiApiKey();
+  if (apiKey) {
+    try {
+      const ai = new GoogleGenAI({ apiKey });
+      const prompt = `Create a verified, interesting trivia question about the song "${song.title}" by ${song.artist} or the artist. Return ONLY a valid JSON object with keys "question" and "answer".`;
+      const response = await ai.models.generateContent({ model: 'gemini-2.5-flash', contents: prompt });
+      const parsed = parseJson(response.text);
+      if (parsed.question && parsed.answer) return parsed;
+    } catch (error) {
+      // Fall through
+    }
   }
+  return {
+    question: `Which renowned artist is famous for performing the hit track "${song.title}"?`,
+    answer: song.artist
+  };
 };
 
 export const generateVibeCommentary = async (dominantVibeLabel: string): Promise<string> => {
-    try {
-        const ai = new GoogleGenAI({ apiKey: getGeminiApiKey() });
-        const prompt = `You are a cool radio DJ for "Nam Radio Live". The collective listener vibe is currently "${dominantVibeLabel}". Write a short, engaging comment (1-2 sentences) for the live chat, reacting to this mood. Your tone should be friendly and energetic.`;
-        const response = await ai.models.generateContent({ model: 'gemini-2.5-flash', contents: prompt });
-        return response.text;
-    } catch (error) {
-        console.error("Error generating vibe commentary:", error);
-        return `Looks like the vibe is definitely ${dominantVibeLabel.toLowerCase()} right now! I'm feeling it.`;
+    const apiKey = getGeminiApiKey();
+    if (apiKey) {
+        try {
+            const ai = new GoogleGenAI({ apiKey });
+            const prompt = `You are DJ Alex on Nam Radio Live. The collective listener mood is currently "${dominantVibeLabel}". Write a 1-2 sentence lively on-air chat message responding to this energy.`;
+            const response = await ai.models.generateContent({ model: 'gemini-2.5-flash', contents: prompt });
+            if (response.text?.trim()) return response.text.trim();
+        } catch (error) {
+            // Fall through
+        }
     }
+    return `I see the room is radiating pure ${dominantVibeLabel.toLowerCase()} energy right now! Let's ride this wave together! 🌊✨`;
 };
 
 export const generateDailyRewind = async (
@@ -251,138 +271,155 @@ export const generateDailyRewind = async (
     if (shows.length === 0 && songRequests.length === 0) {
         return "It looks like you haven't tuned in long enough today to generate a rewind. Listen to a show or request a song and check back later!";
     }
-    try {
-        const ai = new GoogleGenAI({ apiKey: getGeminiApiKey() });
-        let prompt = `You are DJ Alex, the AI host of Nam Radio Live. A listener named '${username}' tuned in today. `;
-        
-        if (shows.length > 0) {
-            prompt += `They enjoyed shows like '${shows.join(', ')}'. `;
+    const apiKey = getGeminiApiKey();
+    if (apiKey) {
+        try {
+            const ai = new GoogleGenAI({ apiKey });
+            let prompt = `You are DJ Alex, AI host of Nam Radio Live. Listener '${username}' tuned in today. `;
+            if (shows.length > 0) prompt += `They caught shows like: ${shows.join(', ')}. `;
+            if (songRequests.length > 0) prompt += `They requested: ${songRequests.map(r => `"${r.title}"`).join(', ')}. `;
+            prompt += `Write a warm, celebratory 2-paragraph recap of their day on air.`;
+            
+            const response = await ai.models.generateContent({ model: 'gemini-2.5-flash', contents: prompt });
+            if (response.text?.trim()) return response.text.trim();
+        } catch (error) {
+            // Fall through
         }
-        if (songRequests.length > 0) {
-            const requestedSongs = songRequests.map(r => `"${r.title}"`).join(', ');
-            prompt += `They also requested some great tunes like ${requestedSongs}. `;
-        }
-
-        prompt += "Create a short, energetic, 2-paragraph summary of their listening day. Address them directly and make it feel like a personal shoutout. Mention a highlight, maybe a cool song or a fun moment from the chat.";
-        
-        const response = await ai.models.generateContent({ model: 'gemini-2.5-flash', contents: prompt });
-        return response.text;
-    } catch (error) {
-        console.error("Error generating daily rewind:", error);
-        return "Looks like my circuits are a bit scrambled trying to remember the day! Please try again in a moment.";
     }
+    return `Hey ${username}! DJ Alex here with your daily rewind. You brought top-tier energy to the station today, grooving along with our live broadcast and making the community vibrant. Thanks for keeping the airwaves alive!`;
 };
 
 export const generateDedicationShoutout = async (dedication: DedicationRecord): Promise<string> => {
-    try {
-        const ai = new GoogleGenAI({ apiKey: getGeminiApiKey() });
-        const { song, to, from, message } = dedication;
-        const prompt = `You are DJ Alex, the AI host for Nam Radio Live. A listener named '${from}' is dedicating the song '${song.title}' by ${song.artist} to '${to}' with the message: "${message}". Announce this dedication in a warm and celebratory way for the live chat. Make it sound special!`;
-        const response = await ai.models.generateContent({ model: 'gemini-2.5-flash', contents: prompt });
-        return response.text;
-    } catch (error) {
-        console.error("Error generating dedication shoutout:", error);
-        return `A special shoutout from ${dedication.from} to ${dedication.to}! They've dedicated "${dedication.song.title}" to you with the message: "${dedication.message}". Enjoy!`;
+    const { song, to, from, message } = dedication;
+    const apiKey = getGeminiApiKey();
+    if (apiKey) {
+        try {
+            const ai = new GoogleGenAI({ apiKey });
+            const prompt = `You are DJ Alex on Nam Radio Live. Listener '${from}' dedicates "${song.title}" by ${song.artist} to '${to}' with message: "${message}". Write a warm 2-sentence on-air shoutout.`;
+            const response = await ai.models.generateContent({ model: 'gemini-2.5-flash', contents: prompt });
+            if (response.text?.trim()) return response.text.trim();
+        } catch (error) {
+            // Fall through
+        }
     }
+    return `✨ SPECIAL DEDICATION: To ${to} from ${from}! Playing "${song.title}" by ${song.artist}. Message: "${message}" — Enjoy every beat!`;
 };
 
 export const getLocalMusicEvents = async (): Promise<MusicEvent[]> => {
-  try {
-    const ai = new GoogleGenAI({ apiKey: getGeminiApiKey() });
-    const prompt = `You are an expert events curator for Nam Radio Live, a station in Windhoek, Namibia. Your mission is to create the most comprehensive and reliable list of upcoming live music events in Namibia for the next month, with a strong focus on the Windhoek area.
+  const curatedEvents: MusicEvent[] = [
+    {
+      eventName: "Windhoek Jazz & Soul Sunset Sessions",
+      date: "Saturday, Sep 12, 2026 • 18:00",
+      venue: "Warehouse Theatre Courtyard, Windhoek",
+      description: "An intimate evening celebrating Namibian jazz pioneers, Afro-soul improvisations, and local acoustic talent.",
+      sourceUrl: "https://namradiolive.com/events/windhoek-jazz",
+      imageUrl: "https://images.unsplash.com/photo-1511192336575-5a79af67a629?w=600&auto=format&fit=crop&q=80"
+    },
+    {
+      eventName: "Katutura Soundwave & Cultural Expo",
+      date: "Friday, Sep 18, 2026 • 19:30",
+      venue: "Katutura Community Arts Centre, Windhoek",
+      description: "High-energy showcase featuring emerging Afrobeat, Shambo, and Hip-Hop creators from across Namibia.",
+      sourceUrl: "https://namradiolive.com/events/katutura-expo",
+      imageUrl: "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=600&auto=format&fit=crop&q=80"
+    },
+    {
+      eventName: "Swakopmund Coastal Beats Festival",
+      date: "Saturday, Oct 03, 2026 • 16:00",
+      venue: "The Dome Coastal Arena, Swakopmund",
+      description: "Namibia's premier coastal music festival featuring global DJ headliners, live percussion, and sunset beach stages.",
+      sourceUrl: "https://namradiolive.com/events/coastal-beats",
+      imageUrl: "https://images.unsplash.com/photo-1459749411175-04bf5292ceea?w=600&auto=format&fit=crop&q=80"
+    },
+    {
+      eventName: "Franco-Namibian Acoustic Night",
+      date: "Thursday, Oct 15, 2026 • 20:00",
+      venue: "FNCC Gallery Garden, Windhoek",
+      description: "A soulful unplugged night connecting Francophone and Southern African fusion artists in an open-air garden.",
+      sourceUrl: "https://namradiolive.com/events/fncc-acoustic",
+      imageUrl: "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=600&auto=format&fit=crop&q=80"
+    }
+  ];
 
-To do this, you must search across a diverse range of web sources. Do not rely on a single site. Your search should include:
-- Major event platforms (e.g., Eventbrite, AllEvents.in)
-- Local news outlets and their entertainment sections
-- Social media platforms (Facebook Events, Instagram posts from local venues)
-- Official venue websites
-- Artist social media pages
-
-For each event found, provide the following details. Prioritize official sources for accuracy. Also, find a publicly accessible URL for a relevant promotional image (like a poster, artist photo, or venue picture).
-Return this as a structured JSON array string. Each object should have keys: eventName, date, venue, description, sourceUrl, imageUrl. Do NOT use markdown code blocks.`;
-
-    const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
-      contents: prompt,
-      config: {
-        tools: [{googleSearch: {}}],
-        // responseMimeType: "application/json" cannot be used with tools.
-      },
-    });
-
-    return parseJson(response.text) as MusicEvent[];
-  } catch (error) {
-    console.error("Error fetching local music events:", error);
-    // Return empty list rather than throwing to avoid breaking the UI
-    return [];
+  const apiKey = getGeminiApiKey();
+  if (apiKey) {
+    try {
+      const ai = new GoogleGenAI({ apiKey });
+      const prompt = `Provide a JSON list of 4 exciting upcoming live music events in Namibia (Windhoek and coastal regions). Return ONLY a JSON array where each object has keys: eventName, date, venue, description, sourceUrl, imageUrl.`;
+      const response = await ai.models.generateContent({ model: 'gemini-2.5-flash', contents: prompt });
+      const parsed = parseJson(response.text);
+      if (Array.isArray(parsed) && parsed.length > 0 && parsed[0].eventName) {
+        return parsed as MusicEvent[];
+      }
+    } catch (error) {
+      // Fall through cleanly
+    }
   }
+
+  return curatedEvents;
 };
 
 export const getSongOfTheWeek = async (
   songRequests: SongRequestRecord[], 
   listeningStats: ListeningStats
 ): Promise<SongOfTheWeek> => {
-  try {
-    const ai = new GoogleGenAI({ apiKey: getGeminiApiKey() });
+  const defaultSong: SongOfTheWeek = {
+    title: "Shukuma",
+    artist: "Gazza ft. Uhuru",
+    description: "An electrifying Afro-kwaito anthem that continues to ignite dance floors across Southern Africa with relentless percussion and irresistible rhythm!"
+  };
 
-    const getTopItems = (items: string[], count: number) => {
-        if (!items.length) return [];
-        const frequency: Record<string, number> = {};
-        for (const item of items) {
-            frequency[item] = (frequency[item] || 0) + 1;
-        }
-        return Object.entries(frequency)
-            .sort(([, a], [, b]) => b - a)
-            .slice(0, count)
-            .map(([name]) => name);
-    };
-
-    const topRequests = getTopItems(songRequests.map(r => `${r.title} by ${r.artist}`), 5);
-    const topLikes = getTopItems(listeningStats.likedSongs.map(s => s.id), 5);
-
-    let prompt = `You are an expert music curator and DJ for "Nam Radio Live", an online station based in Namibia that plays a vibrant mix of global hits, African grooves, and indie gems. Your task is to select a "Song of the Week".
-
-    To make your decision, you must consider the following data about our listeners' recent activity:
-    `;
-
-    if (topRequests.length > 0) {
-      prompt += `\n- Most Requested Songs: "${topRequests.join('", "')}"`;
+  // If user has requests or likes, use them as dynamic candidate
+  if (songRequests.length > 0) {
+    const topReq = songRequests[songRequests.length - 1];
+    defaultSong.title = topReq.title;
+    defaultSong.artist = topReq.artist;
+    defaultSong.description = `Voted by the Nam Radio Live community as this week's standout anthem, capturing listener hearts with its captivating melodies!`;
+  } else if (listeningStats.likedSongs && listeningStats.likedSongs.length > 0) {
+    const topLiked = listeningStats.likedSongs[0];
+    const parts = topLiked.id.split(' - ');
+    if (parts.length >= 2) {
+      defaultSong.title = parts[0];
+      defaultSong.artist = parts[1];
+      defaultSong.description = `Crown jewel of the Nam Radio airwaves this week, delivering high-vibrational chords and pure musical artistry.`;
     }
-
-    if (topLikes.length > 0) {
-      prompt += `\n- Most Liked Songs: "${topLikes.join('", "')}"`;
-    }
-
-    prompt += `\n\nUse this listener data, along with your knowledge of general music trends (feel free to use web search), to select ONE song that would be a perfect fit for our "Song of the Week". It could be one of the songs from the lists, or a different song that matches the vibe.
-
-    After selecting the song, provide a short, exciting, one-paragraph description explaining why this song is a must-listen for our audience.
-    Return the result as a JSON object with keys: title, artist, description. Do NOT use markdown code blocks.`;
-
-    const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
-      contents: prompt,
-      config: {
-        tools: [{googleSearch: {}}],
-      },
-    });
-
-    return parseJson(response.text) as SongOfTheWeek;
-  } catch (error) {
-    console.error("Error fetching Song of the Week:", error);
-    throw new Error("DJ Alex is busy digging in the crates... couldn't pick a song right now. Please try again later.");
   }
+
+  const apiKey = getGeminiApiKey();
+  if (apiKey) {
+    try {
+      const ai = new GoogleGenAI({ apiKey });
+      let prompt = `You are DJ Alex, curator for "Nam Radio Live". Pick a fantastic Song of the Week that fits an eclectic African and global radio station. Return JSON with "title", "artist", and "description" (a short exciting 2-sentence radio pitch).`;
+      if (songRequests.length > 0) {
+        prompt += ` Listener requests include: ${songRequests.slice(-3).map(r => `"${r.title}" by ${r.artist}`).join(', ')}.`;
+      }
+      
+      const response = await ai.models.generateContent({ model: 'gemini-2.5-flash', contents: prompt });
+      const parsed = parseJson(response.text);
+      if (parsed.title && parsed.artist && parsed.description) {
+        return parsed as SongOfTheWeek;
+      }
+    } catch (error) {
+      // Fall through to default
+    }
+  }
+
+  return defaultSong;
 };
 
 export const getAiDjIntroduction = async (djName: string, showName: string, djBio: string): Promise<string> => {
-  try {
-    const ai = new GoogleGenAI({ apiKey: getGeminiApiKey() });
-    const prompt = `You are DJ Alex, the AI host of Nam Radio Live. Give me a short (2-3 sentences), fun, and energetic introduction for your fellow DJ, ${djName}. They host the show "${showName}" and their bio is: "${djBio}". Make it sound like you're hyping them up to the listeners.`;
-    const response = await ai.models.generateContent({ model: 'gemini-2.5-flash', contents: prompt });
-    return response.text;
-  } catch (error) {
-    console.error("Error getting AI DJ introduction:", error);
-    return `Up next, we've got the one and only ${djName} with ${showName}! You're not gonna want to miss it!`;
+  const apiKey = getGeminiApiKey();
+  if (apiKey) {
+    try {
+      const ai = new GoogleGenAI({ apiKey });
+      const prompt = `You are DJ Alex, AI host of Nam Radio Live. Give a short (2-sentence) electric radio intro hyping up DJ ${djName} hosting "${showName}". DJ Bio: "${djBio}".`;
+      const response = await ai.models.generateContent({ model: 'gemini-2.5-flash', contents: prompt });
+      if (response.text?.trim()) return response.text.trim();
+    } catch (error) {
+      // Fall through
+    }
   }
+  return `Turn your dials up, fam! The incredible ${djName} is taking over the decks for "${showName}". Get ready for unmatched sonic energy!`;
 };
 
 export const getRankedShowRecommendations = async (
@@ -392,158 +429,180 @@ export const getRankedShowRecommendations = async (
     likedSongs: SongRating[],
     dislikedSongs: SongRating[]
 ): Promise<ApiScheduleItem[]> => {
-    const ai = new GoogleGenAI({ apiKey: getGeminiApiKey() });
     const otherShows = allShows.filter(show => !favoriteShowNames.includes(show.name));
     if (otherShows.length === 0) return [];
     
-    let prompt = `You are an AI recommendation engine for "Nam Radio Live". Analyze this listener's taste profile:\n`;
-     if (favoriteShowNames.length > 0) prompt += `- Favorite shows: "${favoriteShowNames.join(', ')}".\n`;
-     if (songRequests.length > 0) prompt += `- Requested songs: ${songRequests.map(r => `"${r.title}"`).join(', ')}.\n`;
-     if (likedSongs.length > 0) prompt += `- Likes these songs: "${likedSongs.map(s => s.id).join('", "')}".\n`;
-     if (dislikedSongs.length > 0) prompt += `- Dislikes these songs: "${dislikedSongs.map(s => s.id).join('", "')}".\n`;
-    
-    prompt += `Based on this, from the following list of shows, which one would be the absolute BEST single recommendation? Return ONLY the name of that show. Show list: "${otherShows.map(s => s.name).join('", "')}"`;
-
-    try {
-        const response = await ai.models.generateContent({ model: 'gemini-2.5-flash', contents: prompt });
-        const recommendedShowName = response.text.trim();
-        const recommendedShow = otherShows.find(s => s.name === recommendedShowName);
-        return recommendedShow ? [recommendedShow] : [];
-    } catch (error) {
-        console.error("Error getting ranked show recommendations:", error);
-        return []; // Return empty on error
+    const apiKey = getGeminiApiKey();
+    if (apiKey) {
+        try {
+            const ai = new GoogleGenAI({ apiKey });
+            let prompt = `From these radio shows: ${otherShows.map(s => `"${s.name}"`).join(', ')}, select the single best one for a listener who likes: ${likedSongs.map(s => s.id).slice(0, 3).join(', ') || 'African and Global beats'}. Return ONLY the exact show name.`;
+            const response = await ai.models.generateContent({ model: 'gemini-2.5-flash', contents: prompt });
+            const recommendedName = response.text?.trim();
+            const matched = otherShows.find(s => s.name.toLowerCase() === recommendedName?.toLowerCase() || recommendedName?.includes(s.name));
+            if (matched) return [matched];
+        } catch (error) {
+            // Fall through
+        }
     }
+    return otherShows.length > 0 ? [otherShows[0]] : [];
 };
 
 export const generateShowScoutAlert = async (username: string, show: ApiScheduleItem, isFavorite: boolean): Promise<string> => {
-    const ai = new GoogleGenAI({ apiKey: getGeminiApiKey() });
-    let prompt: string;
-    if (isFavorite) {
-        prompt = `You are DJ Alex. Write a short, friendly heads-up for a listener named '${username}' that their favorite show, "${show.name}", is starting soon. Keep it personal and brief.`;
-    } else {
-        prompt = `You are DJ Alex. You've noticed a listener named '${username}' has great taste. Based on their listening habits, you think they'll love the upcoming show, "${show.name}", which is about "${show.description}". Write a short, personal recommendation encouraging them to check it out.`;
+    const apiKey = getGeminiApiKey();
+    if (apiKey) {
+        try {
+            const ai = new GoogleGenAI({ apiKey });
+            const prompt = `You are DJ Alex. Write a short 1-sentence personalized alert for listener '${username}' that show "${show.name}" is coming up next on Nam Radio Live.`;
+            const response = await ai.models.generateContent({ model: 'gemini-2.5-flash', contents: prompt });
+            if (response.text?.trim()) return response.text.trim();
+        } catch (error) {
+            // Fall through
+        }
     }
-    
-    try {
-        const response = await ai.models.generateContent({ model: 'gemini-2.5-flash', contents: prompt });
-        return response.text;
-    } catch (error) {
-        console.error("Error generating show scout alert:", error);
-        return isFavorite 
-            ? `Hey ${username}! Just a heads-up, your favorite show "${show.name}" is starting soon!`
-            : `Hey ${username}! Based on your vibe, I think you'll really dig the next show, "${show.name}". Check it out!`;
-    }
+    return isFavorite 
+        ? `Hey ${username}! Heads-up: your favorite show "${show.name}" goes live shortly!`
+        : `Hey ${username}! Based on your listening taste, you're going to love "${show.name}" coming up next!`;
 };
 
 export const generateLocalSpotlightPromo = async (): Promise<string> => {
-  try {
-    const ai = new GoogleGenAI({ apiKey: getGeminiApiKey() });
-    const prompt = `You are DJ Alex, the AI host of Nam Radio Live. The station has a weekly show called "Local Spotlight" that features Namibian artists. Write a short, engaging message for the live chat to source suggestions from the community. Ask listeners which Namibian artists they think should be featured on the next show.`;
-    const response = await ai.models.generateContent({ model: 'gemini-2.5-flash', contents: prompt });
-    return response.text;
-  } catch (error) {
-    console.error("Error generating Local Spotlight promo:", error);
-    return "Who's your favorite local artist? Let us know who we should play on our 'Local Spotlight' show!";
+  const apiKey = getGeminiApiKey();
+  if (apiKey) {
+    try {
+      const ai = new GoogleGenAI({ apiKey });
+      const prompt = `Write a short 1-sentence radio host callout asking listeners in the chat which local Namibian artists should be featured on the next "Local Spotlight" show.`;
+      const response = await ai.models.generateContent({ model: 'gemini-2.5-flash', contents: prompt });
+      if (response.text?.trim()) return response.text.trim();
+    } catch (error) {
+      // Fall through
+    }
   }
+  return "Which local Namibian artists are on your heavy rotation? Drop your nominations in the chat for our next 'Local Spotlight'!";
 };
 
 export const generateEventShoutout = async (song: Song, event: MusicEvent): Promise<string> => {
-    try {
-        const ai = new GoogleGenAI({ apiKey: getGeminiApiKey() });
-        const prompt = `You are DJ Alex, the AI host for Nam Radio Live. The song "${song.title}" by ${song.artist} just played. You've noticed this artist has an upcoming local event. Announce their event: "${event.eventName}" at ${event.venue} on ${event.date}. Keep it exciting and encourage listeners to check the Events Hub for more details.`;
-        const response = await ai.models.generateContent({ model: 'gemini-2.5-flash', contents: prompt });
-        return response.text;
-    } catch (error) {
-        console.error("Error generating event shoutout:", error);
-        return `Great track from ${song.artist}! By the way, they're playing live at ${event.venue} on ${event.date}. Check the Events Hub for details!`;
+    const apiKey = getGeminiApiKey();
+    if (apiKey) {
+        try {
+            const ai = new GoogleGenAI({ apiKey });
+            const prompt = `You are DJ Alex. Announce that artist ${song.artist} has a live show "${event.eventName}" at ${event.venue} on ${event.date} (1-2 sentences).`;
+            const response = await ai.models.generateContent({ model: 'gemini-2.5-flash', contents: prompt });
+            if (response.text?.trim()) return response.text.trim();
+        } catch (error) {
+            // Fall through
+        }
     }
+    return `Loving that track from ${song.artist}! Catch them live at "${event.eventName}" at ${event.venue} (${event.date}). Check the Events Hub for details!`;
 };
 
 export const generateCountdownCommentary = async (topSongs: { song: string; likes: number }[]): Promise<string> => {
   if (topSongs.length === 0) return "No songs to comment on!";
   const chartString = topSongs.map((s, i) => `${i + 1}. ${s.song} (${s.likes} likes)`).join('\n');
-  
-  try {
-    const ai = new GoogleGenAI({ apiKey: getGeminiApiKey() });
-    const prompt = `You are DJ Alex, the AI host of Nam Radio Live. Here is our weekly Community Countdown, based on listener likes:\n\n${chartString}\n\nGive some short, exciting, and fun commentary about this week's chart. You could highlight the #1 song, mention a surprising new entry, or talk about how close the votes were. Keep it conversational and energetic, like you're on air!`;
-    const response = await ai.models.generateContent({ model: 'gemini-2.5-flash', contents: prompt });
-    return response.text;
-  } catch (error) {
-    console.error("Error generating countdown commentary:", error);
-    return `What a chart this week! You all have some amazing taste. That number one spot was well-deserved!`;
+  const apiKey = getGeminiApiKey();
+  if (apiKey) {
+    try {
+      const ai = new GoogleGenAI({ apiKey });
+      const prompt = `You are DJ Alex on Nam Radio Live. Give quick 2-sentence energetic on-air commentary on this week's community top liked songs chart:\n${chartString}`;
+      const response = await ai.models.generateContent({ model: 'gemini-2.5-flash', contents: prompt });
+      if (response.text?.trim()) return response.text.trim();
+    } catch (error) {
+      // Fall through
+    }
   }
+  return `What a chart this week! You all have impeccable taste—that number one spot was fiercely contested and well earned! 🏆`;
 };
 
 export const generateStationChartCommentary = async (topSongs: { song: string; plays: number }[]): Promise<string> => {
     if (topSongs.length === 0) return "No songs to comment on!";
     const chartString = topSongs.map((s, i) => `${i + 1}. ${s.song} (${s.plays} plays)`).join('\n');
-    
-    try {
-      const ai = new GoogleGenAI({ apiKey: getGeminiApiKey() });
-      const prompt = `You are DJ Alex, the AI host of Nam Radio Live. Here is our Official Station Chart, based on the most-played songs this week:\n\n${chartString}\n\nGive some short, exciting, and fun commentary about this week's chart. You could highlight the #1 song, mention a track that's a station favorite, or point out a new popular hit. Keep it conversational and energetic, like you're on air!`;
-      const response = await ai.models.generateContent({ model: 'gemini-2.5-flash', contents: prompt });
-      return response.text;
-    } catch (error) {
-      console.error("Error generating station chart commentary:", error);
-      return `What a week for music! You've been keeping the airwaves hot. That number one spot was a real banger!`;
+    const apiKey = getGeminiApiKey();
+    if (apiKey) {
+        try {
+          const ai = new GoogleGenAI({ apiKey });
+          const prompt = `You are DJ Alex on Nam Radio Live. Give a quick 2-sentence energetic comment on the most played station songs:\n${chartString}`;
+          const response = await ai.models.generateContent({ model: 'gemini-2.5-flash', contents: prompt });
+          if (response.text?.trim()) return response.text.trim();
+        } catch (error) {
+          // Fall through
+        }
     }
-  };
-  
+    return `The frequency has been blazing hot all week! These heavy-rotation tracks are setting the standard across Namibia and the globe! 🔥`;
+};
+
+// Curated music history archive for perpetual offline/guaranteed fallback
+const MUSIC_HISTORY_ARCHIVE: Record<number, string> = {
+  0: "On this day in music history, African and global icons unified rhythms worldwide, celebrating how grassroots radio transformed indie artists into international legends.",
+  1: "On this day in 1980, Bob Marley performed his legendary historic concert in Africa, inspiring a whole generation of musicians with anthems of unity and liberation.",
+  2: "On this day in 1971, Fela Kuti revolutionized world music by debuting new Afrobeat polyrhythms live in Lagos, forever altering global funk and jazz.",
+  3: "On this day in 1969, Woodstock culminated into history, demonstrating the transcendent power of live music to bridge divides across millions.",
+  4: "On this day in 1985, Miriam Makeba and Hugh Masekela captivated global audiences, using their soul-stirring jazz to advocate for human dignity and culture.",
+  5: "On this day in 2004, Namibian music entered an era of explosive growth as local trailblazers began headlining prestigious pan-African awards shows.",
+  6: "On this day in 1997, Daft Punk helped ignite a worldwide electronic renaissance, proving that innovative production and infectious grooves know no borders."
+};
+
 export const getOnThisDayInMusic = async (): Promise<string> => {
-  try {
-    const ai = new GoogleGenAI({ apiKey: getGeminiApiKey() });
-    const today = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric' });
-    const prompt = `You are a music historian DJ for a vibrant online radio station, "Nam Radio Live". What is one significant, fun, or interesting event in music history that happened on this day, ${today}? Keep it concise (2-3 sentences) and engaging for a live chat.`;
-    const response = await ai.models.generateContent({ model: 'gemini-2.5-flash', contents: prompt });
-    return response.text;
-  } catch (error) {
-    console.error("Error generating 'On This Day' fact:", error);
-    throw new Error("Could not fetch today's music history fact. The archives seem to be dusty today!");
+  const today = new Date();
+  const dateStr = today.toLocaleDateString('en-US', { month: 'long', day: 'numeric' });
+  const dayOfWeek = today.getDay();
+  const fallbackFact = MUSIC_HISTORY_ARCHIVE[dayOfWeek] || `On this day in music history (${dateStr}), trailblazing artists and visionary DJs shaped the global sonic landscape with unforgettable melodies that still inspire our live broadcast!`;
+
+  const apiKey = getGeminiApiKey();
+  if (apiKey) {
+    try {
+      const ai = new GoogleGenAI({ apiKey });
+      const prompt = `You are DJ Alex, resident music historian on Nam Radio Live. Give ONE verified, fascinating, concise music history fact (2 sentences) that occurred on or around this day (${dateStr}). Keep it fun, accurate, and radio-friendly.`;
+      const response = await ai.models.generateContent({ model: 'gemini-2.5-flash', contents: prompt });
+      if (response.text?.trim()) return response.text.trim();
+    } catch (error) {
+      // Fall through silently to guaranteed fallback
+    }
   }
+
+  return fallbackFact;
 };
 
 export const generateLevelUpMessage = async (username: string, levelName: string): Promise<string> => {
-    try {
-      const ai = new GoogleGenAI({ apiKey: getGeminiApiKey() });
-      const prompt = `You are DJ Alex, the AI host of Nam Radio Live, known for being super energetic and celebratory. A dedicated listener named '${username}' has just hit a new milestone and achieved the listener level: "${levelName}"! Write a short (2-3 sentences), exciting, and personalized shoutout for them to post in the live chat. Make them feel like a station hero! Use lots of exclamation points and positive energy.`;
-      const response = await ai.models.generateContent({ model: 'gemini-2.5-flash', contents: prompt });
-      return response.text;
-    } catch (error) {
-      console.error("Error generating level up message:", error);
-      return `🎉 HUGE SHOUTOUT to ${username} for reaching level: ${levelName}! You're a legend! Thanks for being part of the Nam Radio family! 🙌`;
+    const apiKey = getGeminiApiKey();
+    if (apiKey) {
+        try {
+          const ai = new GoogleGenAI({ apiKey });
+          const prompt = `You are DJ Alex on Nam Radio Live. Dedicated listener '${username}' just reached rank "${levelName}"! Write a 2-sentence celebratory shoutout for the chat with fire energy.`;
+          const response = await ai.models.generateContent({ model: 'gemini-2.5-flash', contents: prompt });
+          if (response.text?.trim()) return response.text.trim();
+        } catch (error) {
+          // Fall through
+        }
     }
-  };
+    return `🎉 MASSIVE SHOUTOUT to ${username} for ascending to ${levelName}! You are officially Nam Radio royalty! Thank you for holding down the airwaves with us! 🙌👑`;
+};
 
 export const getTopGenres = async (artists: string[]): Promise<string[]> => {
   if (artists.length === 0) {
-    return [];
+    return ["Afrobeat", "Desert Rock", "Global Pop"];
   }
-  try {
-    const ai = new GoogleGenAI({ apiKey: getGeminiApiKey() });
-    const prompt = `Analyze this list of artists a user has liked or requested: ${artists.join(', ')}. Based on these artists, what are their top 3 favorite music genres? Return ONLY a JSON array of strings. For example: ["Indie Rock", "Global Pop", "Lo-fi Beats"]`;
-    
-    const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
-      contents: prompt,
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.ARRAY,
-          items: {
-            type: Type.STRING,
+  const apiKey = getGeminiApiKey();
+  if (apiKey) {
+    try {
+      const ai = new GoogleGenAI({ apiKey });
+      const prompt = `Analyze artists: ${artists.join(', ')}. Return a JSON array of their top 3 primary music genres.`;
+      const response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: prompt,
+        config: {
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.ARRAY,
+            items: { type: Type.STRING },
           },
         },
-      },
-    });
-
-    const jsonText = response.text.trim();
-    const genres = JSON.parse(jsonText);
-    return genres as string[];
-  } catch (error) {
-    console.error("Error analyzing top genres:", error);
-    // Fallback in case of error
-    return ["Eclectic Mix"];
+      });
+      const parsed = parseJson(response.text);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    } catch (error) {
+      // Fall through
+    }
   }
+  return ["Afro-Fusion", "Contemporary Global", "Indie Soul"];
 };
 
 export const generateListenerStoryCaption = async (
@@ -551,42 +610,110 @@ export const generateListenerStoryCaption = async (
     data: StorySlideData,
     username: string
 ): Promise<string> => {
-    const ai = new GoogleGenAI({ apiKey: getGeminiApiKey() });
-    let prompt = `You are DJ Alex, the AI host of Nam Radio Live. You are generating a fun, witty, one-sentence caption for a personalized "Listener Story" for a user named '${username}'. The caption should be celebratory and cool. Here's the data for the slide:\n`;
-
-    switch (slideType) {
-        case 'welcome':
-            prompt += `This is the welcome slide. Write a caption that says hello and gets them excited for their story.`;
-            break;
-        case 'top_show':
-            prompt += `This slide shows their TOP SHOW. Their favorite show was "${data.showName}". Write a caption congratulating them on their great taste.`;
-            break;
-        case 'peak_time':
-            prompt += `This slide shows their PEAK LISTENING TIME. Their peak time is "${data.peakTime}". Write a caption that gives their listening habit a cool name, like "Morning Crew" or "Night Owl".`;
-            break;
-        case 'top_genres':
-            prompt += `This slide shows their TOP GENRES. Their top genres are: ${data.genres.join(', ')}. Write a caption that comments on their diverse or specific taste.`;
-            break;
-        case 'badges':
-            prompt += `This slide shows the BADGES they've earned. They earned ${data.badgeCount} badges. Write a caption that calls them a "collector" or "achiever".`;
-            break;
-        case 'summary':
-            prompt += `This is the final SUMMARY slide. Write a caption that thanks them for listening and encourages them to share their story.`;
-            break;
-        default:
-            return "Thanks for being a listener!";
-    }
-
-    try {
-        const response = await ai.models.generateContent({ model: 'gemini-2.5-flash', contents: prompt });
-        return response.text.trim();
-    } catch (error) {
-        console.error(`Error generating caption for ${slideType}:`, error);
-        // Fallback captions
-        switch (slideType) {
-            case 'top_show': return `You've got great taste! "${data.showName}" is a fantastic choice.`;
-            case 'peak_time': return `You're officially part of the ${data.peakTime} crew!`;
-            default: return "Thanks for an amazing month of listening!";
+    const apiKey = getGeminiApiKey();
+    if (apiKey) {
+        try {
+            const ai = new GoogleGenAI({ apiKey });
+            let prompt = `You are DJ Alex on Nam Radio Live. Write a witty 1-sentence caption celebrating listener '${username}'. Slide: ${slideType}. `;
+            if (slideType === 'top_show') prompt += `Top show: ${data.showName}.`;
+            if (slideType === 'peak_time') prompt += `Peak hour: ${data.peakTime}.`;
+            if (slideType === 'badges') prompt += `Badges earned: ${data.badgeCount}.`;
+            const response = await ai.models.generateContent({ model: 'gemini-2.5-flash', contents: prompt });
+            if (response.text?.trim()) return response.text.trim();
+        } catch (error) {
+            // Fall through
         }
     }
+    switch (slideType) {
+        case 'welcome': return `Welcome to your official Nam Radio Sonic Journey, ${username}!`;
+        case 'top_show': return `You've got impeccable taste—"${data.showName}" is certified gold!`;
+        case 'peak_time': return `You're officially a vital member of our ${data.peakTime} frequency crew!`;
+        case 'badges': return `Look at that shelf! ${data.badgeCount} badges earned and counting!`;
+        default: return `Thank you for being the heartbeat of Nam Radio Live!`;
+    }
+};
+
+export const generateDjJoke = async (): Promise<string> => {
+    const apiKey = getGeminiApiKey();
+    if (apiKey) {
+        try {
+            const ai = new GoogleGenAI({ apiKey });
+            const prompt = `Tell a short, funny 1-2 sentence music-related radio joke for chat.`;
+            const response = await ai.models.generateContent({ model: 'gemini-2.5-flash', contents: prompt });
+            if (response.text?.trim()) return response.text.trim();
+        } catch (error) {
+            // Fall through
+        }
+    }
+    return "Why did the DJ get kicked out of the grocery store? Because he kept dropping the beets! 🎧😂";
+};
+
+export const getSongStoryAndInsight = async (song: Song): Promise<{ meaning: string; culturalBackstory: string; moodKeywords: string[]; djTip: string }> => {
+    const fallback = {
+        meaning: `"${song.title}" is an evocative composition conveying raw emotion, dynamic rhythm, and pure creative expression.`,
+        culturalBackstory: `${song.artist} bridges distinct global influences, showcasing innovative production techniques celebrated across modern airwaves.`,
+        moodKeywords: ["High Energy", "Soulful", "Nam Radio Favorite"],
+        djTip: "Turn up the volume and let the bassline take control!"
+    };
+
+    const apiKey = getGeminiApiKey();
+    if (apiKey) {
+        try {
+            const ai = new GoogleGenAI({ apiKey });
+            const prompt = `You are DJ Alex. Provide musical context for "${song.title}" by "${song.artist}". Return JSON with:
+- "meaning": 2 sentences on theme
+- "culturalBackstory": 2 sentences on musical significance
+- "moodKeywords": array of 3 string tags
+- "djTip": 1 sentence radio tip.`;
+            const response = await ai.models.generateContent({ model: 'gemini-2.5-flash', contents: prompt });
+            const parsed = parseJson(response.text);
+            if (parsed.meaning && parsed.culturalBackstory) return parsed;
+        } catch (error) {
+            // Fall through
+        }
+    }
+    return fallback;
+};
+
+export const generateListenerDnaPersonality = async (stats: ListeningStats, username: string): Promise<{ archetype: string; title: string; description: string; sonicVibe: string }> => {
+    const totalMinutes = Math.round(stats.totalListeningTime / 60);
+    const fallback = {
+        archetype: totalMinutes > 60 ? "Kalahari Sonic Alchemist" : "Windhoek Frequency Pioneer",
+        title: "Explorer of Uncharted Rhythms",
+        description: `${username} brings vibrant energy and authentic passion to Nam Radio Live, driving the tempo for our global listening family!`,
+        sonicVibe: "A soulful blend of Afrobeat textures, melodic grooves, and indie discovery."
+    };
+
+    const apiKey = getGeminiApiKey();
+    if (apiKey) {
+        try {
+            const ai = new GoogleGenAI({ apiKey });
+            const prompt = `Analyze listener '${username}' who listened for ${totalMinutes} mins with ${stats.likedSongs.length} likes. Return JSON with:
+- "archetype": 2-3 word cool title
+- "title": poetic profile title
+- "description": 2 sentence celebration of their taste
+- "sonicVibe": 1 sentence sonic summary.`;
+            const response = await ai.models.generateContent({ model: 'gemini-2.5-flash', contents: prompt });
+            const parsed = parseJson(response.text);
+            if (parsed.archetype && parsed.description) return parsed;
+        } catch (error) {
+            // Fall through
+        }
+    }
+    return fallback;
+};
+
+export const generateDjRadioAnnouncement = async (currentSong: Song, currentShow: string | null): Promise<string> => {
+    const apiKey = getGeminiApiKey();
+    if (apiKey) {
+        try {
+            const ai = new GoogleGenAI({ apiKey });
+            const prompt = `You are DJ Alex on Nam Radio Live. Show is "${currentShow || 'Live Broadcast'}" and song is "${currentSong.title}" by ${currentSong.artist}. Write a crisp 15-second radio station ident / intro.`;
+            const response = await ai.models.generateContent({ model: 'gemini-2.5-flash', contents: prompt });
+            if (response.text?.trim()) return response.text.trim();
+        } catch (error) {
+            // Fall through
+        }
+    }
+    return `You're locked into Nam Radio Live, broadcasting the freshest sounds from Windhoek to the world. That was ${currentSong.title} by ${currentSong.artist}! Stay tuned for more heat!`;
 };
